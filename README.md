@@ -1,12 +1,37 @@
-Multigrid example
-=================
+Grad-Shafranov solver
+=====================
 
-Solves a Laplacian in a square domain, with Dirichlet (zero value)
+This solves the Grad-Shafranov equation for axisymmetric plasma equilibria, 
+mainly for free boundary calculations.
+
+Examples
+--------
+
+$ python driver-fixedboundary.py 
+
+This solves a fixed boundary problem, in which the square edges of the domain
+are fixed. The plasma pressure on axis and plasma current are fixed.
+
+
+Files
+-----
+
+boundary.py        - Operators for applying boundary conditions to plasma psi
+constraints.py     - Routines for applying constraints to the plasma boundary
+equilibrium.py     - Represents the plasma equilibrium state
+gradshafranov.py   - Greens functions and operators for the Grad-Shafranov equation
+jtor.py            - Routines for calculating toroidal current density
+machine.py         - Represents the coils and power supply circuits
+multigrid.py       - The multigrid solver for the linear elliptic operator
+plotting.py        - Plotting routines using matplotlib
+
+Multigrid solver
+----------------
+
+The code in multigrid.py solves elliptic equations in a square domain, with Dirichlet (fixed value)
 boundary conditions. The smoother is a simple Jacobi method, and 2nd order
 central differences is used to discretise the operator. 
-
-Usage
------
+The test case can be run with:
 
     $ python multigrid.py
 

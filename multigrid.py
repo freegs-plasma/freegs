@@ -1,28 +1,16 @@
-#
-# Example of multigrid method using Python
-#
-# Solves a Laplacian in 2D with zero boundary conditions
+"""
+Multigrid solver for elliptic problems
 
-from numpy import zeros,max,abs, meshgrid, linspace, exp, sum,arange
+Example
+-------
 
+$ python multigrid.py
 
-class LaplacianOp:
-    def __call__(self, f, dx, dy):
-        nx = f.shape[0]
-        ny = f.shape[1]
-        
-        b = zeros([nx,ny])
-            
-        for x in range(1,nx-1):
-            for y in range(1,ny-1):
-                # Loop over points in the domain
-                
-                b[x,y] = (f[x-1,y] - 2*f[x,y] + f[x+1,y])/dx**2 + (f[x,y-1] - 2*f[x,y] + f[x,y+1])/dy**2
+This will run the 
 
-        return b
-    
-    def diag(self, dx, dy):
-        return -2./dx**2 - 2./dy**2
+"""
+
+from numpy import zeros,max,amin,amax, abs
 
 def smoothJacobi(A, x, b, dx, dy):
     """
@@ -40,6 +28,17 @@ def smoothJacobi(A, x, b, dx, dy):
 def restrict(orig, dx, dy, coarse=None, avg=False):
     """
     Coarsen the original onto a coarser mesh
+
+    Inputs
+    ------
+    
+    orig[nx,ny] - A 2D numpy array. Each dimension must have
+                  a size (2^n + 1) though nx != ny is possible
+
+    Returns
+    -------
+
+    A 2D numpy array of size [(nx-1)/2+1, (ny-1)/2+1]
     """
     
     nx = orig.shape[0]
@@ -147,29 +146,55 @@ def smoothVcycle(A, x, b, dx, dy, niter=10, sublevels=0):
     return x
     
 def smoothMG(A, x, b, dx, dy, niter=10, sublevels=1, ncycle=2):
-    error = rhs - A(x, dx, dy)
+    error = b - A(x, dx, dy)
     print "Starting max residual: ", max(abs(error))
     
     for c in range(ncycle):
         x = smoothVcycle(A, x, b, dx, dy, niter, sublevels)
         
-        error = rhs - A(x, dx, dy)
+        error = b - A(x, dx, dy)
         print "Cycle ", c, ": " , max(abs(error))
     return x
 
+########################################
+
+class LaplacianOp:
+    """
+    Implements a simple Laplacian operator
+    for use with the multigrid solver
+    """
+    def __call__(self, f, dx, dy):
+        nx = f.shape[0]
+        ny = f.shape[1]
+
+        b = zeros([nx,ny])
+
+        for x in range(1,nx-1):
+            for y in range(1,ny-1):
+                # Loop over points in the domain
+
+                b[x,y] = (f[x-1,y] - 2*f[x,y] + f[x+1,y])/dx**2 + (f[x,y-1] - 2*f[x,y] + f[x,y+1])/dy**2
+
+        return b
+
+    def diag(self, dx, dy):
+        return -2./dx**2 - 2./dy**2
+
 if __name__ == "__main__":
+
     # Test case
 
+    from numpy import meshgrid, exp, linspace
     import matplotlib.pyplot as plt
-    
+
     nx = 65
     ny = 65
 
     dx = 1./nx
     dy = 1./ny
-    
+
     xx, yy = meshgrid(linspace(0,1,nx), linspace(0,1,ny))
-    
+
     rhs = exp( - ( (xx - 0.5)**2 + (yy - 0.5)**2 ) / 0.4**2 )
 
     rhs[0,:] = 0.0
@@ -185,25 +210,18 @@ if __name__ == "__main__":
 
     ################ SIMPLE ITERATIVE SOLVER ##############
 
-    mon = []
     for i in range(100):
-      x2 = smoothJacobi(A, x, rhs, dx,dy)
-      
-      #plt.contourf(x2)  # Contour plot of new solution
-      #plt.show()
+      x2 = smoothJacobi(A, x, rhs, dx,dy)      
       x,x2 = x2, x # Swap arrays
-
+      
       error = rhs - A(x, dx, dy)
       print i, max(abs(error))
-      
-      mon.append(x[nx/2,ny/2])
-      
+
     ################ MULTIGRID SOLVER #######################
 
     x = zeros([nx,ny])
     x = smoothMG(A, x, rhs, dx, dy, niter=5, sublevels=4, ncycle=2)
     
-    #plt.plot(mon)
     f = plt.figure()
     plt.contourf(x)
     plt.show()
