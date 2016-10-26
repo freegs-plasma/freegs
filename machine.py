@@ -73,6 +73,13 @@ class Machine:
         for coil, dI in zip(self.coils, current_change):
             coil["current"] += dI
     
+    def printCurrents(self):
+        print("==========================")
+        for c in self.coils:
+            print("%s : (%.2f,%.2f)  %e" % ( c["label"], c["R"], c["Z"], c["current"]))
+        print("==========================")
+        
+        
 def EmptyTokamak():
     """
     Creates a tokamak with no coils

@@ -2,6 +2,7 @@
 #
 
 from scipy.integrate import romb # Romberg integration
+import critical
 
 class ConstrainPaxisIp:
     """
@@ -22,7 +23,7 @@ class ConstrainPaxisIp:
         self.alpha_m = alpha_m
         self.alpha_n = alpha_n
 
-    def __call__(self, R, Z, psi, psi_axis, psi_bndry):
+    def __call__(self, R, Z, psi):
         """ Calculate toroidal plasma current
         
          Jtor = L * (Beta0*R/Rmax + (1-Beta0)*Rmax/R)*jtorshape
@@ -30,6 +31,20 @@ class ConstrainPaxisIp:
          where jtorshape is a shape function
          L and Beta0 are parameters which are set by constraints
         """
+        
+        # Analyse the equilibrium, finding O- and X-points
+        opt, xpt = critical.find_critical(R, Z, psi)
+        if not opt:
+            raise ValueError("No O-points found!")
+        psi_axis = opt[0][2]
+        
+        if xpt:
+            psi_bndry = xpt[0][2]
+            mask = critical.core_mask(R, Z, psi, opt, xpt)
+        else:
+            # No X-points
+            psi_bndry = psi[0,0]
+            mask = None
         
         dR = R[1,0] - R[0,0]
         dZ = Z[0,1] - Z[0,0]
@@ -43,6 +58,10 @@ class ConstrainPaxisIp:
         
         # Current profile shape
         jtorshape = (1. - psi_norm**self.alpha_m)**self.alpha_n
+        
+        if mask is not None:
+            # If there is a masking function (X-points, limiters)
+            jtorshape *= mask
         
         # Now apply constraints to define constants
         # Pressure on axis is

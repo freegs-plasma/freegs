@@ -5,13 +5,15 @@ Use constraints to adjust coil currents
 from numpy import dot, transpose, eye, array
 from numpy.linalg import inv
 
-def xpointConstrain(eq, tokamak, xpoints, gamma=0.0):
+def xpointConstrain(eq, xpoints, gamma=0.0):
     
     """
     Adjust coil currents using x-point constraints
     
     """
-        
+    
+    tokamak = eq.getMachine()
+    
     constraint_matrix = []
     constraint_rhs = []
     for xpt in xpoints:
@@ -37,13 +39,11 @@ def xpointConstrain(eq, tokamak, xpoints, gamma=0.0):
     # Constraint matrix
     A = array(constraint_matrix)
     b = array(constraint_rhs)
-        
+    
     # Solve by Tikhonov regularisation
     # minimise || Ax - b ||^2 + ||gamma x ||^2
     #
     # x = (A^T A + gamma^2 I)^{-1}A^T b
-    
-    print A
     
     # Number of controls (length of x)
     ncontrols = A.shape[1]
@@ -51,10 +51,5 @@ def xpointConstrain(eq, tokamak, xpoints, gamma=0.0):
     # Calculate the change in coil current
     current_change =  dot( inv(dot(transpose(A), A) + gamma**2 * eye(ncontrols)), 
                            dot(transpose(A),b))
-    
-    print("Change in current: ")
-    print current_change
+    print("Current changes: " + str(current_change))
     tokamak.controlAdjust(current_change)
-
-    print "b = ", b
-    print "Ax = ", dot(A, current_change)

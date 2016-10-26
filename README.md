@@ -7,11 +7,19 @@ mainly for free boundary calculations.
 Examples
 --------
 
-$ python driver-fixedboundary.py 
+$ python example-fixedboundary.py 
 
 This solves a fixed boundary problem, in which the square edges of the domain
 are fixed. The plasma pressure on axis and plasma current are fixed.
 
+$ python example-freeboundary.py
+
+This solves a free boundary problem, specifying the desired location of two X-points
+
+$ python example-xpoints.py
+
+This demonstrates the coil current constraint code, finding X-points, and marking core region
+These routines are then used inside the free boundary solver
 
 Files
 -----
@@ -24,6 +32,7 @@ jtor.py            - Routines for calculating toroidal current density
 machine.py         - Represents the coils and power supply circuits
 multigrid.py       - The multigrid solver for the linear elliptic operator
 plotting.py        - Plotting routines using matplotlib
+picard.py          - Nonlinear solver, iterating the profiles and constraints
 
 Multigrid solver
 ----------------

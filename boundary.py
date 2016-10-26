@@ -26,7 +26,6 @@ def freeBoundary(R, Z, Jtor, psi):
 
     dR = R[1,0] - R[0,0]
     dZ = Z[0,1] - Z[0,0]
-    print "FREEBNDRY: ", dR, dZ
     
     # List of indices on the boundary
     bndry_indices = concatenate([

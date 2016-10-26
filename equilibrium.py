@@ -83,6 +83,12 @@ class Equilibrium:
             
         self._updatePlasmaPsi(psi)
         
+    def getMachine(self):
+        """
+        Returns the handle of the machine, including coils
+        """
+        return self.tokamak
+    
     def _updatePlasmaPsi(self, plasma_psi):
         self.plasma_psi = plasma_psi
 
@@ -118,9 +124,15 @@ class Equilibrium:
     def psi(self):
         return self.plasma_psi + self.tokamak.psi(self.R, self.Z)
         
-    def solve(self, Jtor):
+    def solve(self, Jtor, niter=2, sublevels=4, ncycle=2):
         """
         Calculate the plasma equilibrium
+        
+        Jtor  - Toroidal current density
+
+        niter  - Number of Jacobi iterations per level
+        sublevels - Number of levels in the multigrid
+        ncycle    - Number of V-cycles
         """
         # Set plasma boundary
         self._applyBoundary(self.R, self.Z, Jtor, self.plasma_psi)
@@ -137,8 +149,11 @@ class Equilibrium:
         dR = self.R[1,0] - self.R[0,0]
         dZ = self.Z[0,1] - self.Z[0,0]
         
-        self.plasma_psi = smoothMG(self._GS, self.plasma_psi, rhs, dR, dZ, niter=2, sublevels=4, ncycle=2)
-
+        plasma_psi = smoothMG(self._GS, self.plasma_psi, rhs, dR, dZ, 
+                              niter=niter, sublevels=sublevels, ncycle=ncycle)
+        
+        self._updatePlasmaPsi(plasma_psi)
+        
 if __name__=="__main__":
     
     # Test the different spline interpolation routines
@@ -157,7 +172,7 @@ if __name__=="__main__":
     import constraints
     xpoints = [(1.2, -0.8),
                (1.2, 0.8)]
-    constraints.xpointConstrain(eq, tokamak, xpoints)
+    constraints.xpointConstrain(eq, xpoints)
     
     psi = eq.psi()
 

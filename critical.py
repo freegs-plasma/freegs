@@ -2,7 +2,7 @@
 from scipy import interpolate
 from numpy import zeros
 from numpy.linalg import inv
-from numpy import dot, linspace, argmax, argmin
+from numpy import dot, linspace, argmax, argmin, abs
 
 def find_critical(R, Z, psi):
     """
@@ -106,7 +106,6 @@ def find_critical(R, Z, psi):
                         # Discard this point
                         break
     
-
     # Remove duplicates
     def remove_dup(points):
         result = []
@@ -129,10 +128,10 @@ def find_critical(R, Z, psi):
         return opoint, xpoint
     
     # Find primary O-point by sorting by distance from middle of domain
-    Rmid = 0.5*(R[-1,0] - R[0,0])
-    Zmid = 0.5*(Z[0,-1] - Z[0,0])
+    Rmid = 0.5*(R[-1,0] + R[0,0])
+    Zmid = 0.5*(Z[0,-1] + Z[0,0])
     opoint.sort(key=lambda x: (x[0] - Rmid)**2 + (x[1] - Zmid)**2)
-
+    
     # Draw a line from the O-point to each X-point. Psi should be
     # monotonic; discard those which are not
 
@@ -163,23 +162,80 @@ def find_critical(R, Z, psi):
     xpoint = xpt_keep
 
     # Sort X-points by distance to primary O-point in psi space
-
     psi_axis = opoint[0][2]
     xpoint.sort(key=lambda x: (x[2] - psi_axis)**2)
-    psi_bndry = xpoint[0][2]
     
-    
-    import matplotlib.pyplot as plt
-    from plotting import plotEquilibrium
-    ax = plotEquilibrium(R, Z, psi)
-
-    for r,z,_ in xpt_keep:
-        ax.plot(r,z,'ro')
-    for r,z,_ in opoint:
-        ax.plot(r,z,'go')
-
-    sep_contour=ax.contour(R,Z,psi, levels=[psi_bndry], colors='r')
-    
-    plt.show()
-
     return opoint, xpoint
+
+
+def core_mask(R, Z, psi, opoint, xpoint):
+    """
+    Mark the parts of the domain which are in the core
+    
+    
+    """
+    
+    mask = zeros(psi.shape)
+    nx,ny = psi.shape
+
+    # Start and end points
+    Ro, Zo, psi_axis = opoint[0]
+    _, _, psi_bndry = xpoint[0]
+
+    # Normalise psi
+    psin = (psi - psi_axis)/(psi_bndry - psi_axis)
+
+    # Need some care near X-points to avoid flood filling through saddle point
+    # Here we first set the x-points regions to a value, to block the flood fill
+    # then later return to handle these more difficult cases
+    # 
+    xpt_inds = []
+    for rx, zx, _ in xpoint:
+        # Find nearest index
+        ix = argmin(abs(R[:,0] - rx))
+        jx = argmin(abs(Z[0,:] - zx))
+        xpt_inds.append((ix,jx))
+        # Fill this point and all around with '2'
+        for i in [ix-1,ix,ix+1]:
+            for j in [jx-1,jx,jx+1]:
+                mask[i,j] = 2
+
+    # Find nearest index to start
+    rind = argmin(abs(R[:,0] - Ro))
+    zind = argmin(abs(Z[0,:] - Zo))
+    
+    stack = [(rind, zind)] # List of points to inspect in future
+    
+    while stack: # Whilst there are any points left
+        i, j = stack.pop() # Remove from list
+        
+        # Check the point to the left (i,j-1)
+        if (j > 0) and (psin[i,j-1] < 1.0) and (mask[i,j-1] < 0.5):
+            stack.append( (i,j-1) ) 
+            
+        # Scan along a row to the right
+        while True:
+            mask[i,j] = 1  # Mark as in the core
+            
+            if (i < nx-1) and (psin[i+1,j] < 1.0) and (mask[i+1,j] < 0.5):
+                stack.append( (i+1,j) )
+            if (i > 0) and (psin[i-1,j] < 1.0) and (mask[i-1,j] < 0.5):
+                stack.append( (i-1,j) )
+                
+            if j == ny-1: # End of the row
+                break
+            if (psin[i,j+1] >= 1.0) or (mask[i,j+1] > 0.5):
+                break # Finished this row
+            j += 1 # Move to next point along
+            
+    
+    # Now return to X-point locations
+    for ix, jx in xpt_inds:
+        for i in [ix-1,ix,ix+1]:
+            for j in [jx-1,jx,jx+1]:
+                if psin[i,j] < 1.0:
+                    mask[i,j] = 1
+                else:
+                    mask[i,j] = 0
+                 
+    return mask
