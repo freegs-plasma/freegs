@@ -61,6 +61,16 @@ class Machine:
                           R, Z)
                  for coil in self.coils ]
 
+    def controlPsi(self, R, Z):
+        """
+        Returns a list of control responses for psi
+        at the given (R,Z) location(s)
+        """
+        return [ Greens(coil["R"], coil["Z"],
+                        R, Z)
+                 for coil in self.coils ]
+        
+
     def controlAdjust(self, current_change):
         """
         Add given currents to the controls.
@@ -98,6 +108,48 @@ def TestTokamak():
     
     return Machine(coils)
 
+
+def DIIID():
+    """
+    PF coil set from ef20030203.d3d
+    Taken from Corsica
+    """
+    coils = [{"label":"F1A", "R":0.8608, "Z":0.16830, "current":0.0},
+             {"label":"F2A", "R":0.8614, "Z":0.50810, "current":0.0},
+             {"label":"F3A", "R":0.8628, "Z":0.84910, "current":0.0},
+             {"label":"F4A", "R":0.8611, "Z":1.1899 , "current":0.0},
+             {"label":"F5A", "R":1.0041, "Z":1.5169 , "current":0.0},
+             {"label":"F6A", "R":2.6124, "Z":0.4376 , "current":0.0},
+             {"label":"F7A", "R":2.3733, "Z":1.1171 , "current":0.0},
+             {"label":"F8A", "R":1.2518, "Z":1.6019 , "current":0.0},
+             {"label":"F9A", "R":1.6890, "Z":1.5874 , "current":0.0},
+             {"label":"F1B", "R":0.8608, "Z":-0.1737, "current":0.0},
+             {"label":"F2B", "R":0.8607, "Z":-0.5135, "current":0.0},
+             {"label":"F3B", "R":0.8611, "Z":-0.8543, "current":0.0},
+             {"label":"F4B", "R":0.8630, "Z":-1.1957, "current":0.0},
+             {"label":"F5B", "R":1.0025, "Z":-1.5169, "current":0.0},
+             {"label":"F6B", "R":2.6124, "Z":-0.44376, "current":0.0},
+             {"label":"F7B", "R":2.3834, "Z":-1.1171, "current":0.0},
+             {"label":"F8B", "R":1.2524, "Z":-1.6027, "current":0.0},
+             {"label":"F9B", "R":1.6889, "Z":-1.578, "current":0.0}]
+    
+    return Machine(coils)
+
+def MAST():
+    """
+    Mega-Amp Spherical Tokamak
+    """
+    coils = [{"label":"P2U", "R":0.5, "Z":1.6, "current":0.0},
+             {"label":"P2L", "R":0.5, "Z":-1.6, "current":0.0},
+             {"label":"P3U", "R":1.1, "Z":1.1, "current":0.0},
+             {"label":"P3L", "R":1.1, "Z":-1.1, "current":0.0},
+             {"label":"P4U", "R":1.5, "Z":1.1, "current":0.0},
+             {"label":"P4L", "R":1.5, "Z":-1.1, "current":0.0},
+             {"label":"P5U", "R":1.6, "Z":0.5, "current":0.0},
+             {"label":"P5L", "R":1.6, "Z":-0.5, "current":0.0},
+             {"label":"P6U", "R":1.5, "Z":0.9, "current":0.0},
+             {"label":"P6L", "R":1.5, "Z":-0.9, "current":0.0}]
+    return Machine(coils)
 
 if __name__ == "__main__":
     # Run test case

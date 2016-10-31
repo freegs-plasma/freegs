@@ -4,7 +4,7 @@ from numpy import zeros
 from numpy.linalg import inv
 from numpy import dot, linspace, argmax, argmin, abs
 
-def find_critical(R, Z, psi):
+def find_critical(R, Z, psi,discard_xpoints=False):
     """
     Find critical points
 
@@ -75,13 +75,43 @@ def find_critical(R, Z, psi):
                         # O-point or X-point
 
                         # Evaluate D = fxx * fyy - (fxy)^2
-                        D = f(R1, Z1, dx=2)[0][0] * f(R1, Z1, dy=2)[0][0] - (f(R1, Z1, dx=1, dy=1)[0][0])**2
-
+                        if False:
+                            D = f(R1, Z1, dx=2)[0][0] * f(R1, Z1, dy=2)[0][0] - (f(R1, Z1, dx=1, dy=1)[0][0])**2
+                        
+                            #print("D0 = %e" % D)
+                        
+                        if False: #abs(D) < 1:
+                            # D small, so need to use another method
+                            #print("Small discriminant D (%e)" % (D,))
+                            
+                            # Try second derivative in index space
+                            
+                            dR = R[1,0] - R[0,0]
+                            dZ = Z[0,1] - Z[0,0]
+                            d2dr2 = (psi[i+1,j] - 2.*psi[i,j] + psi[i-1,j])/dR**2
+                            d2dz2 = (psi[i,j+1] - 2.*psi[i,j] + psi[i,j-1])/dZ**2
+                            d2drdz = ((psi[i+1,j+1] - psi[i+1,j-1])/(2.*dZ) - (psi[i-1,j+1] - psi[i-1,j-1])/(2.*dZ) ) / (2.*dR)
+                            D = d2dr2 * d2dz2 - d2drdz**2
+                            
+                            #print("D1 = %e" % D)
+                        
+                        if True:
+                            dR = R[1,0] - R[0,0]
+                            dZ = Z[0,1] - Z[0,0]
+                            d2dr2 = (psi[i+2,j] - 2.*psi[i,j] + psi[i-2,j])/(2.*dR)**2
+                            d2dz2 = (psi[i,j+2] - 2.*psi[i,j] + psi[i,j-2])/(2.*dZ)**2
+                            d2drdz = ((psi[i+2,j+2] - psi[i+2,j-2])/(4.*dZ) - (psi[i-2,j+2] - psi[i-2,j-2])/(4.*dZ) ) / (4.*dR)
+                            D = d2dr2 * d2dz2 - d2drdz**2
+                            
+                            #print("D2 = %e" % D)
+                            
                         if D < 0.0:
                             # Found X-point
+                            #print("Found X-point at %e, %e (f=%e, D=%e)" % (R1,Z1, f(R1,Z1)[0][0], D) )
                             xpoint.append( (R1,Z1, f(R1,Z1)[0][0]) )
                         else:
                             # Found O-point
+                            #print("Found O-point at %e, %e (f=%e, D=%e)" % (R1,Z1, f(R1,Z1)[0][0], D) )
                             opoint.append( (R1,Z1, f(R1,Z1)[0][0]) )
                         break
                         
@@ -135,31 +165,31 @@ def find_critical(R, Z, psi):
     # Draw a line from the O-point to each X-point. Psi should be
     # monotonic; discard those which are not
 
-    Ro,Zo,Po = opoint[0] # The primary O-point
-    xpt_keep = []
-    for xpt in xpoint:
-        Rx, Zx, Px = xpt
+    if True: #discard_xpoints:
+        Ro,Zo,Po = opoint[0] # The primary O-point
+        xpt_keep = []
+        for xpt in xpoint:
+            Rx, Zx, Px = xpt
         
-        rline = linspace(Ro, Rx, num=50)
-        zline = linspace(Zo, Zx, num=50)
+            rline = linspace(Ro, Rx, num=50)
+            zline = linspace(Zo, Zx, num=50)
         
-        pline = f(rline, zline, grid=False)
+            pline = f(rline, zline, grid=False)
 
-        if Px < Po:
-            pline *= -1.0 # Reverse, so pline is maximum at X-point
+            if Px < Po:
+                pline *= -1.0 # Reverse, so pline is maximum at X-point
         
-        # Now check that pline is monotonic
-        ind = argmax(pline)  # Should be at X-point
-        if (rline[ind] - Rx)**2 + (zline[ind] - Zx)**2 > 1e-4:
-            # Too far, discard
-            continue
-        ind = argmin(pline)  # Should be at O-point
-        if (rline[ind] - Ro)**2 + (zline[ind] - Zo)**2 > 1e-4:
-            # Too far, discard
-            continue
-        xpt_keep.append(xpt)
-
-    xpoint = xpt_keep
+            # Now check that pline is monotonic
+            ind = argmax(pline)  # Should be at X-point
+            if (rline[ind] - Rx)**2 + (zline[ind] - Zx)**2 > 1e-4:
+                # Too far, discard
+                continue
+            ind = argmin(pline)  # Should be at O-point
+            if (rline[ind] - Ro)**2 + (zline[ind] - Zo)**2 > 1e-4:
+                # Too far, discard
+                continue
+            xpt_keep.append(xpt)
+        xpoint = xpt_keep
 
     # Sort X-points by distance to primary O-point in psi space
     psi_axis = opoint[0][2]

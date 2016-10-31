@@ -3,6 +3,7 @@
 
 from scipy.integrate import romb # Romberg integration
 import critical
+from gradshafranov import mu0
 
 class ConstrainPaxisIp:
     """
@@ -89,4 +90,56 @@ class ConstrainPaxisIp:
         Jtor = L * (Beta0*R/Rmax + (1-Beta0)*Rmax/R)*jtorshape
 
         return Jtor
+
     
+class ProfilesPprimeFfprime:
+    """
+    Specified profile functions p'(psi), ff'(psi)
+    
+    Jtor = R*p' + ff'/(R*mu0)
+    
+    """
+    def __init__(self, pprime_func, ffprime_func, p_func=None, f_func=None):
+        """
+        pprime_func(psi_norm) - A function which returns dp/dpsi at given normalised flux
+        ffprime_func(psi_norm) - A function which returns f*df/dpsi at given normalised flux (f = R*Bt)
+        
+        Optionally, the pres
+        """
+        self.pprime = pprime_func
+        self.ffprime = ffprime_func
+        
+    def __call__(self, R, Z, psi):
+        """
+        Calculate toroidal current
+        """
+        
+        # Analyse the equilibrium, finding O- and X-points
+        opt, xpt = critical.find_critical(R, Z, psi)
+        if not opt:
+            raise ValueError("No O-points found!")
+        psi_axis = opt[0][2]
+        
+        if xpt:
+            psi_bndry = xpt[0][2]
+            mask = critical.core_mask(R, Z, psi, opt, xpt)
+        else:
+            # No X-points
+            psi_bndry = psi[0,0]
+            mask = None
+        
+        dR = R[1,0] - R[0,0]
+        dZ = Z[0,1] - Z[0,0]
+        
+        # Calculate normalised psi.
+        # 0 = magnetic axis
+        # 1 = plasma boundary
+        psi_norm = (psi - psi_axis)  / (psi_bndry - psi_axis)
+
+        Jtor = R * self.pprime(psi_norm) + self.ffprime(psi_norm)/(R * mu0)
+
+        if mask is not None:
+            # If there is a masking function (X-points, limiters)
+            jtorshape *= mask
+        
+        return Jtor

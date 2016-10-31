@@ -5,6 +5,7 @@ state, including plasma and coil currents
 
 from numpy import meshgrid, linspace, exp, zeros
 from scipy import interpolate
+from scipy.integrate import romb # Romberg integration
 
 from boundary import fixedBoundary, freeBoundary
 
@@ -83,17 +84,19 @@ class Equilibrium:
             
         self._updatePlasmaPsi(psi)
         
+        self._current = 0.0 # Plasma current
+        
     def getMachine(self):
         """
         Returns the handle of the machine, including coils
         """
         return self.tokamak
     
-    def _updatePlasmaPsi(self, plasma_psi):
-        self.plasma_psi = plasma_psi
-
-        # Update spline interpolation
-        self.psi_func = interpolate.RectBivariateSpline(self.R[:,0], self.Z[0,:], plasma_psi)
+    def plasmaCurrent(self):
+        """
+        Plasma current [Amps]
+        """
+        return self._current
     
     def plasmaBr(self, R,Z):
         """
@@ -124,6 +127,21 @@ class Equilibrium:
     def psi(self):
         return self.plasma_psi + self.tokamak.psi(self.R, self.Z)
         
+    def psiRZ(self, R, Z):
+        return self.psi_func(R,Z) + self.tokamak.psi(R,Z)
+
+    def fpolPsiN(self,psinorm):
+        """
+        Return f = R*Bt at specified values of normalised psi
+        """
+        pass
+        
+    def pressurePsiN(self, psinorm):
+        """
+        Returns plasma pressure at specified values of normalised psi
+        """
+        pass
+
     def solve(self, Jtor, niter=2, sublevels=4, ncycle=2):
         """
         Calculate the plasma equilibrium
@@ -134,6 +152,7 @@ class Equilibrium:
         sublevels - Number of levels in the multigrid
         ncycle    - Number of V-cycles
         """
+        
         # Set plasma boundary
         self._applyBoundary(self.R, self.Z, Jtor, self.plasma_psi)
 
@@ -153,7 +172,30 @@ class Equilibrium:
                               niter=niter, sublevels=sublevels, ncycle=ncycle)
         
         self._updatePlasmaPsi(plasma_psi)
+
+        # Update plasma current
+        self._current = romb(romb(Jtor)) * dR*dZ
+
+    def toDict(self):
+        """
+        Convert to a dictionary, in a format which can be written to file
         
+        """
+        {"rmin":self.Rmin, "rmax":self.Rmax, 
+         "zmin":self.Zmin, "zmax":self.Zmax,
+         "psi":self.psi(),
+         "plasma_psi":self.plasma_psi()}
+         
+    def _updatePlasmaPsi(self, plasma_psi):
+        """
+        Sets the plasma psi data, updates spline interpolation coefficients
+        """
+        self.plasma_psi = plasma_psi
+
+        # Update spline interpolation
+        self.psi_func = interpolate.RectBivariateSpline(self.R[:,0], self.Z[0,:], plasma_psi)
+     
+    
 if __name__=="__main__":
     
     # Test the different spline interpolation routines
