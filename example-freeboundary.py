@@ -1,19 +1,19 @@
 #!/usr/bin/env python
 
 # Options for setting toroidal current
-from jtor import ConstrainPaxisIp
+from freegs.jtor import ConstrainPaxisIp
 
 # Plasma equilibrium (Grad-Shafranov) solver
-from equilibrium import Equilibrium
+from freegs.equilibrium import Equilibrium
 
 # Coils and current circuits
-import machine
+import freegs.machine as machine
 
 # Control algorithms to constrain the shape,location
-import constraints
+import freegs.constraints as constraints
 
 # Nonlinear solver
-import picard
+import freegs.picard as picard
 
 #########################################
 # Create the machine, which specifies coil locations
@@ -61,14 +61,14 @@ tokamak.printCurrents()
 ##############################################
 # Final plot
 
-from plotting import plotEquilibrium
+from freegs.plotting import plotEquilibrium
 import matplotlib.pyplot as plt
 
 # Get the solution 
 psi = eq.psi()
 
-import critical
-opt, xpt = critical.find_critical(eq.R, eq.Z, psi)
+from freegs.critical import find_critical
+opt, xpt = find_critical(eq.R, eq.Z, psi)
 psi_bndry = xpt[0][2]
 
 ax = plotEquilibrium(eq.R, eq.Z, psi)

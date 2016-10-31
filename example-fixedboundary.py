@@ -5,16 +5,16 @@
 #
 
 # Options for setting toroidal current
-from jtor import ConstrainPaxisIp
+from freegs.jtor import ConstrainPaxisIp
 
 # Boundary conditions
-import boundary
+import freegs.boundary as boundary
 
 # Plasma equilibrium (Grad-Shafranov) solver
-from equilibrium import Equilibrium
+from freegs.equilibrium import Equilibrium
 
 # Nonlinear solver for Grad-Shafranov equation
-import picard
+import freegs.picard as picard
 
 jtor_func = ConstrainPaxisIp(1e4, # Plasma pressure on axis [Pascals]
                              1e6) # Plasma current [Amps]
@@ -32,7 +32,7 @@ print("Done!")
 
 # Plotting routines
 import matplotlib.pyplot as plt
-from plotting import plotEquilibrium
+from freegs.plotting import plotEquilibrium
 
 plotEquilibrium(eq.R, eq.Z, eq.psi())
 plt.show()

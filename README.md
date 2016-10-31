@@ -7,6 +7,13 @@ mainly for free boundary calculations.
 Examples
 --------
 
+The Jupyter notebooks contain examples wuth additional notes
+
+* MAST-example.ipynb 
+
+There are also some Python scripts to run short tests
+and examples
+
 $ python example-fixedboundary.py 
 
 This solves a fixed boundary problem, in which the square edges of the domain
@@ -20,6 +27,10 @@ $ python example-xpoints.py
 
 This demonstrates the coil current constraint code, finding X-points, and marking core region
 These routines are then used inside the free boundary solver
+
+$ python example-mast.py
+
+Calculates a double-null (CDND) equilibrium for MAST from scratch
 
 Files
 -----

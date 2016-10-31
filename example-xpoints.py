@@ -2,12 +2,12 @@
 #
 # Example demonstrating functions for creating and finding X-points
 
-import machine
-from equilibrium import Equilibrium
-import constraints
+import freegs.machine as machine
+from freegs.equilibrium import Equilibrium
+import freegs.constraints as constraints
 
 # Plotting routines
-from plotting import plotEquilibrium, plotCoils, plotConstraints
+from freegs.plotting import plotEquilibrium, plotCoils, plotConstraints
 
 import matplotlib.pyplot as plt
 
@@ -38,7 +38,7 @@ plt.show()
 # 
 # 
 
-import critical
+import freegs.critical as critical
 opt, xpt = critical.find_critical(eq.R, eq.Z, psi)
 
 print("=> Found O- and X-points")
