@@ -28,7 +28,7 @@ psi = eq.psi()
 
 print("=> Solved coil currents, created X-points")
 
-ax = plotEquilibrium(eq.R, eq.Z, psi)
+ax = plotEquilibrium(eq, show=False)
 plotCoils(tokamak.coils, axis=ax)
 plotConstraints(xpoints, axis=ax)
 plt.show()
@@ -43,7 +43,7 @@ opt, xpt = critical.find_critical(eq.R, eq.Z, psi)
 
 print("=> Found O- and X-points")
 
-ax = plotEquilibrium(eq.R, eq.Z, psi)
+ax = plotEquilibrium(eq, show=False, oxpoints=False)
 for r,z,_ in xpt:
     ax.plot(r,z,'ro')
 for r,z,_ in opt:

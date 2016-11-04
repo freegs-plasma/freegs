@@ -62,21 +62,4 @@ tokamak.printCurrents()
 # Final plot
 
 from freegs.plotting import plotEquilibrium
-import matplotlib.pyplot as plt
-
-# Get the solution 
-psi = eq.psi()
-
-from freegs.critical import find_critical
-opt, xpt = find_critical(eq.R, eq.Z, psi)
-psi_bndry = xpt[0][2]
-
-ax = plotEquilibrium(eq.R, eq.Z, psi)
-for r,z,_ in xpt:
-    ax.plot(r,z,'ro')
-for r,z,_ in opt:
-    ax.plot(r,z,'go')
-psi_bndry = xpt[0][2]
-sep_contour=ax.contour(eq.R, eq.Z,psi, levels=[psi_bndry], colors='r')
-
-plt.show()
+plotEquilibrium(eq)

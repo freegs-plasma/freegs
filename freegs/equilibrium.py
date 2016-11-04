@@ -7,15 +7,15 @@ from numpy import meshgrid, linspace, exp, zeros
 from scipy import interpolate
 from scipy.integrate import romb # Romberg integration
 
-from boundary import fixedBoundary, freeBoundary
+from .boundary import fixedBoundary, freeBoundary
 
 # Operators which define the G-S equation
-from gradshafranov import mu0, GSElliptic
+from .gradshafranov import mu0, GSElliptic
 
 # Multigrid solver
-from multigrid import smoothMG
+from .multigrid import smoothMG
 
-import machine
+from . import machine
 
 class Equilibrium:
     """
@@ -28,27 +28,39 @@ class Equilibrium:
     These can be read, but should not be modified directly
     
     R[nx,ny]
-    Z[nx,ny]
+    Z[nx,ny] 
     
-    psi[nx,ny] - 2D array of poloidal flux [Wb]
+    Rmin, Rmax
+    Zmin, Zmax
 
     tokamak - The coils and circuits
     
+    Private data members
+
     _GS     Grad-Shafranov operator
     _applyBoundary()
     
     """
     
-    def __init__(self, tokamak=machine.EmptyTokamak(), Rmin=0.1, Rmax=2.0,
+    def __init__(self, tokamak=machine.EmptyTokamak(), 
+                 Rmin=0.1, Rmax=2.0,
                  Zmin=-1.0, Zmax=1.0,
-                 nx=65, ny=65, boundary=freeBoundary):
+                 nx=65, ny=65,
+                 fvac = 1.0, 
+                 boundary=freeBoundary):
         """
         Initialises a plasma equilibrium
         
-        Sets the variables
-    
-        self.Rmin, self.Rmax  - Range of major radius R [m]
-        self.Zmin, self.Zmax  - Range of height Z [m]
+        Rmin, Rmax  - Range of major radius R [m]
+        Zmin, Zmax  - Range of height Z [m]
+        
+        nx - Resolution in R. This must be 2^n + 1
+        ny - Resolution in Z. This must be 2^m + 1
+        
+        fvac - Vacuum toroidal field f = R*Bt
+        
+        boundary - The boundary condition, either freeBoundary or fixedBoundary
+        
         """
 
         self.tokamak = tokamak
@@ -85,6 +97,8 @@ class Equilibrium:
         self._updatePlasmaPsi(psi)
         
         self._current = 0.0 # Plasma current
+
+        self._fvac = 0.0 # Vacuum f=R*Bt
         
     def getMachine(self):
         """
@@ -128,19 +142,34 @@ class Equilibrium:
         return self.plasma_psi + self.tokamak.psi(self.R, self.Z)
         
     def psiRZ(self, R, Z):
+        """
+        Return poloidal flux psi at given (R,Z) location
+        """
         return self.psi_func(R,Z) + self.tokamak.psi(R,Z)
 
     def fpolPsiN(self,psinorm):
         """
         Return f = R*Bt at specified values of normalised psi
         """
-        pass
-        
+        return psinorm * 0.0
+    
+    def fpolVac(self):
+        """
+        Return vacuum f = R*Bt
+        """
+        return self._fvac
+    
     def pressurePsiN(self, psinorm):
         """
         Returns plasma pressure at specified values of normalised psi
         """
-        pass
+        return psinorm * 0.0
+
+    def qPsiN(self, psinorm):
+        """
+        Returns safety factor q at specified values of normalised psi
+        """
+        return psinorm * 0.0
 
     def solve(self, Jtor, niter=2, sublevels=4, ncycle=2):
         """

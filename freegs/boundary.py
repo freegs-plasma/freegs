@@ -3,7 +3,7 @@ Functions to impose boundary conditions on psi(plasma)
 
 """
 
-from gradshafranov import Greens
+from .gradshafranov import Greens
 from numpy import concatenate
 
 from scipy.integrate import romb # Romberg integration

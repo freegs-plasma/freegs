@@ -1,4 +1,4 @@
-from gradshafranov import Greens, GreensBr, GreensBz
+from .gradshafranov import Greens, GreensBr, GreensBz
 
 class Machine:
     """
@@ -139,8 +139,11 @@ def MAST():
     """
     Mega-Amp Spherical Tokamak
     """
-    coils = [{"label":"P2U", "R":0.5, "Z":1.6, "current":0.0},
-             {"label":"P2L", "R":0.5, "Z":-1.6, "current":0.0},
+    coils = [
+#             {"label":"P2U", "R":0.5, "Z":1.6, "current":0.0},
+#             {"label":"P2L", "R":0.5, "Z":-1.6, "current":0.0},
+             {"label":"P2U", "R":0.5, "Z":1.75, "current":0.0},
+             {"label":"P2L", "R":0.5, "Z":-1.75, "current":0.0},
              {"label":"P3U", "R":1.1, "Z":1.1, "current":0.0},
              {"label":"P3L", "R":1.1, "Z":-1.1, "current":0.0},
              {"label":"P4U", "R":1.5, "Z":1.1, "current":0.0},

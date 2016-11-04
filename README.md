@@ -1,8 +1,24 @@
-Grad-Shafranov solver
-=====================
+Free boundary Grad-Shafranov solver
+===================================
 
-This solves the Grad-Shafranov equation for axisymmetric plasma equilibria, 
+This Python module solves the Grad-Shafranov equation for axisymmetric plasma equilibria, 
 mainly for free boundary calculations.
+
+Copyright 2016 Ben Dudson, University of York
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 
 Examples
 --------
@@ -16,7 +32,7 @@ and examples
 
 $ python example-fixedboundary.py 
 
-This solves a fixed boundary problem, in which the square edges of the domain
+This example solves a fixed boundary problem, in which the square edges of the domain
 are fixed. The plasma pressure on axis and plasma current are fixed.
 
 $ python example-freeboundary.py

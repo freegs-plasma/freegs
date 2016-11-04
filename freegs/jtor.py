@@ -2,8 +2,8 @@
 #
 
 from scipy.integrate import romb # Romberg integration
-import critical
-from gradshafranov import mu0
+from . import critical
+from .gradshafranov import mu0
 
 class ConstrainPaxisIp:
     """

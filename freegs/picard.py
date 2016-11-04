@@ -43,7 +43,7 @@ def solve(eq, jtor_func, constrain=None, rtol=1e-3, blend=0.0,
                 axis = fig.add_subplot(111)
             else:
                 axis.clear()
-            plotEquilibrium(eq.R, eq.Z, psi, axis=axis)
+            plotEquilibrium(eq,axis=axis,show=False)
         
             opt, xpt = critical.find_critical(eq.R, eq.Z, psi)
             psi_bndry = xpt[0][2]

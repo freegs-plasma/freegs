@@ -1,8 +1,20 @@
 import matplotlib.pyplot as plt
 
 from numpy import linspace, amin, amax
+from . import critical
 
-def plotEquilibrium(R, Z, psi, axis=None):
+def plotEquilibrium(eq, axis=None, show=True, oxpoints=True):
+    """
+    Plot the equilibrium flux surfaces
+
+    axis - Specify the axis on which to plot
+    
+    """
+
+    R = eq.R
+    Z = eq.Z
+    psi = eq.psi()
+
     if axis is None:
         fig = plt.figure()
         axis = fig.add_subplot(111)
@@ -14,6 +26,22 @@ def plotEquilibrium(R, Z, psi, axis=None):
     axis.set_xlabel("Major radius [m]")
     axis.set_ylabel("Height [m]")
 
+    if oxpoints:
+        # Add O- and X-points
+        opt, xpt = critical.find_critical(eq.R, eq.Z, psi)
+        
+        for r,z,_ in xpt:
+            axis.plot(r,z,'ro')
+        for r,z,_ in opt:
+            axis.plot(r,z,'go')
+            
+        if xpt:
+            psi_bndry = xpt[0][2]
+            sep_contour=axis.contour(eq.R, eq.Z,psi, levels=[psi_bndry], colors='r')
+        
+    if show:
+        plt.show()
+    
     return axis
 
 def plotCoils(coils, axis=None):

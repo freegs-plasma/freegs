@@ -22,14 +22,14 @@ import freegs.picard as picard
 tokamak = machine.MAST()
 
 eq = Equilibrium(tokamak=tokamak,
-                 Rmin=0.2, Rmax=2.0,    # Radial domain
+                 Rmin=0.1, Rmax=2.0,    # Radial domain
                  Zmin=-2.0, Zmax=2.0,   # Height range
-                 nx=129, ny=129)        # Number of grid points
+                 nx=65, ny=65)        # Number of grid points
 
 #########################################
 # Plasma profiles
 
-jtor_func = ConstrainPaxisIp(1e4, # Plasma pressure on axis [Pascals]
+jtor_func = ConstrainPaxisIp(1e3, # Plasma pressure on axis [Pascals]
                              1e6) # Plasma current [Amps]
 
 #########################################
@@ -38,10 +38,18 @@ jtor_func = ConstrainPaxisIp(1e4, # Plasma pressure on axis [Pascals]
 # Specify locations of the X-points
 # to use to constrain coil currents
 
-xpoints = [(0.6, -1.1),   # (R,Z) locations of X-points
-           (0.6, 1.1)]
+xpoints = [(0.7, -1.1),   # (R,Z) locations of X-points
+           (0.7, 1.1)]
 
-isoflux = [(0.6,-1.1, 1.4, 0.0),(0.6,1.1, 1.4, 0.0), (0.6,-1.1, 0.25, 0.0)]
+isoflux = [(0.7,-1.1, 1.45, 0.0)   # Outboard midplane, lower X-point
+           ,(0.7,1.1, 1.45, 0.0)   # Outboard midplane, upper X-point
+           ,(0.7,-1.1, 1.2,-1.9)  # Lower X-point, lower outer leg
+           ,(0.7,1.1,  1.2, 1.9)  # Upper X-point, upper outer leg
+#           ,(0.2,0.0, 1.4,0.0)
+#           ,(0.2,-1.4, 0.7,-1.1)
+#           ,(0.2,1.4, 0.7, 1.1)
+           #,(0.6,-1.1, 0.2, 0.0)
+           ]
 
 constrain = lambda eq : constraints.xpointConstrain(eq, xpoints, gamma=1e-12, isoflux=isoflux)
 
@@ -55,6 +63,12 @@ picard.solve(eq,           # The equilibrium to adjust
              constrain, show=True, 
              niter=5, sublevels=5, ncycle=3)    # Constraint function to set coil currents
 
+# Refine using more iterations
+#picard.solve(eq,           # The equilibrium to adjust
+#             jtor_func,    # The toroidal current profile function
+#             constrain, show=False,
+#             niter=40, sublevels=5, ncycle=50)
+
 # eq now contains the solution
 
 print("Done!")
@@ -64,24 +78,16 @@ print("Plasma current: %e Amps" % (eq.plasmaCurrent()))
 tokamak.printCurrents()
 
 ##############################################
+# Save to geqdsk file
+
+from freegs import geqdsk
+
+with open("mast.geqdsk", "w") as f:
+    geqdsk.write(eq, f)
+
+##############################################
 # Final plot
 
 from freegs.plotting import plotEquilibrium
-import matplotlib.pyplot as plt
+plotEquilibrium(eq)
 
-# Get the solution 
-psi = eq.psi()
-
-from freegs.critical import find_critical
-opt, xpt = find_critical(eq.R, eq.Z, psi)
-psi_bndry = xpt[0][2]
-
-ax = plotEquilibrium(eq.R, eq.Z, psi)
-for r,z,_ in xpt:
-    ax.plot(r,z,'ro')
-for r,z,_ in opt:
-    ax.plot(r,z,'go')
-psi_bndry = xpt[0][2]
-sep_contour=ax.contour(eq.R, eq.Z,psi, levels=[psi_bndry], colors='r')
-
-plt.show()

@@ -6,7 +6,7 @@ Example
 
 $ python multigrid.py
 
-This will run the 
+This will run the test case, solving Poisson equation in 2D
 
 """
 
@@ -53,8 +53,8 @@ def restrict(orig, dx, dy, coarse=None, avg=False):
         return
     
     # Dividing x and y in 2
-    nx = (nx-1) / 2  + 1
-    ny = (ny-1) / 2  + 1
+    nx = (nx-1) // 2  + 1
+    ny = (ny-1) // 2  + 1
     
     if coarse == None:
         coarse = zeros([nx,ny])
@@ -147,13 +147,13 @@ def smoothVcycle(A, x, b, dx, dy, niter=10, sublevels=0):
     
 def smoothMG(A, x, b, dx, dy, niter=10, sublevels=1, ncycle=2):
     error = b - A(x, dx, dy)
-    print "Starting max residual: ", max(abs(error))
+    print("Starting max residual: %e" % (max(abs(error)),))
     
     for c in range(ncycle):
         x = smoothVcycle(A, x, b, dx, dy, niter, sublevels)
         
         error = b - A(x, dx, dy)
-        print "Cycle ", c, ": " , max(abs(error))
+        print("Cycle %d : %e" % (c, max(abs(error)),))
     return x
 
 ########################################
@@ -215,7 +215,7 @@ if __name__ == "__main__":
       x,x2 = x2, x # Swap arrays
       
       error = rhs - A(x, dx, dy)
-      print i, max(abs(error))
+      print("%d : %e" % (i, max(abs(error))))
 
     ################ MULTIGRID SOLVER #######################
 
