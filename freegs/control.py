@@ -1,16 +1,27 @@
 """
+Plasma control system
+
 Use constraints to adjust coil currents
 """
 
 from numpy import dot, transpose, eye, array
 from numpy.linalg import inv
 
-def xpointConstrain(eq, xpoints, gamma=0.0, isoflux=[]):
+def constrain(eq, xpoints=[], gamma=1e-12, isoflux=[], psivals=[]):
     
     """
-    Adjust coil currents using x-point constraints
+    Adjust coil currents using constraints
+    
+    xpoints - A list of X-point (R,Z) locations
     
     isoflux - A list of tuples (R1,Z1, R2,Z2) 
+    
+    psivals - A list of (R,Z,psi) values
+
+    At least one constraint must be included
+    
+    gamma - A scalar, minimises the magnitude of the coil currents
+    
     """
     
     tokamak = eq.getMachine()
@@ -51,6 +62,18 @@ def xpointConstrain(eq, xpoints, gamma=0.0, isoflux=[]):
         c = [ c1val - c2val for c1val, c2val in zip(c1,c2)]
         constraint_matrix.append( c )
     
+    # Constrain the value of psi
+    for r,z,psi in psivals:
+        p1 = eq.psiRZ(r,z)
+        constraint_rhs.append(psi - p1)
+
+        # Coil responses
+        c = tokamak.controlPsi(r,z)
+        constraint_matrix.append( c )
+
+    if not constraint_rhs:
+        raise ValueError("No constraints given")
+
     # Constraint matrix
     A = array(constraint_matrix)
     b = array(constraint_rhs)

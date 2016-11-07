@@ -224,7 +224,23 @@ class Equilibrium:
         # Update spline interpolation
         self.psi_func = interpolate.RectBivariateSpline(self.R[:,0], self.Z[0,:], plasma_psi)
      
+
+
+def gridup(eq):
+    """
+    Double grid resolution, returning a new equilibrium
     
+    """
+    pass
+
+
+def griddown(eq):
+    """
+    Reduce grid resolution, returning a new equilibrium
+    """
+    pass
+    
+
 if __name__=="__main__":
     
     # Test the different spline interpolation routines

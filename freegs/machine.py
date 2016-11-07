@@ -142,14 +142,14 @@ def MAST():
     coils = [
 #             {"label":"P2U", "R":0.5, "Z":1.6, "current":0.0},
 #             {"label":"P2L", "R":0.5, "Z":-1.6, "current":0.0},
-             {"label":"P2U", "R":0.5, "Z":1.75, "current":0.0},
-             {"label":"P2L", "R":0.5, "Z":-1.75, "current":0.0},
+             {"label":"P2U", "R":0.49, "Z":1.76, "current":0.0},
+             {"label":"P2L", "R":0.49, "Z":-1.76, "current":0.0},
              {"label":"P3U", "R":1.1, "Z":1.1, "current":0.0},
              {"label":"P3L", "R":1.1, "Z":-1.1, "current":0.0},
-             {"label":"P4U", "R":1.5, "Z":1.1, "current":0.0},
-             {"label":"P4L", "R":1.5, "Z":-1.1, "current":0.0},
-             {"label":"P5U", "R":1.6, "Z":0.5, "current":0.0},
-             {"label":"P5L", "R":1.6, "Z":-0.5, "current":0.0},
+             {"label":"P4U", "R":1.51, "Z":1.095, "current":0.0},
+             {"label":"P4L", "R":1.51, "Z":-1.095, "current":0.0},
+             {"label":"P5U", "R":1.66, "Z":0.52, "current":0.0},
+             {"label":"P5L", "R":1.66, "Z":-0.52, "current":0.0},
              {"label":"P6U", "R":1.5, "Z":0.9, "current":0.0},
              {"label":"P6L", "R":1.5, "Z":-0.9, "current":0.0}]
     return Machine(coils)

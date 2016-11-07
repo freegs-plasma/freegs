@@ -5,6 +5,8 @@ from scipy.integrate import romb # Romberg integration
 from . import critical
 from .gradshafranov import mu0
 
+from numpy import clip
+
 class ConstrainPaxisIp:
     """
     Constrain pressure on axis and plasma current
@@ -108,6 +110,8 @@ class ProfilesPprimeFfprime:
         """
         self.pprime = pprime_func
         self.ffprime = ffprime_func
+        self.p_func = p_func
+        self.f_func = f_func
         
     def __call__(self, R, Z, psi):
         """
@@ -134,12 +138,12 @@ class ProfilesPprimeFfprime:
         # Calculate normalised psi.
         # 0 = magnetic axis
         # 1 = plasma boundary
-        psi_norm = (psi - psi_axis)  / (psi_bndry - psi_axis)
-
+        psi_norm = clip((psi - psi_axis)  / (psi_bndry - psi_axis), 0.0, 1.0)
         Jtor = R * self.pprime(psi_norm) + self.ffprime(psi_norm)/(R * mu0)
 
         if mask is not None:
             # If there is a masking function (X-points, limiters)
-            jtorshape *= mask
+            Jtor *= mask
         
         return Jtor
+
