@@ -1,5 +1,8 @@
 """
 Handles reading and writing of Equilibrium objects
+
+Writing is relatively straightforward, but reading requires inferring
+the currents in the PF coils
 """
 
 from . import _geqdsk
@@ -9,7 +12,7 @@ from . import jtor
 from . import control
 
 from scipy import interpolate
-from numpy import linspace, amin, amax, reshape, ravel, zeros
+from numpy import linspace, amin, amax, reshape, ravel, zeros, argmax
 
 def write(eq, fh, label=None, oxpoints=None, fileformat=_geqdsk.write):
     """
@@ -140,6 +143,9 @@ def read(fh, machine):
     print("Plasma current: {0} Amps, input: {1} Amps".format(eq.plasmaCurrent(), data["cpasma"]))
     
     # Identify points to constrain: X-points, O-points
+
+    psi_in = interpolate.RectBivariateSpline(eq.R[:,0], eq.Z[0,:], data["psi"])
+    
     opoint, xpoint = critical.find_critical(eq.R, eq.Z, data["psi"])
     
     fig = plt.figure()
@@ -152,18 +158,42 @@ def read(fh, machine):
     axis.contour(eq.R,eq.Z,data["psi"], levels=levels, colors='k')
     for r,z,_ in xpoint:
         axis.plot(r,z,'ro')
-    for r,z,_ in opoint:
-        axis.plot(r,z,'go')
-    
-    psivals = xpoint # + [opoint[0]]
-    #psivals = [opoint[0], xpoint[0], xpoint[1]]
 
+    sep_contour=axis.contour(eq.R, eq.Z, data["psi"], levels=[xpoint[0][2]], colors='r')
+
+    isoflux = []
+    
+    # Outboard midplane
+    r = linspace(opoint[0][0], eq.Rmax, 100)
+    pnorm = (psi_in(r, opoint[0][1]) - opoint[0][2])/(xpoint[0][2] - opoint[0][2])
+    ind = argmax(pnorm>1.0)
+    
+    r = r[ind]
+    z = opoint[0][1]
+    axis.plot(r,z,'bo')
+    isoflux.append( (r,z, xpoint[0][0], xpoint[0][1]) )
+    
+    # Inboard midplane
+
+    r = linspace(eq.Rmin, opoint[0][0], 100, endpoint=False)
+    
+    pnorm = (psi_in(r, opoint[0][1]) - opoint[0][2])/(xpoint[0][2] - opoint[0][2])
+    ind = argmax(pnorm[::-1]>1.0)
+    
+    r = r[-ind]
+    z = opoint[0][1]
+    axis.plot(r,z,'bo')
+    isoflux.append( (r,z, xpoint[0][0], xpoint[0][1]) )
+    
+    
     # Find best fit for coil currents
-    control.constrain(eq, xpoints=xpoint, psivals=psivals,gamma=1e-14)
+    control.constrain(eq, xpoints=xpoint, isoflux=isoflux, gamma=1e-14)
     
     psi = eq.psi()
     #levels = linspace(amin(psi), amax(psi), 100)
     axis.contour(eq.R,eq.Z, psi, levels=levels, colors='r')
     plt.show()
     
+    machine.printCurrents()
+
     return eq

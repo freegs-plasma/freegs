@@ -29,8 +29,8 @@ eq = Equilibrium(tokamak=tokamak,
 #########################################
 # Plasma profiles
 
-jtor_func = ConstrainPaxisIp(1e3, # Plasma pressure on axis [Pascals]
-                             1e6) # Plasma current [Amps]
+jtor_func = ConstrainPaxisIp(3e3, # Plasma pressure on axis [Pascals]
+                             7e5) # Plasma current [Amps]
 
 #########################################
 # Coil current constraints

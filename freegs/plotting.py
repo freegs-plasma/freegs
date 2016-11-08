@@ -48,10 +48,8 @@ def plotCoils(coils, axis=None):
     if axis is None:
         fig = plt.figure()
         axis = fig.add_subplot(111)
+     
         
-    for coil in coils:
-        axis.plot(coil["R"], coil["Z"], "sk")
-
     return axis
 
 
