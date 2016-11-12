@@ -1,36 +1,24 @@
 #!/usr/bin/env python
 
-# Options for setting toroidal current
-from freegs.jtor import ConstrainPaxisIp
-
-# Plasma equilibrium (Grad-Shafranov) solver
-from freegs.equilibrium import Equilibrium
-
-# Coils and current circuits
-import freegs.machine as machine
-
-# Control algorithms to constrain the shape,location
-import freegs.control as control
-
-# Nonlinear solver
-import freegs.picard as picard
+import freegs
 
 #########################################
 # Create the machine, which specifies coil locations
 # and equilibrium, specifying the domain to solve over
 
-tokamak = machine.MAST()
+tokamak = freegs.machine.MAST()
 
-eq = Equilibrium(tokamak=tokamak,
-                 Rmin=0.1, Rmax=2.0,    # Radial domain
-                 Zmin=-2.0, Zmax=2.0,   # Height range
-                 nx=65, ny=65)        # Number of grid points
+eq = freegs.Equilibrium(tokamak=tokamak,
+                        Rmin=0.1, Rmax=2.0,    # Radial domain
+                        Zmin=-2.0, Zmax=2.0,   # Height range
+                        nx=65, ny=65)          # Number of grid points
 
 #########################################
 # Plasma profiles
 
-jtor_func = ConstrainPaxisIp(3e3, # Plasma pressure on axis [Pascals]
-                             7e5) # Plasma current [Amps]
+profiles = freegs.jtor.ConstrainPaxisIp(3e3, # Plasma pressure on axis [Pascals]
+                                        7e5, # Plasma current [Amps]
+                                        0.4) # vacuum f = R*Bt
 
 #########################################
 # Coil current constraints
@@ -51,17 +39,18 @@ isoflux = [(0.7,-1.1, 1.45, 0.0)   # Outboard midplane, lower X-point
            #,(0.6,-1.1, 0.2, 0.0)
            ]
 
-constrain = lambda eq : control.constrain(eq, xpoints, gamma=1e-12, isoflux=isoflux)
+constrain = freegs.control.constrain(xpoints=xpoints, gamma=1e-12, isoflux=isoflux)
 
 constrain(eq)
 
 #########################################
 # Nonlinear solve
 
-picard.solve(eq,           # The equilibrium to adjust
-             jtor_func,    # The toroidal current profile function
-             constrain, show=True, 
-             niter=5, sublevels=5, ncycle=3)    # Constraint function to set coil currents
+freegs.solve(eq,          # The equilibrium to adjust
+             profiles,    # The plasma profiles
+             constrain,   # Plasma control constraints
+             show=True,   # Shows results at each nonlinear iteration
+             niter=5, sublevels=5, ncycle=3) # Linear solver settings
 
 # Refine using more iterations
 #picard.solve(eq,           # The equilibrium to adjust
@@ -74,6 +63,7 @@ picard.solve(eq,           # The equilibrium to adjust
 print("Done!")
 
 print("Plasma current: %e Amps" % (eq.plasmaCurrent()))
+print("Pressure on axis: %e Pascals" % (eq.pressure(0.0)))
 
 tokamak.printCurrents()
 
@@ -85,9 +75,6 @@ from freegs import geqdsk
 with open("mast.geqdsk", "w") as f:
     geqdsk.write(eq, f)
 
-##############################################
-# Final plot
-
-from freegs.plotting import plotEquilibrium
-plotEquilibrium(eq)
-
+# Call matplotlib show so plot pauses
+import matplotlib.pyplot as plt
+plt.show()

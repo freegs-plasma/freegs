@@ -1,18 +1,117 @@
-# Methods for calculating toroidal current density Jtor
-#
+"""
+ Classes representing plasma profiles.
 
-from scipy.integrate import romb # Romberg integration
+ These must have the following methods:
+
+   Jtor(R, Z, psi) 
+      -> Return a numpy array of toroidal current density [J/m^2]
+   pprime(psinorm)
+      -> return p' at given normalised psi
+   ffprime(psinorm)
+      -> return ff' at given normalised psi
+   pressure(psinorm)
+      -> return p at given normalised psi
+   fpol(psinorm)
+      -> return f at given normalised psi
+   fvac()
+      -> f = R*Bt in vacuum
+"""
+
+from scipy.integrate import romb, quad # Romberg integration
 from . import critical
 from .gradshafranov import mu0
 
-from numpy import clip
+from numpy import clip, zeros, reshape, sqrt
 
-class ConstrainPaxisIp:
+
+class Profile(object):
+    """
+    Base class from which profiles classes can inherit
+    
+    This provides two methods: 
+       pressure(psinorm) and fpol(psinorm)
+
+    which assume that the following methods are available:
+       pprime(psinorm), ffprime(psinorm), fvac()
+    
+    """
+    def pressure(self, psinorm, out=None):
+        """
+        Return p as a function of normalised psi by
+        integrating pprime
+        """
+        
+        if not hasattr(psinorm, 'shape'):
+            # Assume  a single value
+            val, _ = quad(self.pprime, psinorm, 1.0)
+            # Convert from integral in normalised psi to integral in psi
+            return val * (self.psi_axis - self.psi_bndry)
+            
+        # Assume a NumPy array
+        
+        if out is None:
+            out = zeros(psinorm.shape)
+        
+        pvals = reshape(psinorm, -1)
+        ovals = reshape(out, -1)
+
+        if len(pvals) != len(ovals):
+            raise ValueError("Input and output arrays of different lengths")
+        
+        for i in range(len(pvals)):
+            val, _ = quad(self.pprime, pvals[i], 1.0)
+            # Convert from integral in normalised psi to integral in psi
+            val *= self.psi_axis - self.psi_bndry
+            ovals[i] = val
+        
+        return reshape(ovals, psinorm.shape)
+        
+    def fpol(self, psinorm, out=None):
+        """
+        Return f as a function of normalised psi
+        
+        """
+        
+        if not hasattr(psinorm, 'shape'):
+            # Assume  a single value
+            
+            val, _ = quad(self.ffprime, psinorm, 1.0)
+            # Convert from integral in normalised psi to integral in psi
+            val *= self.psi_axis - self.psi_bndry
+            
+            # ffprime = 0.5*d/dpsi(f^2)
+            # Apply boundary condition at psinorm=1 val = fvac**2
+            return sqrt(2.*val + self.fvac()**2)
+            
+        # Assume it's a NumPy array
+        
+        if out is None:
+            out = zeros(psinorm.shape)
+            
+        pvals = reshape(psinorm, -1)
+        ovals = reshape(out, -1)
+        
+        if len(pvals) != len(ovals):
+            raise ValueError("Input and output arrays of different lengths")
+        for i in range(len(pvals)):
+            val, _ = quad(self.ffprime, pvals[i], 1.0)
+            # Convert from integral in normalised psi to integral in psi
+            val *= self.psi_axis - self.psi_bndry
+            
+            # ffprime = 0.5*d/dpsi(f^2)
+            # Apply boundary condition at psinorm=1 val = fvac**2
+            ovals[i] = sqrt(2.*val + self.fvac()**2)
+            
+        return reshape(ovals, psinorm.shape)
+    
+
+class ConstrainPaxisIp(Profile):
     """
     Constrain pressure on axis and plasma current
     """
 
-    def __init__(self, paxis, Ip, alpha_m=1.0, alpha_n=2.0):
+    def __init__(self, paxis, Ip, fvac, 
+                 alpha_m=1.0, alpha_n=2.0):
 
         # Check inputs
         if alpha_m < 0:
@@ -23,10 +122,11 @@ class ConstrainPaxisIp:
         # Set parameters for later use
         self.paxis = paxis
         self.Ip = Ip
+        self._fvac = fvac
         self.alpha_m = alpha_m
         self.alpha_n = alpha_n
 
-    def __call__(self, R, Z, psi):
+    def Jtor(self, R, Z, psi):
         """ Calculate toroidal plasma current
         
          Jtor = L * (Beta0*R/Rmax + (1-Beta0)*Rmax/R)*jtorshape
@@ -65,14 +165,19 @@ class ConstrainPaxisIp:
         if mask is not None:
             # If there is a masking function (X-points, limiters)
             jtorshape *= mask
-        
+            
         # Now apply constraints to define constants
+        
+        # Need integral of jtorshape to calculate paxis
+        # Note factor to convert from normalised psi integral
+        shapeintegral,_ =  quad(lambda x: (1. - x**self.alpha_m)**self.alpha_n, 0.0, 1.0)
+        shapeintegral *= (psi_bndry - psi_axis)
+        
         # Pressure on axis is
         # 
-        # paxis = L*Beta0/Rmax
+        # paxis = - (L*Beta0/Rmax) * shapeintegral
         #
-        # since jtorshape = 1 on axis
-
+        
         # Integrate current components
         IR = romb(romb(jtorshape * R/Rmax)) * dR*dZ
         I_R = romb(romb(jtorshape * Rmax/R)) * dR*dZ
@@ -81,19 +186,46 @@ class ConstrainPaxisIp:
         #
         # Ip = L * (Beta0 * IR + (1-Beta0)*I_R)
         #    = L*Beta0*(IR - I_R) + L*I_R
-        #    = paxis*Rmax*(IR - I_R) + L*I_R
+        #    = -(paxis*Rmax/shapeintegral)*(IR - I_R) + L*I_R
         #
 
-        L = self.Ip/I_R - self.paxis*Rmax*(IR/I_R - 1)
-        Beta0 = self.paxis * Rmax / L
+        L = self.Ip/I_R + self.paxis*Rmax*(IR/I_R - 1)/shapeintegral
+        Beta0 = -self.paxis * Rmax / (L*shapeintegral)
         
         print("Constraints: L = %e, Beta0 = %e" % (L, Beta0))
-
+        
+        # Toroidal current
         Jtor = L * (Beta0*R/Rmax + (1-Beta0)*Rmax/R)*jtorshape
+        
+        self.L = L
+        self.Beta0 = Beta0
+        self.Rmax = Rmax
+        self.psi_bndry = psi_bndry
+        self.psi_axis = psi_axis
 
         return Jtor
 
-    
+    # Profile functions
+    def pprime(self, pn):
+        """
+        dp/dpsi as a function of normalised psi
+        """
+        shape = (1. - pn**self.alpha_m)**self.alpha_n
+        return self.L * self.Beta0/self.Rmax * shape
+        
+    def ffprime(self, pn):
+        """
+        f * df/dpsi as a function of normalised psi
+        """
+        shape = (1. - pn**self.alpha_m)**self.alpha_n
+        return mu0 * self.L * (1-self.Beta0)*self.Rmax * shape
+        
+        return Jtor, pprime, ffprime
+        
+    def fvac(self):
+        return self._fvac
+        
+
 class ProfilesPprimeFfprime:
     """
     Specified profile functions p'(psi), ff'(psi)
@@ -101,10 +233,12 @@ class ProfilesPprimeFfprime:
     Jtor = R*p' + ff'/(R*mu0)
     
     """
-    def __init__(self, pprime_func, ffprime_func, p_func=None, f_func=None):
+    def __init__(self, pprime_func, ffprime_func, fvac, p_func=None, f_func=None):
         """
         pprime_func(psi_norm) - A function which returns dp/dpsi at given normalised flux
         ffprime_func(psi_norm) - A function which returns f*df/dpsi at given normalised flux (f = R*Bt)
+
+        fvac - Vacuum f = R*Bt
         
         Optionally, the pres
         """
@@ -112,10 +246,13 @@ class ProfilesPprimeFfprime:
         self.ffprime = ffprime_func
         self.p_func = p_func
         self.f_func = f_func
+        self._fvac = fvac
         
-    def __call__(self, R, Z, psi):
+    def Jtor(self, R, Z, psi):
         """
-        Calculate toroidal current
+        Calculate toroidal plasma current
+        
+        Jtor = R*p' + ff'/(R*mu0)
         """
         
         # Analyse the equilibrium, finding O- and X-points
@@ -147,3 +284,30 @@ class ProfilesPprimeFfprime:
         
         return Jtor
 
+    def pressure(self, psinorm, out=None):
+        """
+        Return pressure [Pa] at given value(s) of
+        normalised psi.
+        """
+        if self.p_func is not None:
+            # If a function exists then use it
+            return self.p_func(psinorm)
+        
+        # If not, use base class to integrate
+        return super(ProfilesPprimeFfprime, self).pressure(psinorm, out)
+        
+    def fpol(self, psinorm, out=None):
+        """
+        Return f=R*Bt at given value(s) of
+        normalised psi.
+        """
+        if self.f_func is not None:
+            # If a function exists then use it
+            return self.f_func(psinorm)
+        
+        # If not, use base class to integrate
+        return super(ProfilesPprimeFfprime, self).fpol(psinorm, out)
+    def fvac(self):
+        return self._fvac
+
+        

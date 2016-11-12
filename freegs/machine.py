@@ -360,7 +360,7 @@ def MAST():
              ("P5L", Coil(1.66, -0.52)),
              ("P6U", Coil(1.5, 0.9)),
              ("P6L", Coil(1.5, -0.9)),
-             ("P1", Solenoid(0.15, -1.24, 1.24, 100))]
+             ("P1", Solenoid(0.15, -1.0, 1., 100))] # +/- 1.24
     
     return Machine(coils)
 
@@ -379,7 +379,7 @@ def MAST_sym():
                               ("P5L", Coil(1.66, -0.52), 1.0)] )),
              ("P6", Circuit( [("P6U", Coil(1.5,  0.9), 1.0),
                               ("P6L", Coil(1.5, -0.9), 1.0)] )),
-             ("P1", Solenoid(0.15, -1.24, 1.24, 100))]
+             ("P1", Solenoid(0.15, -1., 1., 100))] # +/- 1.24
     
     return Machine(coils)
 

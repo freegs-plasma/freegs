@@ -4,14 +4,15 @@
 # Fixed boundary (square domain) with no X-points
 #
 
-# Boundary conditions
-import freegs.boundary as boundary
-
 # Plasma equilibrium (Grad-Shafranov) solver
 import freegs
 
-jtor_func = freegs.jtor.ConstrainPaxisIp(1e4, # Plasma pressure on axis [Pascals]
-                                         1e6) # Plasma current [Amps]
+# Boundary conditions
+import freegs.boundary as boundary
+
+profiles = freegs.jtor.ConstrainPaxisIp(1e4, # Plasma pressure on axis [Pascals]
+                                        1e6, # Plasma current [Amps]
+                                        1.0) # fvac = R*Bt
 
 eq = freegs.Equilibrium(Rmin=0.1, Rmax=2.0,
                         Zmin=-1.0, Zmax=1.0,
@@ -20,10 +21,9 @@ eq = freegs.Equilibrium(Rmin=0.1, Rmax=2.0,
 
 # Nonlinear solver for Grad-Shafranov equation
 freegs.solve(eq,           # The equilibrium to adjust
-             jtor_func)    # The toroidal current profile function
+             profiles)     # The toroidal current profile function
 
 print("Done!")
-
 
 # Plot equilibrium
 from freegs.plotting import plotEquilibrium

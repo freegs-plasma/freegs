@@ -2,17 +2,15 @@
 #
 # Example demonstrating functions for creating and finding X-points
 
-import freegs.machine as machine
-from freegs.equilibrium import Equilibrium
-import freegs.constraints as constraints
+import freegs
 
 # Plotting routines
 from freegs.plotting import plotEquilibrium, plotCoils, plotConstraints
 
 import matplotlib.pyplot as plt
 
-tokamak = machine.TestTokamak()
-eq = Equilibrium(tokamak=tokamak, nx=256,ny=256)
+tokamak = freegs.machine.TestTokamak()
+eq = freegs.Equilibrium(tokamak=tokamak, nx=256,ny=256)
 
 ##########################################################
 # Calculate currents in coils to create X-points
@@ -22,7 +20,8 @@ eq = Equilibrium(tokamak=tokamak, nx=256,ny=256)
 xpoints = [(1.1, -0.8),   # (R,Z) locations of X-points
            (1.1, 0.8)]
 
-constraints.xpointConstrain(eq, xpoints)
+control = freegs.control.constrain(xpoints=xpoints)
+control(eq)  # Apply control to Equilibrium eq
 
 psi = eq.psi()
 

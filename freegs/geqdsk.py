@@ -10,9 +10,10 @@ from . import critical
 from .equilibrium import Equilibrium
 from . import jtor
 from . import control
+from . import picard
 
 from scipy import interpolate
-from numpy import linspace, amin, amax, reshape, ravel, zeros, argmax
+from numpy import linspace, amin, amax, reshape, ravel, zeros, argmax, clip, sin, cos, pi
 
 def write(eq, fh, label=None, oxpoints=None, fileformat=_geqdsk.write):
     """
@@ -41,7 +42,7 @@ def write(eq, fh, label=None, oxpoints=None, fileformat=_geqdsk.write):
     zmin = eq.Zmin
     zmax = eq.Zmax
 
-    fvac = eq.fpolVac() # Vacuum f = R*Bt
+    fvac = eq.fvac() # Vacuum f = R*Bt
     R0 = 1.0 # Reference location
     B0 = fvac / R0 # Reference vacuum toroidal magnetic field
     
@@ -62,13 +63,13 @@ def write(eq, fh, label=None, oxpoints=None, fileformat=_geqdsk.write):
 
     psinorm = linspace(0.0, 1.0, nx, endpoint=False) # Does not include separatrix
 
-    data["fpol"] = eq.fpolPsiN(psinorm)
-    data["pres"] = eq.pressurePsiN(psinorm)
+    data["fpol"] = eq.fpol(psinorm)
+    data["pres"] = eq.pressure(psinorm)
 
     data["psi"] = psi
     
     qpsi = zeros([nx])
-    qpsi[1:] = eq.qPsiN(psinorm[1:]) # Exclude axis
+    qpsi[1:] = eq.q(psinorm[1:]) # Exclude axis
     qpsi[0] = qpsi[1]
     data["qpsi"] = qpsi
     
@@ -81,7 +82,7 @@ def write(eq, fh, label=None, oxpoints=None, fileformat=_geqdsk.write):
 
 import matplotlib.pyplot as plt
 
-def read(fh, machine):
+def read(fh, machine, rtol=1e-3, ntheta=8, show=False):
     """
     Reads a G-EQDSK format file
     
@@ -98,9 +99,8 @@ def read(fh, machine):
                      Rmax = data["rleft"] + data["rdim"],
                      Zmin = data["zmid"] - 0.5*data["zdim"],
                      Zmax = data["zmid"] + 0.5*data["zdim"],
-                     nx=data["nx"], ny=data["ny"],         # Number of grid points
-                     fvac=data["rcentr"] * data["bcentr"] # Vacuum f=R*Bt
-    )
+                     nx=data["nx"], ny=data["ny"]         # Number of grid points
+                 )
 
     # Range of psi normalises psi derivatives
     psirange = data["sibdry"] - data["simagx"]
@@ -131,14 +131,12 @@ def read(fh, machine):
     # Create a set of profiles to calculate toroidal current density Jtor
     profiles = jtor.ProfilesPprimeFfprime(pprime_func,
                                           ffprime_func,
-                                          p_func=p_func, f_func=f_func)
+                                          data["rcentr"] * data["bcentr"],
+                                          p_func=p_func, 
+                                          f_func=f_func)
 
-
-    # Calculate Jtor using input psi
-    Jtor = profiles(eq.R, eq.Z, data["psi"])
-    
-    # Use this Jtor to calculate plasma psi
-    eq.solve(Jtor, niter=10, sublevels=5, ncycle=5)
+    # Use these profiles to calculate plasma psi
+    eq.solve(profiles, niter=10, sublevels=5, ncycle=5)
 
     print("Plasma current: {0} Amps, input: {1} Amps".format(eq.plasmaCurrent(), data["cpasma"]))
     
@@ -148,52 +146,93 @@ def read(fh, machine):
     
     opoint, xpoint = critical.find_critical(eq.R, eq.Z, data["psi"])
     
-    fig = plt.figure()
-    axis = fig.add_subplot(111)
-    axis.set_aspect('equal')
-    axis.set_xlabel("Major radius [m]")
-    axis.set_ylabel("Height [m]")
+    axis = None
+    if show:
+        fig = plt.figure()
+        axis = fig.add_subplot(111)
+        axis.set_aspect('equal')
+        axis.set_xlabel("Major radius [m]")
+        axis.set_ylabel("Height [m]")
     
-    levels = linspace(amin(data["psi"]), amax(data["psi"]), 50)
-    axis.contour(eq.R,eq.Z,data["psi"], levels=levels, colors='k')
-    for r,z,_ in xpoint:
-        axis.plot(r,z,'ro')
+        levels = linspace(amin(data["psi"]), amax(data["psi"]), 50)
+        axis.contour(eq.R,eq.Z,data["psi"], levels=levels, colors='k')
+        
+        # Put red dots on X-points
+        for r,z,_ in xpoint:
+            axis.plot(r,z,'ro')
 
-    sep_contour=axis.contour(eq.R, eq.Z, data["psi"], levels=[xpoint[0][2]], colors='r')
+        sep_contour=axis.contour(eq.R, eq.Z, data["psi"], levels=[xpoint[0][2]], colors='r')
 
     isoflux = []
     
-    # Outboard midplane
-    r = linspace(opoint[0][0], eq.Rmax, 100)
-    pnorm = (psi_in(r, opoint[0][1]) - opoint[0][2])/(xpoint[0][2] - opoint[0][2])
-    ind = argmax(pnorm>1.0)
-    
-    r = r[ind]
-    z = opoint[0][1]
-    axis.plot(r,z,'bo')
-    isoflux.append( (r,z, xpoint[0][0], xpoint[0][1]) )
-    
-    # Inboard midplane
+    def find_separatrix(r0,z0, r1,z1, n=100):
+        """
+        (r0,z0) - Start location inside separatrix
+        (r1,z1) - Location outside separatrix
+        
+        n - Number of starting points to use
+        """
+        # Clip (r1,z1) to be inside domain
+        # Shorten the line so that the direction is unchanged
+        if abs(r1 - r0) > 1e-6:
+            rclip = clip(r1, eq.Rmin, eq.Rmax)
+            z1 = z0 + (z1 - z0) * abs( (rclip - r0) / (r1 - r0) )
+            r1 = rclip
+        
+        if abs(z1 - z0) > 1e-6:
+            zclip = clip(z1, eq.Zmin, eq.Zmax)
+            r1 = r0 + (r1 - r0) * abs( (zclip - z0) / (z1 - z0) )
+            z1 = zclip
 
-    r = linspace(eq.Rmin, opoint[0][0], 100, endpoint=False)
-    
-    pnorm = (psi_in(r, opoint[0][1]) - opoint[0][2])/(xpoint[0][2] - opoint[0][2])
-    ind = argmax(pnorm[::-1]>1.0)
-    
-    r = r[-ind]
-    z = opoint[0][1]
-    axis.plot(r,z,'bo')
-    isoflux.append( (r,z, xpoint[0][0], xpoint[0][1]) )
-    
+        r = linspace(r0, r1, n)
+        z = linspace(z0, z1, n)
+        
+        if show:
+            axis.plot(r,z)
+        
+        pnorm = (psi_in(r, z, grid=False) - opoint[0][2])/(xpoint[0][2] - opoint[0][2])
+        ind = argmax(pnorm>1.0)
+        
+        r = r[ind]
+        z = z[ind]
+        
+        if show:
+            axis.plot(r,z,'bo')
+        
+        return r,z
+
+    # Find points on the separatrix to constrain plasma shape
+    if ntheta > 0:
+        for theta in linspace(0, 2*pi, ntheta, endpoint=False):
+            r0, z0 = opoint[0][0:2]
+            print theta
+            r,z = find_separatrix(r0, z0, r0 + 10.*sin(theta), z0 + 10.*cos(theta))
+            isoflux.append( (r,z, xpoint[0][0], xpoint[0][1]) )
     
     # Find best fit for coil currents
-    control.constrain(eq, xpoints=xpoint, isoflux=isoflux, gamma=1e-14)
+    controlsystem = control.constrain(xpoints=xpoint, isoflux=isoflux, gamma=1e-14)
+    controlsystem(eq)
     
     psi = eq.psi()
-    #levels = linspace(amin(psi), amax(psi), 100)
-    axis.contour(eq.R,eq.Z, psi, levels=levels, colors='r')
-    plt.show()
     
+    if show:
+        axis.contour(eq.R,eq.Z, psi, levels=levels, colors='r')
+        plt.pause(1)
+    
+    machine.printCurrents()
+
+    ####################################################################
+    # Refine the equilibrium to ensure consistency 
+    # Solve using Picard iteration
+    #
+    
+    picard.solve(eq,          # The equilibrium to adjust
+                 profiles,    # The toroidal current profile function
+                 controlsystem, show=show, axis=axis,
+                 niter=20, sublevels=5, ncycle=20, rtol=rtol)
+    
+    print("Plasma current: {0} Amps, input: {1} Amps".format(eq.plasmaCurrent(), data["cpasma"]))
+    print("Plasma pressure on axis: {0} Pascals".format(eq.pressure(0.0)))
     machine.printCurrents()
 
     return eq

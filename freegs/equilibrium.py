@@ -3,9 +3,9 @@ Defines class to represent the equilibrium
 state, including plasma and coil currents
 """
 
-from numpy import meshgrid, linspace, exp, zeros
+from numpy import meshgrid, linspace, exp, zeros, nditer
 from scipy import interpolate
-from scipy.integrate import romb # Romberg integration
+from scipy.integrate import romb, quad # Romberg integration
 
 from .boundary import fixedBoundary, freeBoundary
 
@@ -46,7 +46,6 @@ class Equilibrium:
                  Rmin=0.1, Rmax=2.0,
                  Zmin=-1.0, Zmax=1.0,
                  nx=65, ny=65,
-                 fvac = 1.0, 
                  boundary=freeBoundary):
         """
         Initialises a plasma equilibrium
@@ -56,8 +55,6 @@ class Equilibrium:
         
         nx - Resolution in R. This must be 2^n + 1
         ny - Resolution in Z. This must be 2^m + 1
-        
-        fvac - Vacuum toroidal field f = R*Bt
         
         boundary - The boundary condition, either freeBoundary or fixedBoundary
         
@@ -97,8 +94,6 @@ class Equilibrium:
         self._updatePlasmaPsi(psi)
         
         self._current = 0.0 # Plasma current
-
-        self._fvac = 0.0 # Vacuum f=R*Bt
         
     def getMachine(self):
         """
@@ -147,44 +142,68 @@ class Equilibrium:
         """
         return self.psi_func(R,Z) + self.tokamak.psi(R,Z)
 
-    def fpolPsiN(self,psinorm):
+    def fpol(self,psinorm):
         """
         Return f = R*Bt at specified values of normalised psi
         """
-        return psinorm * 0.0
+        return self._profiles.fpol(psinorm)
     
-    def fpolVac(self):
+    def fvac(self):
         """
         Return vacuum f = R*Bt
         """
-        return self._fvac
+        return self._profiles.fvac()
     
-    def pressurePsiN(self, psinorm):
-        """
-        Returns plasma pressure at specified values of normalised psi
-        """
-        return psinorm * 0.0
-
-    def qPsiN(self, psinorm):
+    def q(self, psinorm):
         """
         Returns safety factor q at specified values of normalised psi
         """
         return psinorm * 0.0
+        
+    def pprime(self, psinorm):
+        """
+        Return p' at given normalised psi
+        """
+        return self._profiles.pprime(psinorm)
+    
+    def ffprime(self, psinorm):
+        """
+        Return ff' at given normalised psi
+        """
+        return self._profiles.ffprime(psinorm)
+        
+    def pressure(self, psinorm, out=None):
+        """
+        Returns plasma pressure at specified values of normalised psi
+        """
+        return self._profiles.pressure(psinorm)
 
-    def solve(self, Jtor, niter=2, sublevels=4, ncycle=2):
+
+    def solve(self, profiles, niter=2, sublevels=4, ncycle=2):
         """
         Calculate the plasma equilibrium
         
-        Jtor  - Toroidal current density
+        profiles  - An object describing the plasma profiles.
+                    At minimum this must have methods:
+             .Jtor(R, Z, psi)   -> [nx, ny]
+             .pprime(psinorm)
+             .ffprime(psinorm)
+             .pressure(psinorm)
+             .fpol(psinorm)
 
         niter  - Number of Jacobi iterations per level
         sublevels - Number of levels in the multigrid
         ncycle    - Number of V-cycles
         """
         
+        self._profiles = profiles
+        
+        # Calculate toroidal current density
+        Jtor = profiles.Jtor(self.R, self.Z, self.psi())
+        
         # Set plasma boundary
         self._applyBoundary(self.R, self.Z, Jtor, self.plasma_psi)
-
+        
         # Right hand side of G-S equation
         rhs = -mu0 * self.R * Jtor
         
