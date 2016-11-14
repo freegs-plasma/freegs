@@ -10,8 +10,127 @@ This will run the test case, solving Poisson equation in 2D
 
 """
 
-from numpy import zeros,max,amin,amax, abs
+from numpy import zeros,max,amin,amax, abs, reshape
+from scipy.sparse.linalg import spsolve
+from scipy.sparse import eye, lil_matrix
 
+class MGDirect:
+    def __init__(self, A):
+        self.A = A
+        
+    def __call__(self, x, b):
+        b1d = reshape(b, -1) # 1D view
+        
+        x = spsolve(self.A, b1d)
+        
+        return reshape(x, b.shape)
+        
+class MGJacobi:
+    def __init__(self, A, ncycle=4, niter=10, subsolver=None):
+        """
+        Initialise solver
+        
+        A   - The matrix to solve
+        subsolver - An operator at lower resolution
+        ncycle - Number of V-cycles
+        niter - Number of Jacobi iterations
+        
+        """
+        self.A = A
+        self.diag = A.diagonal()
+        self.subsolver = subsolver
+        self.niter = niter
+        self.ncycle = ncycle
+        
+        self.sub_b = None
+        self.xupdate = None
+        
+    def __call__(self, xi, bi, ncycle=None, niter=None):
+        """
+        Solve Ax = b, given initial guess for x
+        
+        ncycle - Optional number of cycles
+        
+        """
+        
+        # Need to reshape x and b into 1D arrays
+        x = reshape(xi, -1)
+        b = reshape(bi, -1)
+
+        if ncycle is None:
+            ncycle = self.ncycle
+        if niter is None:
+            niter = self.niter
+        
+        for c in range(ncycle):
+            # Jacobi smoothing
+            for i in range(niter):
+                x += (b - self.A.dot(x))/self.diag
+
+            if self.subsolver:
+                # Calculate the error
+                error = b - self.A.dot(x)
+            
+                # Restrict error onto coarser mesh
+                self.sub_b = restrict(reshape(error, xi.shape))
+            
+                # smooth this error
+                sub_x = zeros(self.sub_b.shape)
+                sub_x = self.subsolver(sub_x, self.sub_b)
+                
+                # Prolong the solution
+                self.xupdate = interpolate(sub_x)
+        
+                x += reshape(self.xupdate,-1)
+            
+            # Jacobi smoothing
+            for i in range(niter):
+                x += (b - self.A.dot(x))/self.diag
+
+        return x.reshape(xi.shape)
+    
+    
+def createVcycle(nx, ny, generator, nlevels=4, ncycle=1, niter=10, direct=True):
+    """
+    Create a hierarchy of solvers in a multigrid V-cycle
+    
+    nx, ny - The highest resolution
+    generator(nx,ny) - Returns a sparse matrix, given resolution
+    nlevels - Number of multigrid levels
+    direct - Lowest level uses direct solver
+    ncycle - Number of V cycles. This is only passed to the top level MGJacobi object
+    niter - Number of Jacobi iterations per level
+    
+    """
+
+    if (nx-1) % 2 == 1 or (ny-1) % 2 == 1:
+        # Can't divide any further
+        nlevels = 1
+    
+    if nlevels > 1:
+        # Create the solver at lower resolution
+
+        nxsub = (nx-1) // 2  + 1
+        nysub = (ny-1) // 2  + 1
+        
+        subsolver = createVcycle(nxsub, nysub, generator, nlevels-1,
+                                 niter=niter, direct=direct)
+        
+        # Create the sparse matrix
+        A = generator(nx, ny)
+        # Create the solver
+        return MGJacobi(A, niter=niter, subsolver=subsolver, ncycle=ncycle)
+
+    # At lowest level
+    
+    # Create the sparse matrix
+    A = generator(nx, ny)
+    if direct:
+        return MGDirect(A)
+    return MGJacobi(A, niter=niter, ncycle=ncycle, subsolver=None)
+        
+
+        
 def smoothJacobi(A, x, b, dx, dy):
     """
     Smooth the solution using Jacobi method
@@ -25,7 +144,7 @@ def smoothJacobi(A, x, b, dx, dy):
     return smooth
     
  
-def restrict(orig, dx, dy, coarse=None, avg=False):
+def restrict(orig, out=None, avg=False):
     """
     Coarsen the original onto a coarser mesh
 
@@ -46,34 +165,34 @@ def restrict(orig, dx, dy, coarse=None, avg=False):
     
     if (nx-1) % 2 == 1 or (ny-1) % 2 == 1:
         # Can't divide any further
-        if coarse == None:
+        if out == None:
             return orig
-        coarse.resize(orig.shape)
-        coarse[:,:] = orig
+        out.resize(orig.shape)
+        out[:,:] = orig
         return
     
     # Dividing x and y in 2
     nx = (nx-1) // 2  + 1
     ny = (ny-1) // 2  + 1
     
-    if coarse == None:
-        coarse = zeros([nx,ny])
+    if out is None:
+        out = zeros([nx,ny])
     else:
-        coarse.resize([nx,ny])
+        out.resize([nx,ny])
         
     for x in range(1,nx-1):
         for y in range(1,ny-1):
             x0 = 2*x
             y0 = 2*y
-            coarse[x,y] = orig[x0,y0]/4.
+            out[x,y] = orig[x0,y0]/4.
             + (orig[x0+1,y0] + orig[x0-1,y0] + orig[x0,y0+1] + orig[x0,y0-1])/8.
             + (orig[x0-1,y0-1] + orig[x0-1,y0+1] + orig[x0+1,y0-1] + orig[x0+1,y0+1])/16.
     if not avg:
-        coarse *= 4.
+        out *= 4.
         
-    return coarse, dx*2., dy*2.
+    return out
 
-def interpolate(orig):
+def interpolate(orig, out=None):
     """
     Interpolate a solution onto a finer mesh
     """
@@ -82,32 +201,60 @@ def interpolate(orig):
     
     nx2 = 2*(nx-1) + 1
     ny2 = 2*(ny-1) + 1
-    
-    fine = zeros([nx2,ny2])
-    
+
+    if out is None:
+        out = zeros([nx2,ny2])
+    else:
+        out[:,:] = 0.0
+        
     for x in range(1,nx-1):
         for y in range(1,ny-1):
             x0 = 2*x
             y0 = 2*y
             
-            fine[x0-1,y0-1] += 0.25*orig[x,y]
-            fine[x0-1,y0  ] += 0.5*orig[x,y]
-            fine[x0-1,y0+1] += 0.25*orig[x,y]
+            out[x0-1,y0-1] += 0.25*orig[x,y]
+            out[x0-1,y0  ] += 0.5*orig[x,y]
+            out[x0-1,y0+1] += 0.25*orig[x,y]
             
-            fine[x0  ,y0-1] += 0.5*orig[x,y]
-            fine[x0  ,y0  ] = orig[x,y]
-            fine[x0  ,y0+1] += 0.5*orig[x,y]
+            out[x0  ,y0-1] += 0.5*orig[x,y]
+            out[x0  ,y0  ] = orig[x,y]
+            out[x0  ,y0+1] += 0.5*orig[x,y]
             
-            fine[x0+1,y0-1] += 0.25*orig[x,y]
-            fine[x0+1,y0  ] += 0.5*orig[x,y]
-            fine[x0+1,y0+1] += 0.25*orig[x,y]
+            out[x0+1,y0-1] += 0.25*orig[x,y]
+            out[x0+1,y0  ] += 0.5*orig[x,y]
+            out[x0+1,y0+1] += 0.25*orig[x,y]
             
-    return fine
-            
+    return out
+
+
+def sparseRestrict(nx, ny):
+    """
+    Create a sparse matrix to coarsen a mesh
     
-def smoothVcycle(A, x, b, dx, dy, niter=10, sublevels=0):
+    input : [nx,ny]
+    output: [(nx-1)/2+1, (ny-1)/2+1]
+    
+    """
+
+    if (nx-1) % 2 == 1 or (ny-1) % 2 == 1:
+        # Can't divide
+        raise ValueError("Can't divide nx and/or ny")
+
+    nx_new = (nx-1) // 2  + 1
+    ny_new = (ny-1) // 2  + 1
+    
+    N = nx*ny
+    M = nx_new * ny_new
+    
+    A = lil_matrix([M, N])
+    
+    
+    
+def smoothVcycle(A, x, b, dx, dy, niter=10, sublevels=0, direct=True):
     """
     Perform smoothing using multigrid
+    
+    
     """
     
     # Smooth
@@ -119,11 +266,11 @@ def smoothVcycle(A, x, b, dx, dy, niter=10, sublevels=0):
         error = b - A(x, dx, dy)
         
         # Restrict error onto coarser mesh
-        Cerror, Cdx, Cdy = restrict(error, dx, dy)
+        Cerror = restrict(error)
         
         # smooth this error
         Cx = zeros(Cerror.shape)
-        Cx = smoothVcycle(A, Cx, Cerror, Cdx, Cdy, niter, sublevels-1)
+        Cx = smoothVcycle(A, Cx, Cerror, dx*2., dy*2., niter, sublevels-1)
         
         # Prolong the solution
         xupdate = interpolate(Cx)
@@ -176,9 +323,40 @@ class LaplacianOp:
                 b[x,y] = (f[x-1,y] - 2*f[x,y] + f[x+1,y])/dx**2 + (f[x,y-1] - 2*f[x,y] + f[x,y+1])/dy**2
 
         return b
-
+        
     def diag(self, dx, dy):
         return -2./dx**2 - 2./dy**2
+
+class LaplaceSparse:
+    def __init__(self, Lx, Ly):
+        self.Lx = Lx
+        self.Ly = Ly
+
+    def __call__(self, nx, ny):
+        dx = self.Lx/(nx - 1)
+        dy = self.Ly/(ny - 1)
+        
+        # Create a linked list sparse matrix
+        N = nx * ny
+        A = eye(N, format="lil")
+        for x in range(1,nx-1):
+            for y in range(1,ny-1):
+                row = x*ny + y
+                A[row, row] = -2.0/dx**2 -2.0/dy**2
+                
+                # y-1
+                A[row, row-1] = 1./dy**2
+                
+                # y+1
+                A[row, row+1] = 1./dy**2
+                
+                # x-1
+                A[row, row-ny] = 1./dx**2
+                
+                # x+1
+                A[row, row+ny] = 1./dx**2
+        # Convert to Compressed Sparse Row (CSR) format
+        return A.tocsr()
 
 if __name__ == "__main__":
 
@@ -187,11 +365,13 @@ if __name__ == "__main__":
     from numpy import meshgrid, exp, linspace
     import matplotlib.pyplot as plt
 
+    from timeit import default_timer as timer
+    
     nx = 65
     ny = 65
 
-    dx = 1./nx
-    dy = 1./ny
+    dx = 1./(nx - 1)
+    dy = 1./(ny - 1)
 
     xx, yy = meshgrid(linspace(0,1,nx), linspace(0,1,ny))
 
@@ -210,7 +390,8 @@ if __name__ == "__main__":
 
     ################ SIMPLE ITERATIVE SOLVER ##############
 
-    for i in range(100):
+    
+    for i in range(1):
       x2 = smoothJacobi(A, x, rhs, dx,dy)      
       x,x2 = x2, x # Swap arrays
       
@@ -219,9 +400,40 @@ if __name__ == "__main__":
 
     ################ MULTIGRID SOLVER #######################
 
+    print("Python multigrid solver")
+    
     x = zeros([nx,ny])
-    x = smoothMG(A, x, rhs, dx, dy, niter=5, sublevels=4, ncycle=2)
+
+    start = timer()
+    x = smoothMG(A, x, rhs, dx, dy, niter=5, sublevels=3, ncycle=2)
+    end = timer()
+
+    error = rhs - A(x, dx, dy)
+    print("Max error : {0}".format(max(abs(error))))
+    print("Run time  : {0} seconds".format(end - start))
+    
+    ################ SPARSE MATRIX ##########################
+
+    print("Sparse matrix solver")
+    
+    x2 = zeros([nx,ny])
+
+    start = timer()
+    solver = createVcycle(nx,ny, LaplaceSparse(1.0, 1.0), ncycle=2, niter=5, nlevels=4, direct=True)
+
+    start_solve = timer()
+    x2 = solver(x2, rhs)
+
+    end = timer()
+
+    error = rhs - A(x2, dx, dy)
+    print("Max error : {0}".format(max(abs(error))))
+    print("Setup time: {0}, run time: {1} seconds".format(start_solve - start, end - start_solve))
+    
+    print x2[10,20], x[10,20]
     
     f = plt.figure()
-    plt.contourf(x)
+    #plt.contourf(x)
+    plt.plot(x[:,32])
+    plt.plot(x2[:,32])
     plt.show()

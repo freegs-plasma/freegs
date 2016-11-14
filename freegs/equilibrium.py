@@ -10,10 +10,10 @@ from scipy.integrate import romb, quad # Romberg integration
 from .boundary import fixedBoundary, freeBoundary
 
 # Operators which define the G-S equation
-from .gradshafranov import mu0, GSElliptic
+from .gradshafranov import mu0, GSsparse
 
 # Multigrid solver
-from .multigrid import smoothMG
+from . import multigrid
 
 from . import machine
 
@@ -36,9 +36,9 @@ class Equilibrium:
     tokamak - The coils and circuits
     
     Private data members
-
-    _GS     Grad-Shafranov operator
+    
     _applyBoundary()
+    _solver - Grad-Shafranov elliptic solver
     
     """
     
@@ -61,8 +61,6 @@ class Equilibrium:
         """
 
         self.tokamak = tokamak
-
-        self._GS = GSElliptic(Rmin)
 
         self._applyBoundary = boundary
         
@@ -94,6 +92,16 @@ class Equilibrium:
         self._updatePlasmaPsi(psi)
         
         self._current = 0.0 # Plasma current
+
+        # Create the solver
+        generator = GSsparse(Rmin, Rmax, Zmin, Zmax)
+        self._solver = multigrid.createVcycle(nx, ny,
+                                              generator,
+                                              nlevels=1,
+                                              ncycle=2,
+                                              niter=2,
+                                              direct=True)
+        
         
     def getMachine(self):
         """
@@ -206,22 +214,21 @@ class Equilibrium:
         
         # Right hand side of G-S equation
         rhs = -mu0 * self.R * Jtor
+
+        # Copy boundary conditions
+        rhs[0,:] = self.plasma_psi[0,:]
+        rhs[:,0] = self.plasma_psi[:,0]
+        rhs[-1,:] = self.plasma_psi[-1,:]
+        rhs[:,-1] = self.plasma_psi[:,-1]
         
-        rhs[0,:] = 0.0
-        rhs[:,0] = 0.0
-        rhs[-1,:] = 0.0
-        rhs[:,-1] = 0.0
-        
-        # Solve elliptic operator using MG method
-        dR = self.R[1,0] - self.R[0,0]
-        dZ = self.Z[0,1] - self.Z[0,0]
-        
-        plasma_psi = smoothMG(self._GS, self.plasma_psi, rhs, dR, dZ, 
-                              niter=niter, sublevels=sublevels, ncycle=ncycle)
+        # Call elliptic solver
+        plasma_psi = self._solver(self.plasma_psi, rhs)
         
         self._updatePlasmaPsi(plasma_psi)
 
         # Update plasma current
+        dR = self.R[1,0] - self.R[0,0]
+        dZ = self.Z[0,1] - self.Z[0,0]
         self._current = romb(romb(Jtor)) * dR*dZ
 
     def toDict(self):

@@ -116,16 +116,24 @@ def read(fh, machine, rtol=1e-3, ntheta=8, show=False):
 
     # functions to return p, pprime, f and ffprime
     def p_func(psinorm):
-        return reshape(p_spl(ravel(psinorm)),psinorm.shape)
+        if hasattr(psinorm, "shape"):
+            return reshape(p_spl(ravel(psinorm)),psinorm.shape)
+        return p_spl(psinorm)
 
     def f_func(psinorm):
-        return reshape(f_spl(ravel(psinorm)),psinorm.shape)
+        if hasattr(psinorm, "shape"):
+            return reshape(f_spl(ravel(psinorm)),psinorm.shape)
+        return f_spl(psinorm)
 
     def pprime_func(psinorm):
-        return reshape(pprime_spl(ravel(psinorm)),psinorm.shape)
+        if hasattr(psinorm, "shape"):
+            return reshape(pprime_spl(ravel(psinorm)),psinorm.shape)
+        return pprime_spl(psinorm)
     
     def ffprime_func(psinorm):
-        return reshape(ffprime_spl(ravel(psinorm)),psinorm.shape)
+        if hasattr(psinorm, "shape"):
+            return reshape(ffprime_spl(ravel(psinorm)),psinorm.shape)
+        return ffprime_spl(psinorm)
 
     
     # Create a set of profiles to calculate toroidal current density Jtor

@@ -7,7 +7,10 @@ from numpy import zeros
 
 # Elliptic integrals of first and second kind (K and E)
 from scipy.special import ellipk, ellipe
+
 from numpy import sqrt, pi
+
+from scipy.sparse import lil_matrix, eye
 
 # Physical constants
 mu0 = 4e-7*pi
@@ -57,13 +60,66 @@ class GSElliptic:
                            + (invdR2 - 1./(2.*R*dR))*psi[x+1,y]
                            + psi[x,y+1]*invdZ2 )
         return b
-
+        
     def diag(self, dR, dZ):
         """
         Return the diagonal elements
         
         """
         return -2./dR**2 - 2./dZ**2
+
+class GSsparse:
+    """
+    Calculates sparse matrices for the Grad-Shafranov operator
+    """
+    def __init__(self, Rmin, Rmax, Zmin, Zmax):
+        self.Rmin = Rmin
+        self.Rmax = Rmax
+        self.Zmin = Zmin
+        self.Zmax = Zmax
+
+    def __call__(self, nx, ny):
+        """
+        Create a sparse matrix with given resolution
+        
+        """
+
+        # Calculate grid spacing
+        dR = (self.Rmax - self.Rmin)/(nx - 1)
+        dZ = (self.Zmax - self.Zmin)/(ny - 1)
+        
+        # Total number of points
+        N = nx * ny
+
+        # Create a linked list sparse matrix
+        A = eye(N, format="lil")
+        
+        invdR2 = 1./dR**2
+        invdZ2 = 1./dZ**2
+        
+        for x in range(1,nx-1):
+            R = self.Rmin + dR*x  # Major radius of this point
+            for y in range(1,ny-1):
+                # Loop over points in the domain
+                row = x*ny + y
+
+                # y-1 
+                A[row, row-1] = invdZ2
+
+                # x-1
+                A[row, row-ny] = (invdR2 + 1./(2.*R*dR))
+
+                # diagonal
+                A[row, row] = - 2.*(invdR2 + invdZ2)
+
+                # x+1
+                A[row, row+ny] = (invdR2 - 1./(2.*R*dR))
+
+                # y+1
+                A[row, row+1] = invdZ2
+                
+        # Convert to Compressed Sparse Row (CSR) format
+        return A.tocsr()
     
 def Greens(Rc, Zc, R, Z):
     """
