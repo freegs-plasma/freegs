@@ -1,5 +1,8 @@
-Free boundary Grad-Shafranov solver
-===================================
+FreeGS: Free boundary Grad-Shafranov solver
+===========================================
+
+[![License](https://img.shields.io/badge/license-GPL-blue.svg)](https://img.shields.io/badge/license-GPL-blue.svg)
+[![py3comp](https://img.shields.io/badge/py3-compatible-brightgreen.svg)](https://img.shields.io/badge/py3-compatible-brightgreen.svg)
 
 This Python module solves the Grad-Shafranov equation for axisymmetric
 plasma equilibria, mainly for free boundary calculations.
@@ -64,16 +67,16 @@ Files
 
 The "freegs" module consists of the following files:
 
-boundary.py        - Operators for applying boundary conditions to plasma psi
-control.py         - Routines for controlling coil currents based on constraints
-critical.py        - Finds critical points (O- and X-points)
-equilibrium.py     - Represents the plasma equilibrium state
-gradshafranov.py   - Greens functions and operators for the Grad-Shafranov equation
-jtor.py            - Routines for calculating toroidal current density (profiles)
-machine.py         - Represents the coils and power supply circuits
-multigrid.py       - The multigrid solver for the linear elliptic operator
-picard.py          - Nonlinear solver, iterating the profiles and constraints
-plotting.py        - Plotting routines using matplotlib
+* **boundary.py**        - Operators for applying boundary conditions to plasma psi
+* **control.py**         - Routines for controlling coil currents based on constraints
+* **critical.py**        - Finds critical points (O- and X-points)
+* **equilibrium.py**     - Represents the plasma equilibrium state
+* **gradshafranov.py**   - Greens functions and operators for the Grad-Shafranov equation
+* **jtor.py**            - Routines for calculating toroidal current density (profiles)
+* **machine.py**         - Represents the coils and power supply circuits
+* **multigrid.py**       - The multigrid solver for the linear elliptic operator
+* **picard.py**          - Nonlinear solver, iterating the profiles and constraints
+* **plotting.py**        - Plotting routines using matplotlib
 
 Multigrid solver
 ----------------
