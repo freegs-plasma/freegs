@@ -1,5 +1,22 @@
 """
 Routines for solving the nonlinear part of the Grad-Shafranov equation
+
+Copyright 2016 Ben Dudson, University of York. Email: benjamin.dudson@york.ac.uk
+
+This file is part of FreeGS.
+
+FreeGS is free software: you can redistribute it and/or modify
+it under the terms of the GNU Lesser General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+FreeGS is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public License
+along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 from numpy import amin, amax
@@ -37,8 +54,8 @@ def solve(eq, profiles, constrain=None, rtol=1e-3, blend=0.0,
     
     if show:
         import matplotlib.pyplot as plt
-        from plotting import plotEquilibrium
-        import critical
+        from .plotting import plotEquilibrium
+        from . import critical
         
         if pause > 0. and axis is None:
             # No axis specified, so create a new figure

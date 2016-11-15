@@ -1,22 +1,22 @@
 Free boundary Grad-Shafranov solver
 ===================================
 
-This Python module solves the Grad-Shafranov equation for axisymmetric plasma equilibria, 
-mainly for free boundary calculations.
+This Python module solves the Grad-Shafranov equation for axisymmetric
+plasma equilibria, mainly for free boundary calculations.
 
-Copyright 2016 Ben Dudson, University of York
+    Copyright 2016 Ben Dudson, University of York. Email: benjamin.dudson@york.ac.uk
 
     This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
+    it under the terms of the GNU Lesser General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
 
     This program is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
+    GNU Lesser General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
+    You should have received a copy of the GNU Lesser General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
@@ -30,36 +30,50 @@ The Jupyter notebooks contain examples wuth additional notes
 There are also some Python scripts to run short tests
 and examples
 
-$ python example-fixedboundary.py 
+    $ python 01-freeboundary.py
+
+This solves a free boundary problem, specifying the desired location of two X-points.
+Writes the equilibrium to a G-EQDSK file "lsn.geqdsk"
+
+    $ python 02-read-geqdsk.py
+
+Reads in the file "lsn.geqdsk", inferring the coil currents from the plasma boundary
+and profiles in the G-EQDSK file.
+
+    $ python 03-mast.py
+
+Calculates a double-null (CDND) equilibrium for MAST from scratch. Writes solution to
+G-EQDSK file "mast.geqdsk"
+
+    $ python 04-read-mast-geqdsk.py
+
+Reads the file "mast.geqdsk", inferring the coil currents.
+
+    $ python 05-fixed-boundary.py 
 
 This example solves a fixed boundary problem, in which the square edges of the domain
 are fixed. The plasma pressure on axis and plasma current are fixed.
 
-$ python example-freeboundary.py
+    $ python 06-xpoints.py
 
-This solves a free boundary problem, specifying the desired location of two X-points
-
-$ python example-xpoints.py
-
-This demonstrates the coil current constraint code, finding X-points, and marking core region
-These routines are then used inside the free boundary solver
-
-$ python example-mast.py
-
-Calculates a double-null (CDND) equilibrium for MAST from scratch
+This demonstrates the coil current control code, finding X-points, and marking core region
+These routines are used inside the free boundary solver
 
 Files
 -----
 
+The "freegs" module consists of the following files:
+
 boundary.py        - Operators for applying boundary conditions to plasma psi
-constraints.py     - Routines for applying constraints to the plasma boundary
+control.py         - Routines for controlling coil currents based on constraints
+critical.py        - Finds critical points (O- and X-points)
 equilibrium.py     - Represents the plasma equilibrium state
 gradshafranov.py   - Greens functions and operators for the Grad-Shafranov equation
-jtor.py            - Routines for calculating toroidal current density
+jtor.py            - Routines for calculating toroidal current density (profiles)
 machine.py         - Represents the coils and power supply circuits
 multigrid.py       - The multigrid solver for the linear elliptic operator
-plotting.py        - Plotting routines using matplotlib
 picard.py          - Nonlinear solver, iterating the profiles and constraints
+plotting.py        - Plotting routines using matplotlib
 
 Multigrid solver
 ----------------

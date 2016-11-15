@@ -33,10 +33,6 @@ isoflux = [(0.7,-1.1, 1.45, 0.0)   # Outboard midplane, lower X-point
            ,(0.7,1.1, 1.45, 0.0)   # Outboard midplane, upper X-point
            ,(0.7,-1.1, 1.5,-1.9)  # Lower X-point, lower outer leg
            ,(0.7,1.1,  1.5, 1.9)  # Upper X-point, upper outer leg
-#           ,(0.2,0.0, 1.4,0.0)
-#           ,(0.2,-1.4, 0.7,-1.1)
-#           ,(0.2,1.4, 0.7, 1.1)
-           #,(0.6,-1.1, 0.2, 0.0)
            ]
 
 constrain = freegs.control.constrain(xpoints=xpoints, gamma=1e-12, isoflux=isoflux)

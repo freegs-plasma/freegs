@@ -3,6 +3,24 @@ Handles reading and writing of Equilibrium objects
 
 Writing is relatively straightforward, but reading requires inferring
 the currents in the PF coils
+
+Copyright 2016 Ben Dudson, University of York. Email: benjamin.dudson@york.ac.uk
+
+This file is part of FreeGS.
+
+FreeGS is free software: you can redistribute it and/or modify
+it under the terms of the GNU Lesser General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+FreeGS is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public License
+along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
+
 """
 
 from . import _geqdsk
@@ -200,9 +218,11 @@ def read(fh, machine, rtol=1e-3, ntheta=8, show=False):
         
         pnorm = (psi_in(r, z, grid=False) - opoint[0][2])/(xpoint[0][2] - opoint[0][2])
         ind = argmax(pnorm>1.0)
+
+        f = (pnorm[ind] - 1.0)/(pnorm[ind] - pnorm[ind-1])
         
-        r = r[ind]
-        z = z[ind]
+        r = (1. - f) * r[ind] + f * r[ind-1]
+        z = (1. - f) * z[ind] + f * z[ind-1]
         
         if show:
             axis.plot(r,z,'bo')
@@ -213,12 +233,11 @@ def read(fh, machine, rtol=1e-3, ntheta=8, show=False):
     if ntheta > 0:
         for theta in linspace(0, 2*pi, ntheta, endpoint=False):
             r0, z0 = opoint[0][0:2]
-            print theta
             r,z = find_separatrix(r0, z0, r0 + 10.*sin(theta), z0 + 10.*cos(theta))
             isoflux.append( (r,z, xpoint[0][0], xpoint[0][1]) )
     
     # Find best fit for coil currents
-    controlsystem = control.constrain(xpoints=xpoint, isoflux=isoflux, gamma=1e-14)
+    controlsystem = control.constrain(xpoints=xpoint, isoflux=isoflux, gamma=1e-12)
     controlsystem(eq)
     
     psi = eq.psi()
@@ -226,7 +245,7 @@ def read(fh, machine, rtol=1e-3, ntheta=8, show=False):
     if show:
         axis.contour(eq.R,eq.Z, psi, levels=levels, colors='r')
         plt.pause(1)
-    
+        
     machine.printCurrents()
 
     ####################################################################
