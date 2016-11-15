@@ -162,6 +162,11 @@ def read(fh, machine, rtol=1e-3, ntheta=8, show=False):
                                           f_func=f_func)
 
     # Use these profiles to calculate plasma psi
+    # This requires a bit of a hack to set the poloidal flux
+    
+    coil_psi = machine.psi(eq.R, eq.Z)
+    eq._updatePlasmaPsi(data["psi"] - coil_psi)
+    
     eq.solve(profiles, niter=10, sublevels=5, ncycle=5)
 
     print("Plasma current: {0} Amps, input: {1} Amps".format(eq.plasmaCurrent(), data["cpasma"]))
