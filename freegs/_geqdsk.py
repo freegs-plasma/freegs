@@ -89,7 +89,22 @@ def write(data, fh, label=None):
     Write a GEQDSK equilibrium file, given a dictionary of data
     
     data - dictionary
-       rdim, zdim
+      nx, ny        Number of points in R (x), Z (y)
+      rdim, zdim    Sizes of the R,Z dimensions
+      rcentr        Reference value of R
+      bcentr        Vacuum toroidal magnetic field at rcentr
+      rleft         R at left (inner) boundary
+      zmid          Z at middle of domain
+      rmagx, zmagx  R,Z at magnetic axis (O-point)
+      simagx        Poloidal flux psi at magnetic axis
+      sibdry        Poloidal flux psi at plasma boundary
+      cpasma        Plasma current [Amps]   
+
+      fpol          1D array of f(psi)=R*Bt  [meter-Tesla]
+      pres          1D array of p(psi) [Pascals]
+      qpsi          1D array of q(psi)
+      
+      psi           2D array (nx,ny) of poloidal flux
     
     fh - file handle
     
@@ -180,6 +195,26 @@ def read(fh):
     Format is specified here:
     https://fusion.gat.com/THEORY/efit/g_eqdsk.html
 
+    Returns
+    -------
+    
+    A dictionary containing:
+      nx, ny        Number of points in R (x), Z (y)
+      rdim, zdim    Sizes of the R,Z dimensions
+      rcentr        Reference value of R
+      bcentr        Vacuum toroidal magnetic field at rcentr
+      rleft         R at left (inner) boundary
+      zmid          Z at middle of domain
+      rmagx, zmagx  R,Z at magnetic axis (O-point)
+      simagx        Poloidal flux psi at magnetic axis
+      sibdry        Poloidal flux psi at plasma boundary
+      cpasma        Plasma current [Amps]   
+
+      fpol          1D array of f(psi)=R*Bt  [meter-Tesla]
+      pres          1D array of p(psi) [Pascals]
+      qpsi          1D array of q(psi)
+      
+      psi           2D array (nx,ny) of poloidal flux
     
     """
 
