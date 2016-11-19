@@ -381,7 +381,7 @@ def MAST():
              ("P5L", Coil(1.66, -0.52)),
              ("P6U", Coil(1.5, 0.9)),
              ("P6L", Coil(1.5, -0.9)),
-             ("P1", Solenoid(0.15, -1.0, 1., 100))] # +/- 1.24
+             ("P1", Solenoid(0.15, -1.4, 1.4, 100))] 
     
     return Machine(coils)
 
@@ -391,16 +391,17 @@ def MAST_sym():
     are connected to the same circuits P2 - P6
     """
     coils = [("P2", Circuit( [("P2U", Coil(0.49,  1.76), 1.0),
-                              ("P2L", Coil(0.49, -1.76),1.0)] )),
-             ("P3", Circuit( [("P3U", Coil(1.1,  1.1), 1.0),
-                              ("P3L", Coil(1.1, -1.1), 1.0)] )),
-             ("P4", Circuit( [("P4U", Coil(1.51,  1.095), 1.0),
-                              ("P4L", Coil(1.51, -1.095), 1.0)] )),
-             ("P5", Circuit( [("P5U", Coil(1.66,  0.52), 1.0),
-                              ("P5L", Coil(1.66, -0.52), 1.0)] )),
-             ("P6", Circuit( [("P6U", Coil(1.5,  0.9), 1.0),
-                              ("P6L", Coil(1.5, -0.9), 1.0)] )),
-             ("P1", Solenoid(0.15, -1., 1., 100))] # +/- 1.24
+                              ("P2L", Coil(0.49, -1.76),1.0)] ))
+             ,("P3", Circuit( [("P3U", Coil(1.1,  1.1), 1.0),
+                              ("P3L", Coil(1.1, -1.1), 1.0)] ))
+             ,("P4", Circuit( [("P4U", Coil(1.51,  1.095), 1.0),
+                              ("P4L", Coil(1.51, -1.095), 1.0)] ))
+             ,("P5", Circuit( [("P5U", Coil(1.66,  0.52), 1.0),
+                              ("P5L", Coil(1.66, -0.52), 1.0)] ))
+             ,("P6", Circuit( [("P6U", Coil(1.5,  0.9), 1.0),
+                               ("P6L", Coil(1.5, -0.9), -1.0)] ))
+             ,("P1", Solenoid(0.15, -1.45, 1.45, 100))
+         ]
     
     return Machine(coils)
 

@@ -39,7 +39,7 @@ from scipy.integrate import romb, quad # Romberg integration
 from . import critical
 from .gradshafranov import mu0
 
-from numpy import clip, zeros, reshape, sqrt
+from numpy import clip, zeros, reshape, sqrt, pi
 
 
 class Profile(object):
@@ -122,15 +122,26 @@ class Profile(object):
             
         return reshape(ovals, psinorm.shape)
     
-
-class ConstrainPaxisIp(Profile):
+class ConstrainBetapIp(Profile):
     """
-    Constrain pressure on axis and plasma current
+    Constrain poloidal Beta and plasma current
+
+    This is the constraint used in
+    YoungMu Jeon arXiv:1503.03135
+    
     """
 
-    def __init__(self, paxis, Ip, fvac, 
-                 alpha_m=1.0, alpha_n=2.0):
-
+    def __init__(self, betap, Ip, fvac, 
+                 alpha_m=1.0, alpha_n=2.0,
+                 Raxis=1.0):
+        """
+        betap - Poloidal beta
+        Ip    - Plasma current [Amps]
+        fvac  - Vacuum f = R*Bt
+        
+        Raxis - R used in p' and ff' components
+        """
+        
         # Check inputs
         if alpha_m < 0:
             raise ValueError("alpha_m must be positive")
@@ -138,16 +149,17 @@ class ConstrainPaxisIp(Profile):
             raise ValueError("alpha_n must be positive")
 
         # Set parameters for later use
-        self.paxis = paxis
+        self.betap = betap
         self.Ip = Ip
         self._fvac = fvac
         self.alpha_m = alpha_m
         self.alpha_n = alpha_n
+        self.Raxis = Raxis
 
     def Jtor(self, R, Z, psi):
         """ Calculate toroidal plasma current
         
-         Jtor = L * (Beta0*R/Rmax + (1-Beta0)*Rmax/R)*jtorshape
+         Jtor = L * (Beta0*R/Raxis + (1-Beta0)*Raxis/R)*jtorshape
         
          where jtorshape is a shape function
          L and Beta0 are parameters which are set by constraints
@@ -170,7 +182,151 @@ class ConstrainPaxisIp(Profile):
         dR = R[1,0] - R[0,0]
         dZ = Z[0,1] - Z[0,0]
         
-        Rmax = R[-1,0]
+        # Calculate normalised psi.
+        # 0 = magnetic axis
+        # 1 = plasma boundary
+        psi_norm = (psi - psi_axis)  / (psi_bndry - psi_axis)
+        
+        # Current profile shape
+        jtorshape = (1. - psi_norm**self.alpha_m)**self.alpha_n
+        
+        if mask is not None:
+            # If there is a masking function (X-points, limiters)
+            jtorshape *= mask
+            
+        # Now apply constraints to define constants
+        
+        # Need integral of jtorshape to calculate pressure
+        # Note factor to convert from normalised psi integral
+        def pshape(psinorm):
+            shapeintegral,_ =  quad(lambda x: (1. - x**self.alpha_m)**self.alpha_n, psinorm, 1.0)
+            shapeintegral *= (psi_bndry - psi_axis)
+            return shapeintegral
+        
+        # Pressure is
+        # 
+        # p(psinorm) = - (L*Beta0/Raxis) * pshape(psinorm)
+        #
+        
+        nx,ny = psi_norm.shape
+        pfunc = zeros((nx,ny))
+        for i in range(1,nx-1):
+            for j in range(1,ny-1):
+                if (psi_norm[i,j] >= 0.0) and (psi_norm[i,j] < 1.0):
+                    pfunc[i,j] = pshape(psi_norm[i,j])
+        if mask is not None:
+            pfunc *= mask
+        
+        # Integrate over plasma
+        # betap = (8pi/mu0) * int(p)dRdZ / Ip^2
+        #       = - (8pi/mu0) * (L*Beta0/Raxis) * intp / Ip^2
+        
+        intp = romb(romb(pfunc)) * dR*dZ
+        
+        LBeta0 = -self.betap * (mu0/(8.*pi)) * self.Raxis * self.Ip**2 / intp
+        
+        # Integrate current components
+        IR = romb(romb(jtorshape * R/self.Raxis)) * dR*dZ
+        I_R = romb(romb(jtorshape * self.Raxis/R)) * dR*dZ
+        
+        # Toroidal plasma current Ip is
+        #
+        # Ip = L * (Beta0 * IR + (1-Beta0)*I_R)
+        #    = L*Beta0*(IR - I_R) + L*I_R
+        #
+        
+        L = self.Ip/I_R - LBeta0*(IR/I_R - 1)
+        Beta0 = LBeta0 / L
+
+        print("Constraints: L = %e, Beta0 = %e" % (L, Beta0))
+        
+        # Toroidal current
+        Jtor = L * (Beta0*R/self.Raxis + (1-Beta0)*self.Raxis/R)*jtorshape
+        
+        self.L = L
+        self.Beta0 = Beta0
+        self.psi_bndry = psi_bndry
+        self.psi_axis = psi_axis
+
+        return Jtor
+
+    # Profile functions
+    def pprime(self, pn):
+        """
+        dp/dpsi as a function of normalised psi
+        """
+        shape = (1. - pn**self.alpha_m)**self.alpha_n
+        return self.L * self.Beta0/self.Raxis * shape
+        
+    def ffprime(self, pn):
+        """
+        f * df/dpsi as a function of normalised psi
+        """
+        shape = (1. - pn**self.alpha_m)**self.alpha_n
+        return mu0 * self.L * (1-self.Beta0)*self.Raxis * shape
+        
+        return Jtor, pprime, ffprime
+        
+    def fvac(self):
+        return self._fvac
+
+
+class ConstrainPaxisIp(Profile):
+    """
+    Constrain pressure on axis and plasma current
+    
+    """
+
+    def __init__(self, paxis, Ip, fvac, 
+                 alpha_m=1.0, alpha_n=2.0,
+                 Raxis=1.0):
+        """
+        paxis - Pressure at magnetic axis [Pa]
+        Ip    - Plasma current [Amps]
+        fvac  - Vacuum f = R*Bt
+        
+        Raxis - R used in p' and ff' components
+        """
+        
+        # Check inputs
+        if alpha_m < 0:
+            raise ValueError("alpha_m must be positive")
+        if alpha_n < 0:
+            raise ValueError("alpha_n must be positive")
+
+        # Set parameters for later use
+        self.paxis = paxis
+        self.Ip = Ip
+        self._fvac = fvac
+        self.alpha_m = alpha_m
+        self.alpha_n = alpha_n
+        self.Raxis = Raxis
+
+    def Jtor(self, R, Z, psi):
+        """ Calculate toroidal plasma current
+        
+         Jtor = L * (Beta0*R/Raxis + (1-Beta0)*Raxis/R)*jtorshape
+        
+         where jtorshape is a shape function
+         L and Beta0 are parameters which are set by constraints
+        """
+        
+        # Analyse the equilibrium, finding O- and X-points
+        opt, xpt = critical.find_critical(R, Z, psi)
+        if not opt:
+            raise ValueError("No O-points found!")
+        psi_axis = opt[0][2]
+        
+        if xpt:
+            psi_bndry = xpt[0][2]
+            mask = critical.core_mask(R, Z, psi, opt, xpt)
+        else:
+            # No X-points
+            psi_bndry = psi[0,0]
+            mask = None
+        
+        dR = R[1,0] - R[0,0]
+        dZ = Z[0,1] - Z[0,0]
         
         # Calculate normalised psi.
         # 0 = magnetic axis
@@ -193,31 +349,31 @@ class ConstrainPaxisIp(Profile):
         
         # Pressure on axis is
         # 
-        # paxis = - (L*Beta0/Rmax) * shapeintegral
+        # paxis = - (L*Beta0/Raxis) * shapeintegral
         #
-        
+
         # Integrate current components
-        IR = romb(romb(jtorshape * R/Rmax)) * dR*dZ
-        I_R = romb(romb(jtorshape * Rmax/R)) * dR*dZ
+        IR = romb(romb(jtorshape * R/self.Raxis)) * dR*dZ
+        I_R = romb(romb(jtorshape * self.Raxis/R)) * dR*dZ
         
         # Toroidal plasma current Ip is
         #
         # Ip = L * (Beta0 * IR + (1-Beta0)*I_R)
         #    = L*Beta0*(IR - I_R) + L*I_R
-        #    = -(paxis*Rmax/shapeintegral)*(IR - I_R) + L*I_R
         #
-
-        L = self.Ip/I_R + self.paxis*Rmax*(IR/I_R - 1)/shapeintegral
-        Beta0 = -self.paxis * Rmax / (L*shapeintegral)
         
+        LBeta0 = -self.paxis*self.Raxis / shapeintegral
+        
+        L = self.Ip/I_R - LBeta0*(IR/I_R - 1)
+        Beta0 = LBeta0 / L
+
         print("Constraints: L = %e, Beta0 = %e" % (L, Beta0))
         
         # Toroidal current
-        Jtor = L * (Beta0*R/Rmax + (1-Beta0)*Rmax/R)*jtorshape
+        Jtor = L * (Beta0*R/self.Raxis + (1-Beta0)*self.Raxis/R)*jtorshape
         
         self.L = L
         self.Beta0 = Beta0
-        self.Rmax = Rmax
         self.psi_bndry = psi_bndry
         self.psi_axis = psi_axis
 
@@ -229,20 +385,22 @@ class ConstrainPaxisIp(Profile):
         dp/dpsi as a function of normalised psi
         """
         shape = (1. - pn**self.alpha_m)**self.alpha_n
-        return self.L * self.Beta0/self.Rmax * shape
+        return self.L * self.Beta0/self.Raxis * shape
         
     def ffprime(self, pn):
         """
         f * df/dpsi as a function of normalised psi
         """
         shape = (1. - pn**self.alpha_m)**self.alpha_n
-        return mu0 * self.L * (1-self.Beta0)*self.Rmax * shape
+        return mu0 * self.L * (1-self.Beta0)*self.Raxis * shape
         
         return Jtor, pprime, ffprime
         
     def fvac(self):
         return self._fvac
         
+
+
 
 class ProfilesPprimeFfprime:
     """

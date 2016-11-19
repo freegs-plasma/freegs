@@ -242,7 +242,7 @@ def read(fh, machine, rtol=1e-3, ntheta=8, show=False):
             isoflux.append( (r,z, xpoint[0][0], xpoint[0][1]) )
     
     # Find best fit for coil currents
-    controlsystem = control.constrain(xpoints=xpoint, isoflux=isoflux, gamma=1e-12)
+    controlsystem = control.constrain(xpoints=xpoint, isoflux=isoflux, gamma=1e-14)
     controlsystem(eq)
     
     psi = eq.psi()

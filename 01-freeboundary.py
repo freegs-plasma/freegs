@@ -13,6 +13,7 @@ eq = freegs.Equilibrium(tokamak=tokamak,
                         Zmin=-1.0, Zmax=1.0,   # Height range
                         nx=65, ny=65)          # Number of grid points
 
+
 #########################################
 # Plasma profiles
 
@@ -29,7 +30,9 @@ profiles = freegs.jtor.ConstrainPaxisIp(1e4, # Plasma pressure on axis [Pascals]
 xpoints = [(1.1, -0.6),   # (R,Z) locations of X-points
            (1.1, 0.8)]
 
-constrain = freegs.control.constrain(xpoints=xpoints)
+isoflux = [(1.1,-0.6, 1.1,0.6)]
+
+constrain = freegs.control.constrain(xpoints=xpoints, isoflux=isoflux)
 
 #########################################
 # Nonlinear solve

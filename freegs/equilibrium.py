@@ -72,9 +72,11 @@ class Equilibrium:
         dR = (Rmax - Rmin)/(nx - 1)
         dZ = (Zmax - Zmin)/(ny - 1)
         
+        yymid = 1 - Zmax/(Zmax - Zmin)
+        
         # Starting guess for psi
         xx, yy = meshgrid(linspace(0,1,nx), linspace(0,1,ny), indexing='ij')
-        psi = exp( - ( (xx - 0.5)**2 + (yy - 0.5)**2 ) / 0.4**2 )
+        psi = exp( - ( (xx - 0.5)**2 + (yy - yymid)**2 ) / 0.4**2 )
         
         psi[0,:] = 0.0
         psi[:,0] = 0.0
@@ -98,7 +100,7 @@ class Equilibrium:
         self._solver = multigrid.createVcycle(nx, ny,
                                               generator,
                                               nlevels=1,
-                                              ncycle=2,
+                                              ncycle=1,
                                               niter=2,
                                               direct=True)
         
@@ -252,19 +254,24 @@ class Equilibrium:
      
 
 
-def gridup(eq):
+def refine(eq):
     """
     Double grid resolution, returning a new equilibrium
     
     """
-    pass
+    # Interpolate the plasma psi
+    plasma_psi = multigrid.interpolate(eq.plasma_psi)
+    nx, ny = plasma_psi.shape
+    
 
 
-def griddown(eq):
+def coarsen(eq):
     """
     Reduce grid resolution, returning a new equilibrium
     """
-    pass
+    plasma_psi = multigrid.interpolate(eq.plasma_psi)
+    nx, ny = plasma_psi.shape
+    
     
 
 if __name__=="__main__":

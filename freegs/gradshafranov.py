@@ -25,7 +25,7 @@ from numpy import zeros
 # Elliptic integrals of first and second kind (K and E)
 from scipy.special import ellipk, ellipe
 
-from numpy import sqrt, pi
+from numpy import sqrt, pi, clip
 
 from scipy.sparse import lil_matrix, eye
 
@@ -147,9 +147,13 @@ def Greens(Rc, Zc, R, Z):
 
     # Calculate k^2
     k2 = 4.*R * Rc / ( (R + Rc)**2 + (Z - Zc)**2 )
+
+    # Clip to between 0 and 1 to avoid nans e.g. when coil is on grid point
+    k2 = clip(k2, 1e-10, 1.0 - 1e-10)
     k = sqrt(k2)
-    
-    return (mu0/(2.*pi)) * sqrt(R*Rc) * ( (2. - k2)*ellipk(k) - 2.*ellipe(k) ) / k
+
+    # Note definition of ellipk, ellipe in scipy is K(k^2), E(k^2)
+    return (mu0/(2.*pi)) * sqrt(R*Rc) * ( (2. - k2)*ellipk(k2) - 2.*ellipe(k2) ) / k
 
 def GreensBz(Rc, Zc, R, Z, eps=1e-3):
     """
