@@ -22,8 +22,7 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 from numpy import amin, amax
 
 def solve(eq, profiles, constrain=None, rtol=1e-3, blend=0.0,
-          show=False, axis=None, pause=0.0001, 
-          niter=2, sublevels=4, ncycle=2):
+          show=False, axis=None, pause=0.0001):
     """
     Perform Picard iteration to find solution to the Grad-Shafranov equation
     
@@ -38,11 +37,6 @@ def solve(eq, profiles, constrain=None, rtol=1e-3, blend=0.0,
     axis     - Specify a figure to plot onto. Default (None) creates a new figure
     pause    - Delay between output plots. If negative, waits for window to be closed
     
-    The linear solve is controlled by the following parameters:
-    
-    niter     - Number of Jacobi iterations per level
-    sublevels - Number of levels in the multigrid
-    ncycle    - Number of V-cycles
     """
     
     if constrain is not None:
@@ -87,7 +81,7 @@ def solve(eq, profiles, constrain=None, rtol=1e-3, blend=0.0,
         psi_last = psi.copy()
         
         # Solve equilbrium
-        eq.solve(profiles, niter=niter, sublevels=sublevels, ncycle=ncycle)
+        eq.solve(profiles)
         
         # Get the new psi, including coils
         psi = eq.psi()

@@ -1,3 +1,7 @@
+#
+# Performs the same calculation with two different boundary locations
+# and compares the result
+
 
 import freegs
 

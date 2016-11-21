@@ -26,7 +26,7 @@ constrain = freegs.control.constrain(xpoints=xpoints, isoflux=isoflux, gamma=0.0
 # Constrain poloidal beta and plasma current
 profiles = freegs.jtor.ConstrainBetapIp(0.1, 1e6, 1.0)
 
-resolutions = [33, 65, 129]#, 257, 513, 1025]
+resolutions = [33, 65, 129, 257, 513]#, 1025]
 
 boundaries = [("A", 0.1, 2.0, -1.0, 1.0)
               ,("B", 0.5, 1.75, -0.8, 1.1)

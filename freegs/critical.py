@@ -24,7 +24,7 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 from scipy import interpolate
 from numpy import zeros
 from numpy.linalg import inv
-from numpy import dot, linspace, argmax, argmin, abs
+from numpy import dot, linspace, argmax, argmin, abs, clip, sin, cos, pi
 
 def find_critical(R, Z, psi,discard_xpoints=False):
     """
@@ -224,7 +224,20 @@ def core_mask(R, Z, psi, opoint, xpoint):
     """
     Mark the parts of the domain which are in the core
     
+    Inputs
+    ------
+
+    R[nx,ny] - 2D array of major radius (R) values
+    Z[nx,ny] - 2D array of height (Z) values
+    psi[nx,ny] - 2D array of poloidal flux
+
+    opoint, xpoint  - Values returned by find_critical
     
+    Returns
+    -------
+    
+    A 2D array [nx,ny] which is 1 inside the core, 0 outside
+
     """
     
     mask = zeros(psi.shape)
@@ -291,3 +304,70 @@ def core_mask(R, Z, psi, opoint, xpoint):
                     mask[i,j] = 0
                  
     return mask
+
+
+def find_psisurface(eq, psifunc, r0,z0, r1,z1, psival=1.0, n=100, axis=None):
+    """
+    eq      - Equilibrium object
+    (r0,z0) - Start location inside separatrix
+    (r1,z1) - Location outside separatrix
+
+    n - Number of starting points to use
+    """
+    # Clip (r1,z1) to be inside domain
+    # Shorten the line so that the direction is unchanged
+    if abs(r1 - r0) > 1e-6:
+        rclip = clip(r1, eq.Rmin, eq.Rmax)
+        z1 = z0 + (z1 - z0) * abs( (rclip - r0) / (r1 - r0) )
+        r1 = rclip
+    
+    if abs(z1 - z0) > 1e-6:
+        zclip = clip(z1, eq.Zmin, eq.Zmax)
+        r1 = r0 + (r1 - r0) * abs( (zclip - z0) / (z1 - z0) )
+        z1 = zclip
+        
+    r = linspace(r0, r1, n)
+    z = linspace(z0, z1, n)
+        
+    if axis is not None:
+        axis.plot(r,z)
+        
+    pnorm = psifunc(r, z, grid=False)
+    ind = argmax(pnorm > psival)
+
+    f = (pnorm[ind] - 1.0)/(pnorm[ind] - pnorm[ind-1])
+        
+    r = (1. - f) * r[ind] + f * r[ind-1]
+    z = (1. - f) * z[ind] + f * z[ind-1]
+    
+    if axis is not None:
+        axis.plot(r,z,'bo')
+    
+    return r,z
+
+def find_separatrix(eq, opoint=None, xpoint=None, ntheta=20, psi=None, axis=None):
+    """
+    
+    """
+    if psi is None:
+        psi = eq.psi()
+        
+    if (opoint is None) or (xpoint is None):
+        opoint, xpoint = find_critical(eq.R, eq.Z, psi)
+    
+    psinorm = (psi - opoint[0][2])/(xpoint[0][2] - opoint[0][2])
+    
+    psifunc = interpolate.RectBivariateSpline(eq.R[:,0], eq.Z[0,:], psinorm)
+
+    isoflux = []
+    
+    for theta in linspace(0, 2*pi, ntheta, endpoint=False):
+        r0, z0 = opoint[0][0:2]
+        r,z = find_psisurface(eq, psifunc, 
+                              r0, z0, 
+                              r0 + 10.*sin(theta), z0 + 10.*cos(theta),
+                              psival=1.0,
+                              axis=axis)
+        isoflux.append( (r,z, xpoint[0][0], xpoint[0][1]) )
+    
+    return isoflux

@@ -31,8 +31,8 @@ xpoints = [(0.7, -1.1),   # (R,Z) locations of X-points
 
 isoflux = [(0.7,-1.1, 1.45, 0.0)   # Outboard midplane, lower X-point
            ,(0.7,1.1, 1.45, 0.0)   # Outboard midplane, upper X-point
-           ,(0.7,-1.1, 1.5,-1.9)  # Lower X-point, lower outer leg
-           ,(0.7,1.1,  1.5, 1.9)  # Upper X-point, upper outer leg
+#           ,(0.7,-1.1, 1.5,-1.9)  # Lower X-point, lower outer leg
+#           ,(0.7,1.1,  1.5, 1.9)  # Upper X-point, upper outer leg
            ]
 
 constrain = freegs.control.constrain(xpoints=xpoints, gamma=1e-12, isoflux=isoflux)
@@ -45,14 +45,7 @@ constrain(eq)
 freegs.solve(eq,          # The equilibrium to adjust
              profiles,    # The plasma profiles
              constrain,   # Plasma control constraints
-             show=True,   # Shows results at each nonlinear iteration
-             niter=5, sublevels=5, ncycle=3) # Linear solver settings
-
-# Refine using more iterations
-#picard.solve(eq,           # The equilibrium to adjust
-#             jtor_func,    # The toroidal current profile function
-#             constrain, show=False,
-#             niter=40, sublevels=5, ncycle=50)
+             show=True)   # Shows results at each nonlinear iteration
 
 # eq now contains the solution
 

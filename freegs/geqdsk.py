@@ -42,6 +42,7 @@ def write(eq, fh, label=None, oxpoints=None, fileformat=_geqdsk.write):
     
     label - Text label to put in the file
     oxpoints - O- and X-points  (opoint, xpoint) returned by critical.find_critical
+          If not given, it will be calculated using critical.find_critical
     """
     # Get poloidal flux
     psi = eq.psi()
@@ -100,13 +101,32 @@ def write(eq, fh, label=None, oxpoints=None, fileformat=_geqdsk.write):
 
 import matplotlib.pyplot as plt
 
-def read(fh, machine, rtol=1e-3, ntheta=8, show=False):
+def read(fh, machine, rtol=1e-3, ntheta=8, show=False, axis=None):
     """
     Reads a G-EQDSK format file
     
-    fh - file handle
+    fh      - file handle
     machine - a Machine object defining coil locations
+    rtol    - Relative error in nonlinear solve
+    ntheta  - Number of points in poloidal angle on the separatrix
+              this is used to constrain the plasma shape
+    show    - Set to true to show solution in a new figure
+    axis    - Set to an axis for plotting. Implies show=True
+    
+    A nonlinear solve will be performed, using Picard iteration
+    
+    Returns
+    -------
+
+    An Equilibrium object eq. In addition, the following is available:
+
+    eq.control   - The control system
+    eq._profiles - The profiles object
+    
     """
+
+    if axis is not None:
+        show = True
 
     # Read the data as a Dictionary
     data = _geqdsk.read(fh)
@@ -167,20 +187,22 @@ def read(fh, machine, rtol=1e-3, ntheta=8, show=False):
     coil_psi = machine.psi(eq.R, eq.Z)
     eq._updatePlasmaPsi(data["psi"] - coil_psi)
     
-    eq.solve(profiles, niter=10, sublevels=5, ncycle=5)
+    # Perform a linear solve, calculating plasma psi
+    eq.solve(profiles)
 
     print("Plasma current: {0} Amps, input: {1} Amps".format(eq.plasmaCurrent(), data["cpasma"]))
     
-    # Identify points to constrain: X-points, O-points
+    # Identify points to constrain: X-points, O-points and separatrix shape
 
     psi_in = interpolate.RectBivariateSpline(eq.R[:,0], eq.Z[0,:], data["psi"])
     
+    # Find all the O- and X-points
     opoint, xpoint = critical.find_critical(eq.R, eq.Z, data["psi"])
     
-    axis = None
     if show:
-        fig = plt.figure()
-        axis = fig.add_subplot(111)
+        if axis is None:
+            fig = plt.figure()
+            axis = fig.add_subplot(111)
         axis.set_aspect('equal')
         axis.set_xlabel("Major radius [m]")
         axis.set_ylabel("Height [m]")
@@ -193,64 +215,19 @@ def read(fh, machine, rtol=1e-3, ntheta=8, show=False):
             axis.plot(r,z,'ro')
 
         sep_contour=axis.contour(eq.R, eq.Z, data["psi"], levels=[xpoint[0][2]], colors='r')
+        
+    # Find the separatrix
+    isoflux = critical.find_separatrix(eq, opoint, xpoint, ntheta=ntheta, psi=data["psi"], axis=axis)
 
-    isoflux = []
-    
-    def find_separatrix(r0,z0, r1,z1, n=100):
-        """
-        (r0,z0) - Start location inside separatrix
-        (r1,z1) - Location outside separatrix
-        
-        n - Number of starting points to use
-        """
-        # Clip (r1,z1) to be inside domain
-        # Shorten the line so that the direction is unchanged
-        if abs(r1 - r0) > 1e-6:
-            rclip = clip(r1, eq.Rmin, eq.Rmax)
-            z1 = z0 + (z1 - z0) * abs( (rclip - r0) / (r1 - r0) )
-            r1 = rclip
-        
-        if abs(z1 - z0) > 1e-6:
-            zclip = clip(z1, eq.Zmin, eq.Zmax)
-            r1 = r0 + (r1 - r0) * abs( (zclip - z0) / (z1 - z0) )
-            z1 = zclip
-
-        r = linspace(r0, r1, n)
-        z = linspace(z0, z1, n)
-        
-        if show:
-            axis.plot(r,z)
-        
-        pnorm = (psi_in(r, z, grid=False) - opoint[0][2])/(xpoint[0][2] - opoint[0][2])
-        ind = argmax(pnorm>1.0)
-
-        f = (pnorm[ind] - 1.0)/(pnorm[ind] - pnorm[ind-1])
-        
-        r = (1. - f) * r[ind] + f * r[ind-1]
-        z = (1. - f) * z[ind] + f * z[ind-1]
-        
-        if show:
-            axis.plot(r,z,'bo')
-        
-        return r,z
-
-    # Find points on the separatrix to constrain plasma shape
-    if ntheta > 0:
-        for theta in linspace(0, 2*pi, ntheta, endpoint=False):
-            r0, z0 = opoint[0][0:2]
-            r,z = find_separatrix(r0, z0, r0 + 10.*sin(theta), z0 + 10.*cos(theta))
-            isoflux.append( (r,z, xpoint[0][0], xpoint[0][1]) )
-    
     # Find best fit for coil currents
     controlsystem = control.constrain(xpoints=xpoint, isoflux=isoflux, gamma=1e-14)
     controlsystem(eq)
     
-    psi = eq.psi()
-    
     if show:
-        axis.contour(eq.R,eq.Z, psi, levels=levels, colors='r')
+        axis.contour(eq.R,eq.Z, eq.psi(), levels=levels, colors='r')
         plt.pause(1)
-        
+    
+    # Print the coil currents
     machine.printCurrents()
 
     ####################################################################
@@ -261,10 +238,13 @@ def read(fh, machine, rtol=1e-3, ntheta=8, show=False):
     picard.solve(eq,          # The equilibrium to adjust
                  profiles,    # The toroidal current profile function
                  controlsystem, show=show, axis=axis,
-                 niter=20, sublevels=5, ncycle=20, rtol=rtol)
+                 rtol=rtol)
     
     print("Plasma current: {0} Amps, input: {1} Amps".format(eq.plasmaCurrent(), data["cpasma"]))
     print("Plasma pressure on axis: {0} Pascals".format(eq.pressure(0.0)))
     machine.printCurrents()
 
+    # Save the control system to eq
+    eq.control = controlsystem
+    
     return eq

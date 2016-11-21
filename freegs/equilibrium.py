@@ -104,7 +104,38 @@ class Equilibrium:
                                               niter=2,
                                               direct=True)
         
+    def setSolverVcycle(nlevels=1, ncycle=1, niter=1, direct=True):
+        """
+        Creates a new linear solver, based on the multigrid code
+    
+        nlevels  - Number of resolution levels, including original
+        ncycle   - The number of V cycles
+        niter    - Number of linear solver (Jacobi) iterations per level
+        direct   - Use a direct solver at the coarsest level?
         
+        """
+        generator = GSsparse(Rmin, Rmax, Zmin, Zmax)
+        nx,ny = self.R.shape
+        
+        self._solver = multigrid.createVcycle(nx, ny,
+                                              generator,
+                                              nlevels=nlevels,
+                                              ncycle=ncycle,
+                                              niter=niter,
+                                              direct=direct)
+        
+    def setSolver(solver):
+        """
+        Sets the linear solver to use. The given object/function must have a __call__ method
+        which takes two inputs
+
+        solver(x, b)
+        
+        where x is the initial guess. This should solve Ax = b, returning the result.
+
+        """
+        self._solver = solver
+                        
     def getMachine(self):
         """
         Returns the handle of the machine, including coils
@@ -189,9 +220,10 @@ class Equilibrium:
         return self._profiles.pressure(psinorm)
 
 
-    def solve(self, profiles, niter=2, sublevels=4, ncycle=2):
+    def solve(self, profiles):
         """
-        Calculate the plasma equilibrium
+        Calculate the plasma equilibrium given new profiles
+        This performs the linear Grad-Shafranov solve
         
         profiles  - An object describing the plasma profiles.
                     At minimum this must have methods:
@@ -200,10 +232,6 @@ class Equilibrium:
              .ffprime(psinorm)
              .pressure(psinorm)
              .fpol(psinorm)
-
-        niter  - Number of Jacobi iterations per level
-        sublevels - Number of levels in the multigrid
-        ncycle    - Number of V-cycles
         """
         
         self._profiles = profiles
@@ -232,17 +260,7 @@ class Equilibrium:
         dR = self.R[1,0] - self.R[0,0]
         dZ = self.Z[0,1] - self.Z[0,0]
         self._current = romb(romb(Jtor)) * dR*dZ
-
-    def toDict(self):
-        """
-        Convert to a dictionary, in a format which can be written to file
         
-        """
-        {"rmin":self.Rmin, "rmax":self.Rmax, 
-         "zmin":self.Zmin, "zmax":self.Zmax,
-         "psi":self.psi(),
-         "plasma_psi":self.plasma_psi()}
-         
     def _updatePlasmaPsi(self, plasma_psi):
         """
         Sets the plasma psi data, updates spline interpolation coefficients

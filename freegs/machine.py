@@ -89,6 +89,7 @@ class Circuit:
         """
         coils - A list [ (label, Coil, multiplier) ]
         """
+        
         self.coils = coils
         self.current = current
         self.control = control
@@ -236,7 +237,7 @@ class Machine:
     Represents the machine (Tokamak), including
     coils and power supply circuits
     
-    coils[{R,Z,label,current}] - List of coils
+    coils[(label, Coil|Circuit|Solenoid] - List of coils
     
     """
 
@@ -244,6 +245,8 @@ class Machine:
         """
         coils - A list of coils [(label, Coil|Circuit|Solenoid)]
         """
+        
+        
         self.coils = coils
     
     def psi(self, R, Z):
@@ -380,8 +383,9 @@ def MAST():
              ("P5U", Coil(1.66, 0.52)),
              ("P5L", Coil(1.66, -0.52)),
              ("P6U", Coil(1.5, 0.9)),
-             ("P6L", Coil(1.5, -0.9)),
-             ("P1", Solenoid(0.15, -1.4, 1.4, 100))] 
+             ("P6L", Coil(1.5, -0.9))
+             ,("P1", Solenoid(0.15, -1.4, 1.4, 100))
+             ] 
     
     return Machine(coils)
 
