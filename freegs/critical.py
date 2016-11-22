@@ -24,7 +24,7 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 from scipy import interpolate
 from numpy import zeros
 from numpy.linalg import inv
-from numpy import dot, linspace, argmax, argmin, abs, clip, sin, cos, pi
+from numpy import dot, linspace, argmax, argmin, abs, clip, sin, cos, pi, amax
 
 def find_critical(R, Z, psi,discard_xpoints=False):
     """
@@ -170,7 +170,7 @@ def find_critical(R, Z, psi,discard_xpoints=False):
             if not dup:
                 result.append(p) # Add to the list
         return result
-
+    
     xpoint = remove_dup(xpoint)
     opoint = remove_dup(opoint)
     
@@ -192,7 +192,7 @@ def find_critical(R, Z, psi,discard_xpoints=False):
         xpt_keep = []
         for xpt in xpoint:
             Rx, Zx, Px = xpt
-        
+            
             rline = linspace(Ro, Rx, num=50)
             zline = linspace(Zo, Zx, num=50)
         
@@ -200,12 +200,20 @@ def find_critical(R, Z, psi,discard_xpoints=False):
 
             if Px < Po:
                 pline *= -1.0 # Reverse, so pline is maximum at X-point
-        
+                
             # Now check that pline is monotonic
-            ind = argmax(pline)  # Should be at X-point
-            if (rline[ind] - Rx)**2 + (zline[ind] - Zx)**2 > 1e-4:
-                # Too far, discard
+            # Tried finding maximum (argmax) and testing
+            # how far that is from the X-point. This can go
+            # wrong because psi can be quite flat near the X-point
+            # Instead here look for the difference in psi
+            # rather than the distance in space
+            
+            maxp = amax(pline)
+            if (maxp - pline[-1])/(maxp - pline[0]) > 0.05:
+                # More than 5% drop in psi from maximum to X-point
+                # -> Discard
                 continue
+            
             ind = argmin(pline)  # Should be at O-point
             if (rline[ind] - Ro)**2 + (zline[ind] - Zo)**2 > 1e-4:
                 # Too far, discard

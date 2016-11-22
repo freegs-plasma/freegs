@@ -281,16 +281,46 @@ def refine(eq):
     plasma_psi = multigrid.interpolate(eq.plasma_psi)
     nx, ny = plasma_psi.shape
     
+    result = Equilibrium(tokamak=eq.tokamak,
+                         Rmin = eq.Rmin,
+                         Rmax = eq.Rmax,
+                         Zmin = eq.Zmin,
+                         Zmax = eq.Zmax,
+                         nx=nx, ny=ny)
 
+    result._updatePlasmaPsi(plasma_psi)
+    
+    if hasattr(eq, "_profiles"):
+        result._profiles = eq._profiles
+
+    if hasattr(eq, "control"):
+        result.control = eq.control
+
+    return result
 
 def coarsen(eq):
     """
     Reduce grid resolution, returning a new equilibrium
     """
-    plasma_psi = multigrid.interpolate(eq.plasma_psi)
+    plasma_psi = multigrid.restrict(eq.plasma_psi)
     nx, ny = plasma_psi.shape
     
+    result = Equilibrium(tokamak=eq.tokamak,
+                         Rmin = eq.Rmin,
+                         Rmax = eq.Rmax,
+                         Zmin = eq.Zmin,
+                         Zmax = eq.Zmax,
+                         nx=nx, ny=ny)
+
+    result._updatePlasmaPsi(plasma_psi)
     
+    if hasattr(eq, "_profiles"):
+        result._profiles = eq._profiles
+
+    if hasattr(eq, "control"):
+        result.control = eq.control
+
+    return result
 
 if __name__=="__main__":
     
