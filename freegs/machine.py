@@ -47,6 +47,20 @@ class Coil:
         """
         return self.controlPsi(R,Z) * self.current
 
+    def createPsiGreens(self, R, Z):
+        """
+        Calculate the Greens function at every point, and return
+        array. This will be passed back to evaluate Psi in
+        calcPsiFromGreens()
+        """
+        return self.controlPsi(R,Z)
+
+    def calcPsiFromGreens(self, pgreen):
+        """
+        Calculate plasma psi from Greens functions and current
+        """
+        return self.current * pgreen
+
     def Br(self, R, Z):
         """
         Calculate radial magnetic field Br at (R,Z)
@@ -104,6 +118,26 @@ class Circuit:
             psival += coil.psi(R,Z)
         return psival
 
+    def createPsiGreens(self, R, Z):
+        """
+        Calculate Greens functions
+        """
+        pgreen = {}
+        for label, coil, multiplier in self.coils:
+            pgreen[label] = coil.createPsiGreens(R, Z)
+        return pgreen
+
+    def calcPsiFromGreens(self, pgreen):
+        """
+        Calculate psi from Greens functions
+        
+        """
+        psival = 0.0
+        for label, coil, multiplier in self.coils:
+            coil.current = self.current * multiplier
+            psival += coil.calcPsiFromGreens(pgreen[label])
+        return psival
+        
     def Br(self, R, Z):
         """
         Calculate radial magnetic field Br at (R,Z)
@@ -186,6 +220,18 @@ class Solenoid:
         """
         return self.controlPsi(R,Z) * self.current
 
+    def createPsiGreens(self, R, Z):
+        """
+        Calculate Greens functions
+        """
+        return self.controlPsi(R,Z)
+
+    def calcPsiFromGreens(self, pgreen):
+        """
+        Calculate psi from Greens functions
+        """
+        return self.current * pgreen
+
     def Br(self, R, Z):
         """
         Calculate radial magnetic field Br at (R,Z)
@@ -246,7 +292,6 @@ class Machine:
         coils - A list of coils [(label, Coil|Circuit|Solenoid)]
         """
         
-        
         self.coils = coils
     
     def psi(self, R, Z):
@@ -257,6 +302,27 @@ class Machine:
         for label, coil in self.coils:
             psi_coils += coil.psi(R, Z)
         
+        return psi_coils
+
+    def createPsiGreens(self, R, Z):
+        """
+        An optimisation, which pre-computes the Greens functions
+        and puts into arrays for each coil. This map can then be
+        called at a later time, and quickly return the field
+        """
+        pgreen = {}
+        for label, coil in self.coils:
+            pgreen[label] = coil.createPsiGreens(R, Z)
+        return pgreen
+        
+    def calcPsiFromGreens(self, pgreen):
+        """
+        Uses the object returned by createPsiGreens to quickly
+        compute the plasma psi
+        """
+        psi_coils = 0.0
+        for label, coil in self.coils:
+            psi_coils += coil.calcPsiFromGreens(pgreen[label])
         return psi_coils
 
     def Br(self, R, Z):

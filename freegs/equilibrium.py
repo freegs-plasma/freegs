@@ -93,6 +93,10 @@ class Equilibrium:
             
         self._updatePlasmaPsi(psi)
         
+        # Calculate coil Greens functions. This is an optimisation,
+        # used in self.psi() to speed up calculations
+        self._pgreen = tokamak.createPsiGreens(self.R, self.Z)
+
         self._current = 0.0 # Plasma current
 
         # Create the solver
@@ -175,7 +179,8 @@ class Equilibrium:
         return self.plasmaBz(R,Z) + self.tokamak.Bz(R,Z)
     
     def psi(self):
-        return self.plasma_psi + self.tokamak.psi(self.R, self.Z)
+        #return self.plasma_psi + self.tokamak.psi(self.R, self.Z)
+        return self.plasma_psi + self.tokamak.calcPsiFromGreens(self._pgreen)
         
     def psiRZ(self, R, Z):
         """
