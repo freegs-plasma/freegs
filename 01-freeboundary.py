@@ -11,7 +11,8 @@ tokamak = freegs.machine.TestTokamak()
 eq = freegs.Equilibrium(tokamak=tokamak,
                         Rmin=0.1, Rmax=2.0,    # Radial domain
                         Zmin=-1.0, Zmax=1.0,   # Height range
-                        nx=65, ny=65)          # Number of grid points
+                        nx=65, ny=65,          # Number of grid points
+                        boundary=freegs.boundary.freeBoundaryHagenow)  # Boundary condition
 
 
 #########################################

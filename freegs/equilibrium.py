@@ -139,6 +139,21 @@ class Equilibrium:
 
         """
         self._solver = solver
+
+    def callSolver(self, psi, rhs):
+        """
+        Calls the psi solver, passing the initial guess and RHS arrays
+        
+        psi   Initial guess for the solution (used if iterative)
+        rhs   
+        
+        Returns
+        -------
+        
+        Solution psi
+
+        """
+        return self._solver(psi, rhs)
                         
     def getMachine(self):
         """
@@ -228,6 +243,8 @@ class Equilibrium:
     def solve(self, profiles):
         """
         Calculate the plasma equilibrium given new profiles
+        replacing the current equilibrium.
+        
         This performs the linear Grad-Shafranov solve
         
         profiles  - An object describing the plasma profiles.
@@ -245,7 +262,9 @@ class Equilibrium:
         Jtor = profiles.Jtor(self.R, self.Z, self.psi())
         
         # Set plasma boundary
-        self._applyBoundary(self.R, self.Z, Jtor, self.plasma_psi)
+        # Note that the Equilibrium is passed to the boundary function
+        # since the boundary may need to run the G-S solver (von Hagenow's method)
+        self._applyBoundary(self, Jtor, self.plasma_psi)
         
         # Right hand side of G-S equation
         rhs = -mu0 * self.R * Jtor
