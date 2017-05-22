@@ -10,6 +10,9 @@ Welcome to FreeGS's documentation!
    :maxdepth: 2
    :caption: Contents:
 
+   creating_equilibria
+
+             
 .. automodule:: freegs
              
 #.. automodule:: freegs.equilibrium
