@@ -120,7 +120,9 @@ class constrain(object):
 def flux_surface(R0, Z0, a, elongation=0.0, triangularity=0.0, indentation=0.0, n=20):
     """
     Generate a set of up-down symmetric isoflux points for a flux
-    surface of given shape
+    surface of given shape. Uses the parametrisation given in
+      
+    J. Manickam, Nucl. Fusion 24 595 (1984)
     
     R0 - Major radius of axis
     Z0 - Height of axis

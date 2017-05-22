@@ -54,7 +54,7 @@ print("Done!")
 print("Plasma current: %e Amps" % (eq.plasmaCurrent()))
 print("Pressure on axis: %e Pascals" % (eq.pressure(0.0)))
 
-tokamak.printCurrents()
+eq.tokamak.printCurrents()
 
 ##############################################
 # Save to geqdsk file

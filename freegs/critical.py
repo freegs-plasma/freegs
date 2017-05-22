@@ -339,14 +339,20 @@ def find_psisurface(eq, psifunc, r0,z0, r1,z1, psival=1.0, n=100, axis=None):
         
     if axis is not None:
         axis.plot(r,z)
-        
-    pnorm = psifunc(r, z, grid=False)
-    ind = argmax(pnorm > psival)
 
-    f = (pnorm[ind] - 1.0)/(pnorm[ind] - pnorm[ind-1])
+    pnorm = psifunc(r, z, grid=False)
+
+    if hasattr(psival, "__len__"):
+        pass
         
-    r = (1. - f) * r[ind] + f * r[ind-1]
-    z = (1. - f) * z[ind] + f * z[ind-1]
+    else:
+        # Only one value
+        ind = argmax(pnorm > psival)
+
+        f = (pnorm[ind] - 1.0)/(pnorm[ind] - pnorm[ind-1])
+        
+        r = (1. - f) * r[ind] + f * r[ind-1]
+        z = (1. - f) * z[ind] + f * z[ind-1]
     
     if axis is not None:
         axis.plot(r,z,'bo')

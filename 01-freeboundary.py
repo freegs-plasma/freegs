@@ -30,7 +30,7 @@ profiles = freegs.jtor.ConstrainPaxisIp(1e4, # Plasma pressure on axis [Pascals]
 xpoints = [(1.1, -0.6),   # (R,Z) locations of X-points
            (1.1, 0.8)]
 
-isoflux = [(1.1,-0.6, 1.1,0.6)]
+isoflux = [(1.1,-0.6, 1.1,0.6)] # (R1,Z1, R2,Z2) pair of locations
 
 constrain = freegs.control.constrain(xpoints=xpoints, isoflux=isoflux)
 
