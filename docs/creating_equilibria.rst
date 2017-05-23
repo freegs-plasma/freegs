@@ -109,7 +109,7 @@ Solenoids are represented in FreeGS by a set of poiloidal coils:
    solenoid = Solenoid(0.15, -1.4, 1.4, 100)
 
 which defines the radius of the solenoid in meters (0.15m here), the lower and upper limits in Z (vertical position,
-here :math:`\pm 1.4` m), and the number of poloidal coils to be used. These poloidal coils will be equally spaced between
+here :math:`\pm` 1.4 m), and the number of poloidal coils to be used. These poloidal coils will be equally spaced between
 the lower and upper Z limits.
 
 As with ``Coil`` and ``Circuit``, solenoids can be removed from feedback control
@@ -147,7 +147,7 @@ Equilibrium and plasma domain
 -----------------------------
 
 Having created a tokamak, an ``Equilibrium`` object can be created. This represents the
-plasma solution.
+plasma solution, and contains the tokamak with the coil currents.
 
 ::
    
@@ -158,10 +158,124 @@ plasma solution.
 
 In addition to the tokamak ``Machine`` object, this must be given the range of major radius
 R and height Z (in meters), along with the radial (x) and vertical (y) resolution.
-This resolution must be greater than 3, and is typically a power of 2 + 1 (:math:`2^n+1`), but
+This resolution must be greater than 3, and is typically a power of 2 + 1 (:math:`2^n+1`) for efficiency, but
 does not need to be. 
 
                         
 Plasma profiles
 ---------------
 
+The plasma profiles, such as pressure or safety factor, are used to determine the toroidal current :math:`J_\phi`:
+
+.. math::
+
+   J_\phi\left(R,Z\right) = R\frac{\partial p\left(\psi\right)}{\partial \psi} + \frac{f\left(\psi\right)}{R\mu_0}\frac{\partial f\left(\psi\right)}{\partial \psi}
+
+where the flux function :math:`p\left(\psi\right)` is the plasma pressure (in Pascals), and :math:`f\left(\psi\right) = RB_\phi` is the poloidal current function.
+Classes and functions to handle these profiles are in ``freegs.jtor``
+
+
+Constrain pressure and current
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+One of the most intuitive methods is to fix the shape
+of the plasma profiles, and adjust them to fix the
+pressure on the magnetic axis and total plasma current.
+To do this, create a ``ConstrainPaxisIp`` profile object:
+
+::
+   
+   profiles = freegs.jtor.ConstrainPaxisIp(1e4, # Pressure on axis [Pa]
+                                           1e6, # Plasma current [Amps]
+                                           1.0) # Vacuum f=R*Bt
+
+
+This sets the toroidal current to:
+
+.. math::
+
+   J_\phi = L \left[\beta_0 R + \left(1-\beta_0\right)/R\right] \left(1-\psi_n^{\alpha_m}\right)^{\alpha_n}
+
+where :math:`\psi_n` is the normalised poloidal flux, 0 on the magnetic axis and 1 on the plasma boundary/separatrix.
+The constants which determine the profile shapes are :math:`\alpha_m = 1` and  :math:`\alpha_n = 2`. These can be changed by specifying in the initialisation of ``ConstrainPaxisIp``.
+
+The values of :math:`L` and :math:`\beta_0` are determined from the constraints: The pressure on axis is given by integrating the pressure gradient flux function 
+
+.. math::
+   
+   p_{axis} = - L \beta_0 R \int_{axis}^{boundary}\left(1-\psi_n^{\alpha_m}\right)^{\alpha_n} d\psi
+
+The total toroidal plasma current is calculated by integrating the toroidal current function over the 2D domain:
+
+.. math::
+   
+   I_p = L\beta_0 \iint R \left(1-\psi_n^{\alpha_m}\right)^{\alpha_n} dR dZ + L\left(1-\beta_0\right)\iint \frac{1}{R} \left(1-\psi_n^{\alpha_m}\right)^{\alpha_n} dR dZ
+   
+
+The integrals in these two constraints are done numerically,
+and then rearranged to get :math:`L` and :math:`\beta_0`. 
+   
+Constrain poloidal beta and current
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This is a variation which replaces the constraint on pressure with a constraint on poloidal beta:
+
+.. math::
+
+   \beta_p = \frac{8\pi}{\mu_0} \frac{1}{I_p^2}\iint p\left(\psi\right) dRdZ 
+
+This is the method used in `Y.M.Jeon 2015 <https://arxiv.org/abs/1503.03135>`_, on which the profile choices here are based.
+
+::
+   
+   profiles = freegs.jtor.ConstrainBetapIp(0.5, # Poloidal beta
+                                           1e6, # Plasma current [Amps]
+                                           1.0) # Vacuum f=R*Bt
+   
+By integrating over the plasma domain and combining the constraints on poloidal beta and plasma current, the values of :math:`L` and :math:`\beta_0` are found.
+
+Feedback and shape control
+--------------------------
+
+To determine the currents in the coils, the shape and position of the plasma needs to be constrained. In addition, diverted tokamak plasmas are inherently vertically unstable, and need vertical position feedback to maintain a stationary equilibrium.
+If vertical position is not constrained, then free boundary equilibrium solvers can also become vertically unstable. A typical symptom is that each nonlinear iteration of the solver results in a slightly shifted or smaller plasma, until the plasma hits the boundary, disappears, or forms unphysical shapes causing the solver to fail.
+
+Currently the following kinds of constraints are implemented:
+
+* X-point constraints adjust the coil currents so that X-points (nulls in the poloidal field) are formed at the locations requested. 
+
+* Isoflux constraints adjust the coil currents so that the two locations specified have the same poloidal flux. This usually means they are on the same flux surface, but not necessarily.
+
+* Psi value constraints, which adjust the coil currents so that given locations have the specified flux. 
+    
+As an example, the following code creates a feedback control with two X-point constraints and one isoflux constraint:
+
+::
+
+   xpoints = [(1.1, -0.6),   # (R,Z) locations of X-points
+              (1.1, 0.8)]
+
+   isoflux = [(1.1,-0.6, 1.1,0.6)] # (R1,Z1, R2,Z2) pairs 
+
+   constrain = freegs.control.constrain(xpoints=xpoints, isoflux=isoflux)
+
+The control system determines the currents in the coils which are under feedback control, using the given constraints.
+There may be more unknown coil currents than constraints, or more constraints than coil currents. There may therefore be either no solution or many solutions to the constraint problem.
+Here Tikhonov regularisation is used to produce a unique solution and penalise large coil currents. 
+
+Solving
+-------
+
+To solve the Grad-Shafranov equation to find the free boundary solution, call ``freegs.solve``:
+
+::
+   
+   freegs.solve(eq,          # The equilibrium to adjust
+                profiles,    # The toroidal current profile 
+                constrain)   # Feedback control
+
+
+This call modifies the input equilibrium (eq), finding a solution
+based on the given plasma profiles and shape control.
+
+The Grad-Shafranov equation is nonlinear, and is solved using Picard iteration. 
