@@ -11,6 +11,7 @@ Welcome to FreeGS's documentation!
    :caption: Contents:
 
    creating_equilibria
+   input_and_output
 
              
 .. automodule:: freegs

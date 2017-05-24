@@ -193,7 +193,7 @@ def read(fh):
     Read a G-EQDSK formatted equilibrium file
     
     Format is specified here:
-    https://fusion.gat.com/THEORY/efit/g_eqdsk.html
+    https://fusion.gat.com/theory/Efitgeqdsk
 
     Returns
     -------

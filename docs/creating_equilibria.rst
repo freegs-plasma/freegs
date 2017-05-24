@@ -161,7 +161,36 @@ R and height Z (in meters), along with the radial (x) and vertical (y) resolutio
 This resolution must be greater than 3, and is typically a power of 2 + 1 (:math:`2^n+1`) for efficiency, but
 does not need to be. 
 
-                        
+
+Boundaries
+----------
+
+The boundary conditions to be applied are set when an Equilibrium object is created, since this forms
+part of the specification of the domain. By default a free boundary condition is set, using an accurate
+but inefficient method which integrates the Greens function over the domain. For every point :math:`\mathbf{\left(R_b,Z_b\right)}`
+on the boundary the flux is calculated using
+
+.. math::
+   
+   \psi\left(R_b,Z_b\right) = \iint G(R, Z; R_b, Z_b) J_\phi\left(R,Z\right) dRdZ
+
+where :math:`G` is the Greens function.
+
+An alternative method, which scales much better to large grid sizes, is von Hagenow's method.
+To use this, specify the ``freeBoundaryHagenow`` boundary function:
+
+::
+   
+   eq = freegs.Equilibrium(tokamak=tokamak,
+                        Rmin=0.1, Rmax=2.0,    # Radial domain
+                        Zmin=-1.0, Zmax=1.0,   # Height range
+                        nx=65, ny=65,          # Number of grid points
+                        boundary=freegs.boundary.freeBoundaryHagenow)
+
+Alternatively for simple tests the ``fixedBoundary`` function sets the poloidal flux to zero
+on the computational boundary. 
+
+
 Plasma profiles
 ---------------
 
@@ -278,4 +307,51 @@ To solve the Grad-Shafranov equation to find the free boundary solution, call ``
 This call modifies the input equilibrium (eq), finding a solution
 based on the given plasma profiles and shape control.
 
-The Grad-Shafranov equation is nonlinear, and is solved using Picard iteration. 
+The Grad-Shafranov equation is nonlinear, and is solved using Picard iteration. This consists of calculating the
+toroidal current :math:`J_\phi` given the poloidal flux :math:`\psi\left(R,Z\right)`, then solving a linear
+elliptic equation to calculate the poloidal flux from the toroidal current. This loop is repeated until
+a given relative tolerance is achieved:
+
+.. math::
+
+   \texttt{rtol} = \frac{\textrm{change in psi}}{ \max(\psi) - \min(\psi)}
+
+To see how the solution is evolving at each nonlinear iteration, for example to diagnose a failing solve,
+set ``show=True`` in the solve call. To add a delay between iterations set ``pause=2.0`` using the desired
+delay in seconds.
+
+
+Inner linear solver
+~~~~~~~~~~~~~~~~~~~
+
+To calculate the poloidal flux given the toroidal current, an elliptic equation must be solved.
+To do this a multigrid scheme is implemented, which uses Jacobi iterations combined with SciPy's
+sparse matrix direct solvers at the coarsest level.
+
+By default the multigrid is not used, and SciPy's direct solver is used for the full grid.
+This is because for typical grid resolutions (65 by 65) this has been found to be fastest.
+The multigrid method will however scale efficiently to larger grid sizes.
+
+The easiest way to adjust the solver settings is to call the Equilibrium method ``setSolverVcycle``.
+For example
+
+::
+
+   eq.setSolverVcycle(nlevels = 4, ncycle = 2, niter = 10, direct=True)
+
+This specifies that four levels of grid resolution should be used, including the original.
+In order to be able to coarsen (restrict) a grid, the number of points in both R and Z dimensions should be an odd number.
+This is one reason why grid sizes are usually :math:`2^n + 1`; it allows the maximum number of multigrid levels.
+
+The number of V-cycles (finest -> coarsest -> finest) is given by ``ncycle``. At each level of refinement
+the number of Jacobi iterations to perform before restriction and again after interpolation is ``niter``.
+At the coarsest level of refinement the default is to use a direct (sparse) solver.
+
+Some experimentation is needed to find the optimium settings for a given problem.
+
+
+
+
+
+
+
