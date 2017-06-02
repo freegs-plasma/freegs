@@ -1,6 +1,9 @@
 """
 Classes and routines to represent coils and circuits
 
+License
+-------
+
 Copyright 2016 Ben Dudson, University of York. Email: benjamin.dudson@york.ac.uk
 
 This file is part of FreeGS.
@@ -26,6 +29,14 @@ from numpy import linspace
 class Coil:
     """
     Represents a poloidal field coil
+
+    public members
+    --------------
+    
+    R, Z - Location of the coil
+    current - current in the coil
+    control - enable or disable control system
+    
     """
     
     def __init__(self, R, Z, current=0.0, control=True):
@@ -91,13 +102,19 @@ class Coil:
         """
         return GreensBz(self.R,self.Z, R, Z)
         
-    def __str__(self):
-        return "Coil(R={0},Z={1},current={2})".format(self.R, self.Z, self.current)
+    def __repr__(self):
+        return "Coil(R={0},Z={1},current={2},control={3})".format(self.R, self.Z, self.current, self.control)
 
 
 class Circuit:
     """
     Represents a collection of coils connected to the same circuit
+    
+    Public members
+    --------------
+    
+    current  Current in the circuit [Amps]
+    control  Use feedback control? [bool]
     """
     def __init__(self, coils, current=0.0, control=True):
         """
@@ -185,7 +202,7 @@ class Circuit:
             result += multiplier * coil.controlBz(R, Z)
         return result
         
-    def __str__(self):
+    def __repr__(self):
         result = "Circuit( " 
         for label, coil, multiplier in self.coils:
             result += label+ ":" + str(coil)+ " "
@@ -196,6 +213,13 @@ class Circuit:
 class Solenoid:
     """
     Represents a central solenoid
+
+    Public members
+    --------------
+    
+    current - current in each turn
+    control - enable or disable control system
+    
     """
     def __init__(self, Rs, Zsmin, Zsmax, Ns, current=0.0, control=True):
         """
@@ -274,8 +298,8 @@ class Solenoid:
             result += GreensBz(self.Rs, Zs, R, Z)
         return result
 
-    def __str__(self):
-        return "Solenoid(R={0},Zmin={1},Zmax={2},current={3},N={4})".format(self.Rs, self.Zsmin, self.Zsmax, self.current, self.Ns)
+    def __repr__(self):
+        return "Solenoid(R={0},Zmin={1},Zmax={2},current={3},N={4},control={5})".format(self.Rs, self.Zsmin, self.Zsmax, self.current, self.Ns, self.control)
 
 
 class Machine:
@@ -285,6 +309,10 @@ class Machine:
     
     coils[(label, Coil|Circuit|Solenoid] - List of coils
     
+    Note: a list is used rather than a dict, so that the coils
+    remain ordered, and so can be updated easily by the control system.
+    Instead __getitem__ is implemented to allow access to coils
+
     """
 
     def __init__(self, coils):
@@ -293,7 +321,13 @@ class Machine:
         """
         
         self.coils = coils
-    
+
+    def __getitem__(self, name):
+        for label, coil in self.coils:
+            if label == name:
+                return coil
+            raise KeyError("Machine does not contain coil with label '{0}'".format(name))
+        
     def psi(self, R, Z):
         """
         Poloidal flux due to coils
