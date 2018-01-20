@@ -195,6 +195,10 @@ def freeBoundaryHagenow(eq, Jtor, psi):
 
     # Loop through points on boundary
     for x,y,Reps,Zeps in bndry_indices:
+        # x and y can be floats here (Python 3.6.4)
+        x = int(round(x))
+        y = int(round(y))
+        
         Rpos = R[x,y]+Reps
         Zpos = Z[x,y]+Zeps
 
