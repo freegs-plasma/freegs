@@ -7,27 +7,23 @@ FreeGS: Free boundary Grad-Shafranov solver
 This Python module solves the Grad-Shafranov equation for axisymmetric
 plasma equilibria, mainly for free boundary calculations.
 
-    Copyright 2016 Ben Dudson, University of York. Email: benjamin.dudson@york.ac.uk
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU Lesser General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU Lesser General Public License for more details.
-
-    You should have received a copy of the GNU Lesser General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
 Installing
 ----------
 
 FreeGS is available on PyPI 
 
     $ pip install --user freegs
+
+or clone/download this repository and run setup:
+
+    $ git clone https://github.com/bendudson/freegs.git
+    $ cd freegs
+    $ python setup.py install --user
+
+Documentation
+-------------
+
+The manual is in the `docs` subdirectory, and [hosted here on readthedocs](http://freegs.readthedocs.io/en/latest/).
 
 Examples
 --------
@@ -83,6 +79,24 @@ The "freegs" module consists of the following files:
 * **multigrid.py**       - The multigrid solver for the linear elliptic operator
 * **picard.py**          - Nonlinear solver, iterating the profiles and constraints
 * **plotting.py**        - Plotting routines using matplotlib
+
+License
+-------
+
+    Copyright 2016-2018 Ben Dudson, University of York. Email: benjamin.dudson@york.ac.uk
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Lesser General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 References
 ----------
