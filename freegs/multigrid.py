@@ -28,17 +28,17 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 from numpy import zeros,max,amin,amax, abs, reshape
-from scipy.sparse.linalg import spsolve
+from scipy.sparse.linalg import factorized
 from scipy.sparse import eye, lil_matrix
 
 class MGDirect:
     def __init__(self, A):
-        self.A = A
+        self.solve = factorized(A.tocsc()) # LU decompose
         
     def __call__(self, x, b):
         b1d = reshape(b, -1) # 1D view
         
-        x = spsolve(self.A, b1d)
+        x = self.solve(b1d)
         
         return reshape(x, b.shape)
         
