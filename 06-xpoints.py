@@ -29,7 +29,7 @@ print("=> Solved coil currents, created X-points")
 
 ax = plotEquilibrium(eq, show=False)
 plotCoils(tokamak.coils, axis=ax)
-plotConstraints(xpoints, axis=ax)
+plotConstraints(control, axis=ax)
 plt.show()
 
 ##########################################################

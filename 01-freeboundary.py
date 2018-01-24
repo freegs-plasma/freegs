@@ -62,5 +62,6 @@ with open("lsn.geqdsk", "w") as f:
 ##############################################
 # Final plot
 
-from freegs.plotting import plotEquilibrium
-plotEquilibrium(eq)
+axis = eq.plot(show=False)
+constrain.plot(axis=axis, show=True)
+

@@ -294,7 +294,18 @@ class Equilibrium:
         # Update spline interpolation
         self.psi_func = interpolate.RectBivariateSpline(self.R[:,0], self.Z[0,:], plasma_psi)
      
-
+    def plot(self, axis=None, show=True, oxpoints=True):
+        """
+        Plot the equilibrium flux surfaces
+        
+        axis     - Specify the axis on which to plot
+        show     - Call matplotlib.pyplot.show() before returning
+        oxpoints - Plot X points as red circles, O points as green circles
+    
+        """
+        from .plotting import plotEquilibrium
+        return plotEquilibrium(self, axis=axis, show=show, oxpoints=oxpoints)
+    
 
 def refine(eq):
     """

@@ -25,11 +25,56 @@ import matplotlib.pyplot as plt
 from numpy import linspace, amin, amax
 from . import critical
 
+
+def plotCoils(coils, axis=None):
+    if axis is None:
+        fig = plt.figure()
+        axis = fig.add_subplot(111)
+     
+        
+    return axis
+
+
+def plotConstraints(control, axis=None, show=True):
+    """
+    Plots constraints used for coil current control
+    
+    axis     - Specify the axis on which to plot
+    show     - Call matplotlib.pyplot.show() before returning
+    
+    """
+
+    if axis is None:
+        fig = plt.figure()
+        axis = fig.add_subplot(111)
+
+    # Locations of the X-points
+    for r,z in control.xpoints:
+        axis.plot(r, z, 'bx')
+
+    if control.xpoints:
+        axis.plot([], [], 'bx', label="X-point constraints")
+        
+    # Isoflux surfaces
+    for r1,z1, r2,z2 in control.isoflux:
+        axis.plot([r1,r2], [z1,z2], ':b^')
+
+    if control.isoflux:
+        axis.plot([], [], ':b^', label="Isoflux constraints")
+        
+    if show:
+        plt.legend()
+        plt.show()
+    
+    return axis
+
 def plotEquilibrium(eq, axis=None, show=True, oxpoints=True):
     """
     Plot the equilibrium flux surfaces
 
-    axis - Specify the axis on which to plot
+    axis     - Specify the axis on which to plot
+    show     - Call matplotlib.pyplot.show() before returning
+    oxpoints - Plot X points as red circles, O points as green circles
     
     """
 
@@ -60,32 +105,16 @@ def plotEquilibrium(eq, axis=None, show=True, oxpoints=True):
         if xpt:
             psi_bndry = xpt[0][2]
             sep_contour=axis.contour(eq.R, eq.Z,psi, levels=[psi_bndry], colors='r')
-        
+
+            # Add legend
+            axis.plot([], [], 'ro', label="X-points")
+            axis.plot([], [], 'r', label="Separatrix")
+        if opt:
+            axis.plot([], [], 'go', label="O-points")
+            
     if show:
+        plt.legend()
         plt.show()
     
     return axis
 
-def plotCoils(coils, axis=None):
-    if axis is None:
-        fig = plt.figure()
-        axis = fig.add_subplot(111)
-     
-        
-    return axis
-
-
-def plotConstraints(xpoints, axis=None):
-    """
-    Plots constraints used for coil currents
-    
-    """
-
-    if axis is None:
-        fig = plt.figure()
-        axis = fig.add_subplot(111)
-
-    for xpt in xpoints:
-        axis.plot(xpt[0], xpt[1], 'ro')    
-
-    return axis

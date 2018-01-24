@@ -116,6 +116,17 @@ class constrain(object):
         print("Current changes: " + str(current_change))
         tokamak.controlAdjust(current_change)
 
+    def plot(self, axis=None, show=True):
+        """
+        Plots constraints used for coil current control
+        
+        axis     - Specify the axis on which to plot
+        show     - Call matplotlib.pyplot.show() before returning
+        
+        """
+        from .plotting import plotConstraints
+        return plotConstraints(self, axis=axis, show=show)
+    
 
 def flux_surface(R0, Z0, a, elongation=0.0, triangularity=0.0, indentation=0.0, n=20):
     """
