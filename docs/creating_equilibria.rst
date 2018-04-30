@@ -143,6 +143,27 @@ Circuit "P6" has its coils connected in opposite directions, so is used for vert
 position control. Finally "P1" is the central solenoid. Here all circuits and solenoid
 are under position feedback control.
 
+Machine walls (limiters)
+------------------------
+
+The internal walls of the machine are specified by a polygon
+in R-Z i.e. an ordered list of (R,Z) points which form a closed boundary.
+These are stored in a ``Wall`` object::
+
+  from freegs.machine import Wall
+
+  wall = Wall([ 0.75, 0.75,  1.5,  1.8,   1.8,   1.5],   # R
+              [-0.85, 0.85, 0.85, 0.25, -0.25, -0.85])   # Z
+
+The wall can then be specified when creating a machine::
+
+  tokamak = freegs.machine.Machine(coils, wall)
+
+or an existing machine can be modified::
+
+  tokamak.wall = wall
+  
+
 Equilibrium and plasma domain
 -----------------------------
 

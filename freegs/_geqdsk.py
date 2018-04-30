@@ -291,9 +291,9 @@ def read(fh):
             
     if nlim > 0:
         # Read (R,Z) pairs
-        data["rlim"] = zeros(nbdry)
-        data["zlim"] = zeros(nbdry)
-        for i in range(nbdry):
+        data["rlim"] = zeros(nlim)
+        data["zlim"] = zeros(nlim)
+        for i in range(nlim):
             data["rlim"][i] = next(values)
             data["zlim"][i] = next(values)
     

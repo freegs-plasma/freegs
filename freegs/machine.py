@@ -302,6 +302,16 @@ class Solenoid:
         return "Solenoid(R={0},Zmin={1},Zmax={2},current={3},N={4},control={5})".format(self.Rs, self.Zsmin, self.Zsmax, self.current, self.Ns, self.control)
 
 
+class Wall:
+    """
+    Represents the wall of the device. 
+    Consists of an ordered list of (R,Z) points
+    """
+    def __init__(self, R, Z):
+        self.R = R
+        self.Z = Z
+    
+    
 class Machine:
     """
     Represents the machine (Tokamak), including
@@ -315,12 +325,13 @@ class Machine:
 
     """
 
-    def __init__(self, coils):
+    def __init__(self, coils, wall=None):
         """
         coils - A list of coils [(label, Coil|Circuit|Solenoid)]
         """
         
         self.coils = coils
+        self.wall = wall
 
     def __getitem__(self, name):
         for label, coil in self.coils:
@@ -437,8 +448,11 @@ def TestTokamak():
              ("P1U", Coil(1.0, 1.1)),
              ("P2L", Coil(1.75, -0.6)),
              ("P2U", Coil(1.75, 0.6))]
+
+    wall = Wall([ 0.75, 0.75,  1.5,  1.8,   1.8,   1.5],   # R
+                [-0.85, 0.85, 0.85, 0.25, -0.25, -0.85])   # Z
     
-    return Machine(coils)
+    return Machine(coils, wall)
 
 
 def DIIID():
@@ -507,6 +521,17 @@ def MAST_sym():
              ,("P1", Solenoid(0.15, -1.45, 1.45, 100))
          ]
     
+    return Machine(coils)
+
+def TCV():
+    coils = ["OH", Circuit( [ ("A1", Coil(0.4, 0.0), 1.0),
+                              ("B1", Coil(0.4, -0.95), 1.0),
+                              ("B2", Coil(0.4, 0.95), 1.0),
+                              ("C1", Coil(0.6, -1.1), 1.0),
+                              ("C2", Coil(0.6, 1.1), 1.0),
+                              ("D1", Coil(1.2, -1.15), 1.0),
+                              ("D2", Coil(1.2, 1.15), 1.0)] ) ]
+
     return Machine(coils)
 
 if __name__ == "__main__":

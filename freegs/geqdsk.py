@@ -26,6 +26,7 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 from . import _geqdsk
 from . import critical
 from .equilibrium import Equilibrium
+from .machine import Wall
 from . import jtor
 from . import control
 from . import picard
@@ -92,9 +93,9 @@ def write(eq, fh, label=None, oxpoints=None, fileformat=_geqdsk.write):
     qpsi[0] = qpsi[1]
     data["qpsi"] = qpsi
     
-    if hasattr(eq, "rlim") and hasattr(eq, "zlim"):
-        data["rlim"] = eq.rlim
-        data["zlim"] = eq.zlim
+    if eq.tokamak.wall:
+        data["rlim"] = eq.tokamak.wall.R
+        data["zlim"] = eq.tokamak.wall.Z
     
     # Call fileformat to write the data
     fileformat(data, fh, label=label)
@@ -131,6 +132,10 @@ def read(fh, machine, rtol=1e-3, ntheta=8, show=False, axis=None):
     # Read the data as a Dictionary
     data = _geqdsk.read(fh)
 
+    # If data contains a limiter, set the machine wall
+    if "rlim" in data and len(data["rlim"]) > 0:
+        machine.wall = Wall(data["rlim"], data["zlim"])
+    
     # Create an Equilibrium object
     eq = Equilibrium(tokamak = machine,
                      Rmin = data["rleft"],

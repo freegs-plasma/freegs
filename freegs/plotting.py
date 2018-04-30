@@ -68,13 +68,14 @@ def plotConstraints(control, axis=None, show=True):
     
     return axis
 
-def plotEquilibrium(eq, axis=None, show=True, oxpoints=True):
+def plotEquilibrium(eq, axis=None, show=True, oxpoints=True, wall=True):
     """
     Plot the equilibrium flux surfaces
 
     axis     - Specify the axis on which to plot
     show     - Call matplotlib.pyplot.show() before returning
     oxpoints - Plot X points as red circles, O points as green circles
+    wall     - Plot the wall (limiter)
     
     """
 
@@ -111,7 +112,11 @@ def plotEquilibrium(eq, axis=None, show=True, oxpoints=True):
             axis.plot([], [], 'r', label="Separatrix")
         if opt:
             axis.plot([], [], 'go', label="O-points")
-            
+
+    if wall and eq.tokamak.wall and len(eq.tokamak.wall.R):
+        axis.plot(list(eq.tokamak.wall.R) + [eq.tokamak.wall.R[0]],
+                  list(eq.tokamak.wall.Z) + [eq.tokamak.wall.Z[0]], 'k')
+        
     if show:
         plt.legend()
         plt.show()
