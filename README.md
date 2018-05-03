@@ -4,8 +4,10 @@ FreeGS: Free boundary Grad-Shafranov solver
 [![License](https://img.shields.io/badge/license-GPL-blue.svg)](https://img.shields.io/badge/license-GPL-blue.svg)
 [![py3comp](https://img.shields.io/badge/py3-compatible-brightgreen.svg)](https://img.shields.io/badge/py3-compatible-brightgreen.svg)
 
-This Python module solves the Grad-Shafranov equation for axisymmetric
-plasma equilibria, mainly for free boundary calculations.
+This Python module calculates plasma equilibria for tokamak fusion applications,
+by solving the Grad-Shafranov equation with free boundaries. Given a set of coils,
+plasma profiles and shape, FreeGS finds the currents in the coils which produce
+a steady-state solution in force balance.
 
 Installing
 ----------

@@ -11,7 +11,9 @@ setup(
     author="Ben Dudson",
     author_email='benjamin.dudson@york.ac.uk',
     url="https://github.com/bendudson/freegs",
-    description="Free boundary Grad-Shafranov solver",
+    description="Free boundary Grad-Shafranov solver for tokamak plasma equilibria",
+
+    long_description=read("README.md"),
     
     install_requires=['numpy>=1.8',
                       'scipy>=0.14',
