@@ -357,6 +357,65 @@ def coarsen(eq):
 
     return result
 
+def newDomain(eq,
+              Rmin=None, Rmax=None,
+              Zmin=None, Zmax=None,
+              nx=None, ny=None):
+    """Creates a new Equilibrium, solving in a different domain.
+    The domain size (Rmin, Rmax, Zmin, Zmax) and resolution (nx,ny)
+    are taken from the input equilibrium eq if not specified.
+    """
+    if Rmin is None:
+        Rmin = eq.Rmin
+    if Rmax is None:
+        Rmax = eq.Rmax
+    if Zmin is None:
+        Zmin = eq.Zmin
+    if Zmax is None:
+        Zmax = eq.Zmax
+    if nx is None:
+        nx = eq.R.shape[0]
+    if ny is None:
+        ny = eq.R.shape[0]
+
+    # Create a new equilibrium with the new domain
+    result = Equilibrium(tokamak=eq.tokamak,
+                         Rmin = Rmin,
+                         Rmax = Rmax,
+                         Zmin = Zmin,
+                         Zmax = Zmax,
+                         nx=nx, ny=ny)
+
+    # Calculate the current on the old grid
+    profiles = eq._profiles
+    Jtor = profiles.Jtor(eq.R, eq.Z, eq.psi())
+
+    # Interpolate Jtor onto new grid
+    Jtor_func = interpolate.RectBivariateSpline(eq.R[:,0], eq.Z[0,:], Jtor)
+    Jtor_new = Jtor_func(result.R, result.Z, grid=False)
+
+    result._applyBoundary(result, Jtor_new, result.plasma_psi)
+
+    # Right hand side of G-S equation
+    rhs = -mu0 * result.R * Jtor_new
+
+    # Copy boundary conditions
+    rhs[0,:] = result.plasma_psi[0,:]
+    rhs[:,0] = result.plasma_psi[:,0]
+    rhs[-1,:] = result.plasma_psi[-1,:]
+    rhs[:,-1] = result.plasma_psi[:,-1]
+
+    # Call elliptic solver
+    plasma_psi = result._solver(result.plasma_psi, rhs)
+        
+    result._updatePlasmaPsi(plasma_psi)
+
+    # Solve once more, calculating Jtor using new psi
+    result.solve(profiles)
+    
+    return result
+
+
 if __name__=="__main__":
     
     # Test the different spline interpolation routines
