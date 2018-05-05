@@ -22,67 +22,8 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 
 from datetime import date
 from numpy import zeros, linspace
-import re
 
-def f2s(f):
-    """
-    Format a string containing a float
-    """
-    s = ""
-    if f >= 0.0:
-        s += " "
-    return s + "%1.9E" % f
-
-
-class ChunkOutput:
-    """
-    This outputs values in lines, inserting
-    newlines when needed.
-    """
-    def __init__(self, filehandle, chunksize=5):
-        """
-        filehandle - output to write to
-        chunksize - number of values on a line
-        """
-        self.fh = filehandle
-        self.counter = 0
-        self.chunk = chunksize
-
-    def write(self, value):
-        """"
-        Write a value to the output, adding a newline if needed
-        """
-        self.fh.write(f2s(value))
-        self.counter += 1
-        if self.counter == self.chunk:
-            self.fh.write("\n")
-            self.counter = 0
-
-    def newline(self):
-        """
-        Ensure that the file is at the start of a new line
-        """
-        if self.counter != 0:
-            self.fh.write("\n")
-            self.counter = 0
-
-def write_1d(val, out):
-    """
-    Writes a 1D variable val to the file handle out
-    """
-    for i in range(len(val)):
-        out.write(val[i])
-
-def write_2d(val, out):
-    """
-    Writes a 2D array. Note that this transposes
-    the array, looping over the first index fastest
-    """
-    nx,ny = val.shape
-    for y in range(ny):
-        for x in range(nx):
-            out.write(val[x,y])
-
+from ._fileutils import f2s, ChunkOutput, write_1d, write_2d, next_value
 
 def write(data, fh, label=None):
     """
@@ -168,26 +109,8 @@ def write(data, fh, label=None):
             co.write(r)
             co.write(z)
         co.newline()
-    
-def next_value(fh):
-    """
-    A generator which yields values from a file handle
-    
-    Checks if the value is a float or int, returning
-    the correct type depending on if '.' is in the string
-    
-    """
-    pattern = re.compile(r'[ \-]\d+(?:\.\d+[Ee][\+\-]\d\d)?')
 
-    # Go through each line, extract values, then yield them one by one
-    for line in fh:
-        matches = pattern.findall(line)
-        for match in matches:
-            if '.' in match:
-                yield float(match)
-            else:
-                yield int(match)
-    
+
 def read(fh):
     """
     Read a G-EQDSK formatted equilibrium file
