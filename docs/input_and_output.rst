@@ -83,10 +83,40 @@ This will give the control system a starting value for the coil currents, but si
    tokamak["P1L"].control = False  # No feedback control (fixed current)
 
 
+Writing DivGeo files
+--------------------
 
+These are used as input to the SOLPS grid generator. They contain a subset
+of what's in G-EQDSK files, with no plasma pressure or current
+profiles. 
 
+To convert a G-EQDSK file directly to DivGeo without any solves, and
+without needing to know the coil locations, use the low-level
+routines::
 
+  from freegs import _geqdsk
+  from freegs import _divgeo
 
+  with open("input.geqdsk") as f:
+    data = _geqdsk.read(f)
+  
+  with open("output.equ", "w") as f:
+    _divgeo.write(data)
 
+FreeGS equilibria objects can also be written to DivGeo files using
+the `divgeo` module::
 
+  from freegs import geqdsk
+  from freegs import divgeo
+  from freegs.machine import TestTokamak
+
+  # Read a G-EQDSK file
+  with open("lsn.geqdsk") as f:
+    eq = geqdsk.read(f, TestTokamak(), show=True)
+
+  # Modify the equilbrium...
+
+  # Save to DivGeo
+  with open("lsn.equ", "w") as f:
+    divgeo.write(eq, f)
 
