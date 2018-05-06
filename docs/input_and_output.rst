@@ -101,7 +101,7 @@ routines::
     data = _geqdsk.read(f)
   
   with open("output.equ", "w") as f:
-    _divgeo.write(data)
+    _divgeo.write(data, f)
 
 FreeGS equilibria objects can also be written to DivGeo files using
 the `divgeo` module::
