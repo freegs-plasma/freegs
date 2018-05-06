@@ -102,7 +102,7 @@ def write(eq, fh, label=None, oxpoints=None, fileformat=_geqdsk.write):
 
 import matplotlib.pyplot as plt
 
-def read(fh, machine, rtol=1e-3, ntheta=8, show=False, axis=None):
+def read(fh, machine, rtol=1e-3, ntheta=8, show=False, axis=None, cocos=1):
     """
     Reads a G-EQDSK format file
     
@@ -114,6 +114,10 @@ def read(fh, machine, rtol=1e-3, ntheta=8, show=False, axis=None):
     show    - Set to true to show solution in a new figure
     axis    - Set to an axis for plotting. Implies show=True
     
+    cocos   - COordinate COnventions. Not fully handled yet,
+              only whether psi is divided by 2pi or not.
+              if < 10 then psi is divided by 2pi, otherwise not.
+
     A nonlinear solve will be performed, using Picard iteration
     
     Returns
@@ -130,8 +134,8 @@ def read(fh, machine, rtol=1e-3, ntheta=8, show=False, axis=None):
         show = True
 
     # Read the data as a Dictionary
-    data = _geqdsk.read(fh)
-
+    data = _geqdsk.read(fh, cocos=cocos)
+    
     # If data contains a limiter, set the machine wall
     if "rlim" in data and len(data["rlim"]) > 0:
         machine.wall = Wall(data["rlim"], data["zlim"])

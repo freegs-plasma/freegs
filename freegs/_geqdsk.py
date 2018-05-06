@@ -21,7 +21,7 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 from datetime import date
-from numpy import zeros, linspace
+from numpy import zeros, linspace, pi
 
 from ._fileutils import f2s, ChunkOutput, write_1d, write_2d, next_value
 
@@ -111,12 +111,16 @@ def write(data, fh, label=None):
         co.newline()
 
 
-def read(fh):
+def read(fh, cocos=1):
     """
     Read a G-EQDSK formatted equilibrium file
     
     Format is specified here:
     https://fusion.gat.com/theory/Efitgeqdsk
+
+    cocos   - COordinate COnventions. Not fully handled yet,
+              only whether psi is divided by 2pi or not.
+              if < 10 then psi is divided by 2pi, otherwise not.
 
     Returns
     -------
@@ -198,6 +202,11 @@ def read(fh):
     data["psi"] = read_2d(nx,ny)
     
     data["qpsi"] = read_1d(nx)
+
+    # Ensure that psi is divided by 2pi
+    if cocos > 10:
+        for var in ["psi", "simagx", "sibdry"]:
+            data[var] /= 2*pi
     
     nbdry = next(values)
     nlim = next(values)
