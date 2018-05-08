@@ -35,11 +35,13 @@ class Coil:
     
     R, Z - Location of the coil
     current - current in the coil
+    turns   - Number of turns
     control - enable or disable control system
-    
+
+    The total toroidal current carried by the coil is current * turns
     """
     
-    def __init__(self, R, Z, current=0.0, control=True):
+    def __init__(self, R, Z, current=0.0, turns=1, control=True):
         """
         R, Z - Location of the coil
         
@@ -50,6 +52,7 @@ class Coil:
         self.Z = Z
         
         self.current = current
+        self.turns = turns
         self.control = control
 
     def psi(self, R, Z):
@@ -88,22 +91,22 @@ class Coil:
         """
         Calculate poloidal flux at (R,Z) due to a unit current
         """
-        return Greens(self.R, self.Z, R, Z)
+        return Greens(self.R, self.Z, R, Z) * self.turns
         
     def controlBr(self, R, Z):
         """
         Calculate radial magnetic field Br at (R,Z) due to a unit current
         """
-        return GreensBr(self.R,self.Z, R, Z)
+        return GreensBr(self.R,self.Z, R, Z) * self.turns
         
     def controlBz(self, R, Z):
         """
         Calculate vertical magnetic field Bz at (R,Z) due to a unit current
         """
-        return GreensBz(self.R,self.Z, R, Z)
+        return GreensBz(self.R,self.Z, R, Z) * self.turns
         
     def __repr__(self):
-        return "Coil(R={0},Z={1},current={2},control={3})".format(self.R, self.Z, self.current, self.control)
+        return "Coil(R={0},Z={1},current={2},turns={3},control={4})".format(self.R, self.Z, self.current, self.turns, self.control)
 
 
 class Circuit:
