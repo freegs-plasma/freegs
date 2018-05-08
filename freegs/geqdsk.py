@@ -229,7 +229,8 @@ def read(fh, machine, rtol=1e-3, ntheta=8, show=False, axis=None, cocos=1):
     isoflux = critical.find_separatrix(eq, opoint, xpoint, ntheta=ntheta, psi=data["psi"], axis=axis)
 
     # Find best fit for coil currents
-    controlsystem = control.constrain(xpoints=xpoint, isoflux=isoflux, gamma=1e-14)
+    controlsystem = control.ConstrainPsi2D(data["psi"])
+    #controlsystem = control.constrain(xpoints=xpoint, isoflux=isoflux, gamma=1e-14)
     controlsystem(eq)
     
     if show:
@@ -254,6 +255,7 @@ def read(fh, machine, rtol=1e-3, ntheta=8, show=False, axis=None, cocos=1):
     machine.printCurrents()
 
     # Save the control system to eq
-    eq.control = controlsystem
+    # Use x-point and o-point constraints because the size of the grid may be changed
+    eq.control = control.constrain(xpoints=xpoint, isoflux=isoflux, gamma=1e-14)
     
     return eq

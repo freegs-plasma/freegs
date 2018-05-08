@@ -421,11 +421,28 @@ class Machine:
         Given iterable must be the same length
         as the list returned by controlBr, controlBz
         """
+        # Get list of coils being controlled
+        controlcoils = [coil for label,coil in self.coils if coil.control]
         
-        for lc, dI in zip(self.coils, current_change):
-            label,coil = lc
+        for coil, dI in zip(controlcoils, current_change):
             coil.current += dI
-    
+
+    def controlCurrents(self):
+        """
+        Return a list of coil currents for the coils being controlled
+        """
+        return [ coil.current for label, coil in self.coils if coil.control ]
+
+    def setControlCurrents(self, currents):
+        """
+        Sets the currents in the coils being controlled.
+        Input list must be of the same length as the list
+        returned by controlCurrents
+        """
+        controlcoils = [coil for label,coil in self.coils if coil.control]
+        for coil, current in zip(controlcoils, currents):
+            coil.current = current
+            
     def printCurrents(self):
         print("==========================")
         for label, coil in self.coils:

@@ -7,6 +7,8 @@ Use constraints to adjust coil currents
 from numpy import dot, transpose, eye, array
 from numpy.linalg import inv
 
+from scipy import optimize
+
 class constrain(object):
     """
     Adjust coil currents using constraints. To use this class,
@@ -57,7 +59,7 @@ class constrain(object):
             # 1) Br = 0
 
             Br = eq.Br(xpt[0], xpt[1])
-        
+            
             # Add currents to cancel out this field
             constraint_rhs.append(-Br)
             constraint_matrix.append(
@@ -165,3 +167,35 @@ def flux_surface(R0, Z0, a, elongation=0.0, triangularity=0.0, indentation=0.0, 
     isoflux = [ p0 + pos(theta) for theta in thetavals[1:] ]
     
     return isoflux
+
+class ConstrainPsi2D(object):
+    """
+    Adjusts coil currents to minimise the square differences
+    between psi[R,Z] and a target psi.
+    """
+    def __init__(self, target_psi):
+        """
+        target_psi - a 2D (R,Z) array, which must be the same size as the equilibrium psi
+        """
+        self.target_psi = target_psi
+        
+    def __call__(self, eq):
+        """
+        Apply constraints to Equilibrium eq
+        """
+        
+        tokamak = eq.getMachine()
+        start_currents = tokamak.controlCurrents()
+        
+        end_currents, _ = optimize.leastsq(self.psi_difference, start_currents, args=(eq,))
+        
+        tokamak.setControlCurrents(end_currents)
+        
+    def psi_difference(self, currents, eq):
+        """
+        Difference between psi from equilibrium with the given currents
+        and the target psi
+        """
+        eq.getMachine().setControlCurrents(currents)
+        psi = eq.psi()
+        return (psi - self.target_psi).ravel() # flatten array
