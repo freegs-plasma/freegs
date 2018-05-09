@@ -340,7 +340,7 @@ class Machine:
         for label, coil in self.coils:
             if label == name:
                 return coil
-            raise KeyError("Machine does not contain coil with label '{0}'".format(name))
+        raise KeyError("Machine does not contain coil with label '{0}'".format(name))
         
     def psi(self, R, Z):
         """
@@ -585,6 +585,64 @@ def TCV():
     ]
     
     return Machine(coils)
+
+def MASTU():
+    coils = [
+        ("Solenoid", Solenoid(0.19475, -1.581, 1.581, 324)),
+        ("Pc", Coil(0.067, 0.0, turns=142)),
+        ("Px", Circuit([("PxU", Coil(0.2405,  1.2285, turns=44), 1.0),
+                        ("PxL", Coil(0.2405, -1.2285, turns=44), 1.0)])),
+        ("D1", Circuit([("D1U", Coil(0.381,  1.555, turns=35), 1.0),
+                        ("D1L", Coil(0.381, -1.555, turns=35), 1.0)])),
+        ("D2", Circuit([("D2U", Coil(0.574,  1.734, turns=23), 1.0),
+                        ("D2L", Coil(0.574, -1.734, turns=23), 1.0)])),
+        ("D3", Circuit([("D3U", Coil(0.815,  1.980, turns=23), 1.0),
+                        ("D3L", Coil(0.815, -1.980, turns=23), 1.0)])),
+        ("Dp", Circuit([("DpU", Coil(0.918,  1.501, turns=23), 1.0),
+                        ("DpL", Coil(0.918, -1.501, turns=23), 1.0)])),
+        ("D5", Circuit([("D5U", Coil(1.900,  1.950, turns=27), 1.0),
+                        ("D5L", Coil(1.900, -1.950, turns=27), 1.0)])),
+        ("D6", Circuit([("D6U", Coil(1.285,  1.470, turns=23), 1.0),
+                        ("D6L", Coil(1.285, -1.470, turns=23), 1.0)])),
+        ("D7", Circuit([("D7U", Coil(1.520,  1.470, turns=23), 1.0),
+                        ("D7L", Coil(1.520, -1.470, turns=23), 1.0)])),
+        ("P4", Circuit([("P4U", Coil(1.500,  1.100, turns=23), 1.0),
+                        ("P4L", Coil(1.500, -1.100, turns=23), 1.0)])),
+        ("P5", Circuit([("P5U", Coil(1.650,  0.357, turns=23), 1.0),
+                        ("P5L", Coil(1.650, -0.357, turns=23), 1.0)])),
+
+        # Vertical control coils wired in opposite directions
+        # Two pairs of coils, P6 pair 1 and P6 pair 2
+        ("P61", Circuit([("P61U", Coil(1.1975,  1.11175, turns=2),  1.0),
+                         ("P61L", Coil(1.1975, -1.11175, turns=2), -1.0)])),
+        ("P62", Circuit([("P62U", Coil(1.2575,  1.0575, turns=2),  1.0),
+                         ("P62L", Coil(1.2575, -1.0575, turns=2), -1.0)]))
+        ]
+
+    rwall = [1.2503, 1.3483, 1.47, 1.47, 1.45, 1.45, 1.3214, 1.1904,
+             0.89296, 0.86938, 0.83981, 0.82229, 0.81974, 0.81974,
+             0.82734, 0.8548, 0.89017, 0.91974, 0.94066, 1.555, 1.85,
+             2, 2, 2, 2, 1.3188, 1.7689, 1.7301, 1.35, 1.09, 1.09,
+             0.90576, 0.87889, 0.87889, 0.90717, 0.53948, 0.5112,
+             0.50553, 0.53594, 0.5074, 0.4974, 0.5074, 0.4788, 0.4688,
+             0.4788, 0.333, 0.333, 0.275, 0.334, 0.261, 0.261, 0.244,
+             0.261, 0.261, 0.244, 0.261, 0.261]
+
+    zwall = [1, 0.86, 0.86, 0.81, 0.81, 0.82, 0.82, 1.007, 1.304,
+             1.3312, 1.3826, 1.4451, 1.4812, 1.4936, 1.5318, 1.5696,
+             1.5891, 1.5936, 1.5936, 1.567, 1.08, 1.08, 1.7, 2.035,
+             2.169, 2.169, 1.7189, 1.68, 2.06, 2.06, 2.06, 1.8786,
+             1.9055, 1.9055, 1.8772, 1.5095, 1.5378, 1.5321, 1.5017,
+             1.4738, 1.4838, 1.4738, 1.4458, 1.4558, 1.4458, 1.303,
+             1.1, 1.1, 1.1, 0.502, 0.348, 0.348, 0.348, 0.146, 0.146, 0.146, 0]
+
+    # Concatenate with mirror image in Z,
+    # with points in reverse order
+    rwall = rwall + rwall[::-1]
+    zwall = zwall + [-z for z in zwall[::-1]]
+    
+    return Machine(coils, Wall(rwall, zwall))
+
 
 if __name__ == "__main__":
     # Run test case
