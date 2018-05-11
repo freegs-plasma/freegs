@@ -6,33 +6,33 @@ import h5py
 import numpy as np
 
 from .equilibrium import Equilibrium
-from .machine import Coil, Circuit, Machine
+from .machine import Coil, Circuit, Solenoid, Machine
 
+# Define these dtypes here in order to avoid having the string_dtype,
+# which requires h5py, in the machine module. We need string_dtype
+# because the Coils in Circuits have string labels.
 string_dtype = h5py.special_dtype(vlen=str)
 
 coil_dtype = np.dtype([
-    (("R", "Major radius"), np.float64),
-    (("Z", "Vertical position"), np.float64),
-    (("current", "Current (Amps)"), np.float64),
-    (("control", "Use feedback control?"), np.bool),
+    ("R", np.float64),
+    ("Z", np.float64),
+    ("current", np.float64),
+    ("control", np.bool),
 ])
 
 circuit_dtype = np.dtype([
-    (("label", "Coil label"), string_dtype),
-    (("R", "Major radius"), np.float64),
-    (("Z", "Vertical position"), np.float64),
-    (("current", "Current (Amps)"), np.float64),
-    (("control", "Use feedback control?"), np.bool),
-    (("multiplier", "Mupltiplication factor for current"), np.float64),
+    ("label", string_dtype),
+    ("coil", coil_dtype),
+    ("multiplier", np.float64),
 ])
 
 solenoid_dtype = np.dtype([
-    (("Rs", "Radius"), np.float64),
-    (("Zsmin", "Minimum Z"), np.float64),
-    (("Zsmax", "Maximum Z"), np.float64),
-    (("Ns", "Number of turns"), np.float64),
-    (("current", "Current (Amps)"), np.float64),
-    (("control", "Use feedback control?"), np.bool),
+    ("Rs", np.float64),
+    ("Zsmin", np.float64),
+    ("Zsmax", np.float64),
+    ("Ns", np.float64),
+    ("current", np.float64),
+    ("control", np.bool),
 ])
 
 
@@ -46,6 +46,12 @@ def dump_equilibrium(equilibrium, filename):
 
         dumpfile["solenoid_dtype"] = solenoid_dtype
         solenoid_dtype_id = dumpfile["solenoid_dtype"]
+
+        type_to_dtype = {
+            Coil: coil_dtype_id,
+            Circuit: circuit_dtype_id,
+            Solenoid: solenoid_dtype_id,
+        }
 
         dumpfile.create_dataset("Rmin", data=equilibrium.Rmin)
         dumpfile.create_dataset("Rmax", data=equilibrium.Rmax)
@@ -62,35 +68,19 @@ def dump_equilibrium(equilibrium, filename):
         tokamak_group = dumpfile.create_group("tokamak")
         coils_group = tokamak_group.create_group("coils")
 
-        tokamak_group.create_dataset("wall_R", data=equilibrium.tokamak.wall.R)
-        tokamak_group.create_dataset("wall_Z", data=equilibrium.tokamak.wall.Z)
+        if equilibrium.tokamak.wall is not None:
+            tokamak_group.create_dataset(
+                "wall_R", data=equilibrium.tokamak.wall.R)
+            tokamak_group.create_dataset(
+                "wall_Z", data=equilibrium.tokamak.wall.Z)
 
         for label, coil in equilibrium.tokamak.coils:
-            if isinstance(coil, Coil):
-                coils_group.create_dataset(
-                    label, dtype=coil_dtype_id,
-                    data=np.array((coil.R, coil.Z, coil.current, coil.control),
-                                  dtype=coil_dtype)
-                )
-            elif isinstance(coil, Solenoid):
-                coils_group.create_dataset(
-                    label, dtype=solenoid_dtype_id,
-                    data=np.array((coil.Rs, coil.Zmin, coil.Zmax, coil.Ns,
-                                   coil.current, coil.control), dtype=solenoid_dtype)
-                )
-            elif isinstance(coil, Circuit):
-                circuit_id = coils_group.create_dataset(label, dtype=circuit_dtype_id,
-                                                        shape=(len(coil.coils),))
+            try:
+                shape = (len(coil),)
+            except TypeError:
+                shape = (1,)
 
-                # Store the Circuit's current/control as attributes on
-                # the dataset. The individual Coils in the Circuit
-                # have the default values (0/False). A different way
-                # of doing this might be to store the Circuit's
-                # current/control in each Coil, and when reading, use
-                # the values from the first Coil.
-                circuit_dtype_id.attrs["current"] = coil.current
-                circuit_dtype_id.attrs["control"] = coil.control
+            dtype = type_to_dtype[type(coil)]
 
-                for index, (sublabel, subcoil, multiplier) in enumerate(coil.coils):
-                    circuit_id[index] = (sublabel, subcoil.R, subcoil.Z, 0.0,
-                                         False, multiplier)
+            coils_group.create_dataset(label, dtype=dtype,
+                                       data=np.array(coil.to_tuple(), dtype=dtype))

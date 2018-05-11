@@ -24,7 +24,7 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 
 from .gradshafranov import Greens, GreensBr, GreensBz
 
-from numpy import linspace
+from numpy import linspace, dtype
 
 class Coil:
     """
@@ -107,6 +107,12 @@ class Coil:
         
     def __repr__(self):
         return "Coil(R={0},Z={1},current={2},turns={3},control={4})".format(self.R, self.Z, self.current, self.turns, self.control)
+
+    def to_tuple(self):
+        """
+        Helper method for writing output
+        """
+        return (self.R, self.Z, self.current, self.control)
 
 
 class Circuit:
@@ -210,8 +216,14 @@ class Circuit:
         for label, coil, multiplier in self.coils:
             result += label+ ":" + str(coil)+ " "
         return result + ")"
-        
-    
+
+    def to_tuple(self):
+        """
+        Helper method for writing output
+        """
+        return [(label, coil.to_tuple(), multiplier)
+                 for label, coil, multiplier in self.coils]
+
 
 class Solenoid:
     """
@@ -303,6 +315,12 @@ class Solenoid:
 
     def __repr__(self):
         return "Solenoid(R={0},Zmin={1},Zmax={2},current={3},N={4},control={5})".format(self.Rs, self.Zsmin, self.Zsmax, self.current, self.Ns, self.control)
+
+    def to_tuple(self):
+        """
+        Helper method for writing output
+        """
+        return (self.Rs, self.Zsmin, self.Zsmax, self.Ns, self.current, self.control)
 
 
 class Wall:
