@@ -36,16 +36,28 @@ solenoid_dtype = np.dtype([
 ])
 
 
-def dump_equilibrium(equilibrium, filename):
-    with h5py.File(filename, 'w') as dumpfile:
-        dumpfile["coil_dtype"] = coil_dtype
-        coil_dtype_id = dumpfile["coil_dtype"]
+class OutputFile(object):
+    def __init__(self, name, mode=None, **kwds):
+        self.handle = h5py.File(name, mode, **kwds)
 
-        dumpfile["circuit_dtype"] = circuit_dtype
-        circuit_dtype_id = dumpfile["circuit_dtype"]
+    def close(self):
+        self.handle.close()
 
-        dumpfile["solenoid_dtype"] = solenoid_dtype
-        solenoid_dtype_id = dumpfile["solenoid_dtype"]
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        self.close()
+
+    def write_equilibrium(self, equilibrium):
+        self.handle["coil_dtype"] = coil_dtype
+        coil_dtype_id = self.handle["coil_dtype"]
+
+        self.handle["circuit_dtype"] = circuit_dtype
+        circuit_dtype_id = self.handle["circuit_dtype"]
+
+        self.handle["solenoid_dtype"] = solenoid_dtype
+        solenoid_dtype_id = self.handle["solenoid_dtype"]
 
         type_to_dtype = {
             Coil: coil_dtype_id,
@@ -53,19 +65,19 @@ def dump_equilibrium(equilibrium, filename):
             Solenoid: solenoid_dtype_id,
         }
 
-        dumpfile.create_dataset("Rmin", data=equilibrium.Rmin)
-        dumpfile.create_dataset("Rmax", data=equilibrium.Rmax)
-        dumpfile.create_dataset("R", data=equilibrium.R)
+        self.handle.create_dataset("Rmin", data=equilibrium.Rmin)
+        self.handle.create_dataset("Rmax", data=equilibrium.Rmax)
+        self.handle.create_dataset("R", data=equilibrium.R)
 
-        dumpfile.create_dataset("Zmin", data=equilibrium.Zmin)
-        dumpfile.create_dataset("Zmax", data=equilibrium.Zmax)
-        dumpfile.create_dataset("Z", data=equilibrium.Z)
+        self.handle.create_dataset("Zmin", data=equilibrium.Zmin)
+        self.handle.create_dataset("Zmax", data=equilibrium.Zmax)
+        self.handle.create_dataset("Z", data=equilibrium.Z)
 
-        dumpfile.create_dataset("current", data=equilibrium.plasmaCurrent())
-        dumpfile["current"].attrs["title"] = u"Plasma current [Amps]"
-        dumpfile.create_dataset("psi", data=equilibrium.psi())
+        self.handle.create_dataset("current", data=equilibrium.plasmaCurrent())
+        self.handle["current"].attrs["title"] = u"Plasma current [Amps]"
+        self.handle.create_dataset("psi", data=equilibrium.psi())
 
-        tokamak_group = dumpfile.create_group("tokamak")
+        tokamak_group = self.handle.create_group("tokamak")
         coils_group = tokamak_group.create_group("coils")
 
         if equilibrium.tokamak.wall is not None:
@@ -84,3 +96,37 @@ def dump_equilibrium(equilibrium, filename):
 
             coils_group.create_dataset(label, dtype=dtype,
                                        data=np.array(coil.to_tuple(), dtype=dtype))
+
+    def read_equilibrium(self):
+        coil_dtype_id = self.handle["coil_dtype"]
+        circuit_dtype_id = self.handle["circuit_dtype"]
+        solenoid_dtype_id = self.handle["solenoid_dtype"]
+
+        def make_coil(coil):
+            return Coil(coil["R"], coil["Z"], coil["current"], coil["control"])
+
+        def make_circuit(circuit):
+            return Circuit([(label, make_coil(coil), multiplier)
+                            for label, coil, multiplier in circuit],
+                           current=circuit[0][1]["current"] / circuit[0]["multiplier"],
+                           control=circuit[0][1]["control"])
+
+        def make_solenoid(solenoid):
+            return Solenoid(solenoid["Rs"], solenoid["Zsmin"], solenoid["Zsmax"],
+                            solenoid["Ns"], solenoid["current"], solenoid["control"])
+
+        dtype_to_type = {
+            coil_dtype: make_coil,
+            circuit_dtype: make_circuit,
+            solenoid_dtype: make_solenoid,
+        }
+
+        def make_thing(thing):
+            make_func = dtype_to_type[thing.dtype]
+            return make_func(thing[()])
+
+        coils = []
+        for label, coil_ in self.handle["tokamak/coils"].items():
+            coil = coil_[()]
+            coils.append((label, make_thing(coil)))
+        return coils
