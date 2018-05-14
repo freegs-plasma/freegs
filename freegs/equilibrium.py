@@ -3,11 +3,12 @@ Defines class to represent the equilibrium
 state, including plasma and coil currents
 """
 
-from numpy import meshgrid, linspace, exp, zeros, nditer
+from numpy import meshgrid, linspace, exp, zeros, nditer, array
 from scipy import interpolate
 from scipy.integrate import romb, quad # Romberg integration
 
 from .boundary import fixedBoundary, freeBoundary
+from .critical import find_separatrix
 
 # Operators which define the G-S equation
 from .gradshafranov import mu0, GSsparse
@@ -239,6 +240,12 @@ class Equilibrium:
         """
         return self._profiles.pressure(psinorm)
 
+    def separatrix(self, ntheta=20):
+        """
+        Returns an array of ntheta (R, Z) coordinates of the separatrix,
+        equally spaced in geometric poloidal angle.
+        """
+        return array(find_separatrix(self, ntheta=ntheta, psi=self.psi()))[:, 0:2]
 
     def solve(self, profiles):
         """
