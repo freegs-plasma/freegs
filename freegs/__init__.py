@@ -40,3 +40,4 @@ from . import control
 
 from .picard import solve
 
+from .dump import OutputFile
