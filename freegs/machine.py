@@ -106,7 +106,18 @@ class Coil:
         return GreensBz(self.R,self.Z, R, Z) * self.turns
         
     def __repr__(self):
-        return "Coil(R={0},Z={1},current={2},turns={3},control={4})".format(self.R, self.Z, self.current, self.turns, self.control)
+        return ("Coil(R={0}, Z={1}, current={2}, turns={3}, control={4})"
+                .format(self.R, self.Z, self.current, self.turns, self.control))
+
+    def __eq__(self, other):
+        return (self.R == other.R
+                and self.Z == other.Z
+                and self.current == other.current
+                and self.turns == other.turns
+                and self.control == other.control)
+
+    def __ne__(self, other):
+        return not self == other
 
     def to_tuple(self):
         """
@@ -210,12 +221,21 @@ class Circuit:
         for label, coil, multiplier in self.coils:
             result += multiplier * coil.controlBz(R, Z)
         return result
-        
+
     def __repr__(self):
-        result = "Circuit( " 
-        for label, coil, multiplier in self.coils:
-            result += label+ ":" + str(coil)+ " "
-        return result + ")"
+        result = "Circuit(["
+        coils = ['("{0}", {1}, {2})'.format(label, coil, multiplier)
+                 for label, coil, multiplier in self.coils]
+        result += ", ".join(coils)
+        return result + "], current={0}, control={1})".format(self.current, self.control)
+
+    def __eq__(self, other):
+        return (self.coils == other.coils
+                and self.current == other.current
+                and self.control == other.control)
+
+    def __ne__(self, other):
+        return not self == other
 
     def to_tuple(self):
         """
@@ -314,7 +334,19 @@ class Solenoid:
         return result
 
     def __repr__(self):
-        return "Solenoid(R={0},Zmin={1},Zmax={2},current={3},N={4},control={5})".format(self.Rs, self.Zsmin, self.Zsmax, self.current, self.Ns, self.control)
+        return ("Solenoid(Rs={0}, Zsmin={1}, Zsmax={2}, current={3}, Ns={4}, control={5})"
+                .format(self.Rs, self.Zsmin, self.Zsmax, self.current, self.Ns, self.control))
+
+    def __eq__(self, other):
+        return (self.Rs == other.Rs
+                and self.Zsmin == other.Zsmin
+                and self.Zsmax == other.Zsmax
+                and self.Ns == other.Ns
+                and self.current == other.current
+                and self.control == other.control)
+
+    def __ne__(self, other):
+        return not self == other
 
     def to_tuple(self):
         """
@@ -331,6 +363,16 @@ class Wall:
     def __init__(self, R, Z):
         self.R = R
         self.Z = Z
+
+    def __repr__(self):
+        return "Wall(R={R}, Z={Z})".format(R=self.R, Z=self.Z)
+
+    def __eq__(self, other):
+        return (self.R == other.R
+                and self.Z == other.Z)
+
+    def __ne__(self, other):
+        return not self == other
     
     
 class Machine:
@@ -353,6 +395,19 @@ class Machine:
         
         self.coils = coils
         self.wall = wall
+
+    def __repr__(self):
+        return ("Machine(coils={coils}, wall={wall})"
+                .format(coils=self.coils, wall=self.wall))
+
+    def __eq__(self, other):
+        # Other Machine might be equivalent except for order of
+        # coils. Assume this doesn't actually matter
+        return (sorted(self.coils) == sorted(other.coils)
+                and self.wall == other.wall)
+
+    def __ne__(self, other):
+        return not self == other
 
     def __getitem__(self, name):
         for label, coil in self.coils:
