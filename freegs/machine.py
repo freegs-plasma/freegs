@@ -24,7 +24,18 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 
 from .gradshafranov import Greens, GreensBr, GreensBz
 
-from numpy import linspace, dtype
+from numpy import linspace
+import numpy as np
+
+# We need this for the `label` part of the Circuit dtype for writing
+# to HDF5 files. See the following for information:
+# http://docs.h5py.org/en/latest/strings.html#how-to-store-text-strings
+try:
+    import h5py
+    has_hdf5 = True
+except ImportError:
+    has_hdf5 = False
+
 
 class Coil:
     """
@@ -40,7 +51,16 @@ class Coil:
 
     The total toroidal current carried by the coil is current * turns
     """
-    
+
+    # A dtype for converting to Numpy array and storing in HDF5 files
+    dtype = np.dtype([
+        (str("R"), np.float64),
+        (str("Z"), np.float64),
+        (str("current"), np.float64),
+        (str("turns"), np.int),
+        (str("control"), np.bool),
+    ])
+
     def __init__(self, R, Z, current=0.0, turns=1, control=True):
         """
         R, Z - Location of the coil
@@ -119,11 +139,19 @@ class Coil:
     def __ne__(self, other):
         return not self == other
 
-    def to_tuple(self):
+    def to_numpy_array(self):
         """
         Helper method for writing output
         """
-        return (self.R, self.Z, self.current, self.turns, self.control)
+        return np.array((self.R, self.Z, self.current, self.turns, self.control),
+                        dtype=self.dtype)
+
+    @classmethod
+    def from_numpy_array(cls, value):
+        if value.dtype != cls.dtype:
+            raise ValueError("Can't create {this} from dtype: {got} (expected: {dtype})"
+                             .format(this=type(cls), got=value.dtype, dtype=cls.dtype))
+        return Coil(*value[()])
 
 
 class Circuit:
@@ -136,6 +164,27 @@ class Circuit:
     current  Current in the circuit [Amps]
     control  Use feedback control? [bool]
     """
+
+    # We need a variable-length unicode string in the dtype. The numpy
+    # 'S' dtype is not suitable, so we only fallback to it if we don't
+    # have HDF5 (in which case, it doesn't matter, but we need
+    # something)
+    if has_hdf5:
+        # Python 2/3 compatibility
+        try:
+            string_dtype = h5py.special_dtype(vlen=unicode)
+        except NameError:
+            string_dtype = h5py.special_dtype(vlen=str)
+    else:
+        string_dtype = np.dtype(str('S'))
+
+    # A dtype for converting to Numpy array and storing in HDF5 files
+    dtype = np.dtype([
+        (str("label"), string_dtype),
+        (str("coil"), Coil.dtype),
+        (str("multiplier"), np.float64),
+    ])
+
     def __init__(self, coils, current=0.0, control=True):
         """
         coils - A list [ (label, Coil, multiplier) ]
@@ -237,12 +286,25 @@ class Circuit:
     def __ne__(self, other):
         return not self == other
 
-    def to_tuple(self):
+    def to_numpy_array(self):
         """
         Helper method for writing output
         """
-        return [(label, coil.to_tuple(), multiplier)
-                 for label, coil, multiplier in self.coils]
+        return np.array([(label, coil.to_numpy_array(), multiplier)
+                         for label, coil, multiplier in self.coils],
+                        dtype=self.dtype)
+
+    @classmethod
+    def from_numpy_array(cls, value):
+        if value.dtype != cls.dtype:
+            raise ValueError("Can't create {this} from dtype: {got} (expected: {dtype})"
+                             .format(this=type(cls), got=value.dtype, dtype=cls.dtype))
+        # Use the current/control values from the first coil in the circuit
+        # Should be consistent!
+        return Circuit([(label, Coil(*coil), multiplier) for
+                        label, coil, multiplier in value],
+                       current=value[0][1]["current"] / value[0]["multiplier"],
+                       control=value[0][1]["control"])
 
 
 class Solenoid:
@@ -256,6 +318,17 @@ class Solenoid:
     control - enable or disable control system
     
     """
+
+    # A dtype for converting to Numpy array and storing in HDF5 files
+    dtype = np.dtype([
+        (str("Rs"), np.float64),
+        (str("Zsmin"), np.float64),
+        (str("Zsmax"), np.float64),
+        (str("Ns"), np.float64),
+        (str("current"), np.float64),
+        (str("control"), np.bool),
+    ])
+
     def __init__(self, Rs, Zsmin, Zsmax, Ns, current=0.0, control=True):
         """
         Rs - Radius of the solenoid
@@ -348,11 +421,20 @@ class Solenoid:
     def __ne__(self, other):
         return not self == other
 
-    def to_tuple(self):
+    def to_numpy_array(self):
         """
         Helper method for writing output
         """
-        return (self.Rs, self.Zsmin, self.Zsmax, self.Ns, self.current, self.control)
+        return np.array((self.Rs, self.Zsmin, self.Zsmax, self.Ns,
+                         self.current, self.control),
+                        dtype=self.dtype)
+
+    @classmethod
+    def from_numpy_array(cls, value):
+        if value.dtype != cls.dtype:
+            raise ValueError("Can't create {this} from dtype: {got} (expected: {dtype})"
+                             .format(this=type(cls), got=value.dtype, dtype=cls.dtype))
+        return Solenoid(*value[()])
 
 
 class Wall:

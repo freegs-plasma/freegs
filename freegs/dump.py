@@ -38,34 +38,9 @@ import numpy as np
 from .equilibrium import Equilibrium
 from .machine import Coil, Circuit, Solenoid, Wall, Machine
 from . import boundary
+from . import machine
 
-# Define these dtypes here in order to avoid having the string_dtype,
-# which requires h5py, in the machine module. We need string_dtype
-# because the Coils in Circuits have string labels.
-string_dtype = h5py.special_dtype(vlen=str)
 
-coil_dtype = np.dtype([
-    ("R", np.float64),
-    ("Z", np.float64),
-    ("current", np.float64),
-    ("turns", np.int),
-    ("control", np.bool),
-])
-
-circuit_dtype = np.dtype([
-    ("label", string_dtype),
-    ("coil", coil_dtype),
-    ("multiplier", np.float64),
-])
-
-solenoid_dtype = np.dtype([
-    ("Rs", np.float64),
-    ("Zsmin", np.float64),
-    ("Zsmax", np.float64),
-    ("Ns", np.float64),
-    ("current", np.float64),
-    ("control", np.bool),
-])
 class OutputFormatNotAvailableError(Exception):
     """Raised when we couldn't import HDF5 (or some other library)
     required for this OutputFile format
@@ -134,19 +109,14 @@ class OutputFile(object):
         Write `equilbrium` to file
         """
 
-        self.handle["coil_dtype"] = coil_dtype
-        coil_dtype_id = self.handle["coil_dtype"]
-
-        self.handle["circuit_dtype"] = circuit_dtype
-        circuit_dtype_id = self.handle["circuit_dtype"]
-
-        self.handle["solenoid_dtype"] = solenoid_dtype
-        solenoid_dtype_id = self.handle["solenoid_dtype"]
+        self.handle["coil_dtype"] = Coil.dtype
+        self.handle["circuit_dtype"] = Circuit.dtype
+        self.handle["solenoid_dtype"] = Solenoid.dtype
 
         type_to_dtype = {
-            Coil: coil_dtype_id,
-            Circuit: circuit_dtype_id,
-            Solenoid: solenoid_dtype_id,
+            Coil.dtype: self.handle["coil_dtype"],
+            Circuit.dtype: self.handle["circuit_dtype"],
+            Solenoid.dtype: self.handle["solenoid_dtype"],
         }
 
         equilibrium_group = self.handle.require_group(self.EQUILIBRIUM_GROUP_NAME)
@@ -192,9 +162,12 @@ class OutputFile(object):
 
         coils_group = tokamak_group.create_group(self.COILS_GROUP_NAME)
         for label, coil in equilibrium.tokamak.coils:
-            dtype = type_to_dtype[type(coil)]
+            dtype = type_to_dtype[coil.dtype]
             coils_group.create_dataset(label, dtype=dtype,
-                                       data=np.array(coil.to_tuple(), dtype=dtype))
+                                       data=np.array(coil.to_numpy_array()))
+            # A bit gross, but store the class name so we know what
+            # type to restore it to later
+            coils_group[label].attrs["freegs type"] = coil.__class__.__name__
 
     def read_equilibrium(self):
         """
@@ -206,36 +179,19 @@ class OutputFile(object):
             A new `Equilibrium` object
         """
 
-        def make_coil(coil):
-            return Coil(coil["R"], coil["Z"], coil["current"], coil["turns"], coil["control"])
-
-        def make_circuit(circuit):
-            return Circuit([(label, make_coil(coil), multiplier)
-                            for label, coil, multiplier in circuit],
-                           current=circuit[0][1]["current"] / circuit[0]["multiplier"],
-                           control=circuit[0][1]["control"])
-
-        def make_solenoid(solenoid):
-            return Solenoid(solenoid["Rs"], solenoid["Zsmin"], solenoid["Zsmax"],
-                            solenoid["Ns"], solenoid["current"], solenoid["control"])
-
-        dtype_to_type = {
-            coil_dtype: make_coil,
-            circuit_dtype: make_circuit,
-            solenoid_dtype: make_solenoid,
-        }
-
-        def make_coil_set(thing):
-            make_func = dtype_to_type[thing.dtype]
-            return make_func(thing[()])
-
         equilibrium_group = self.handle[self.EQUILIBRIUM_GROUP_NAME]
         tokamak_group = equilibrium_group[self.MACHINE_GROUP_NAME]
         coil_group = tokamak_group[self.COILS_GROUP_NAME]
 
+        # This is also a bit hacky - find the appropriate class in
+        # freegs.machine and then call the `from_numpy_array` class
+        # method
+        def make_coil_set(thing):
+            return machine.__dict__[thing.attrs["freegs type"]].from_numpy_array(thing)
+
         # Unfortunately this creates the coils in lexographical order
         # by label, losing the origin
-        coils = [(label, make_coil_set(coil[()])) for label, coil in coil_group.items()]
+        coils = [(label, make_coil_set(coil)) for label, coil in coil_group.items()]
 
         if "wall_R" in tokamak_group:
             wall_R = tokamak_group["wall_R"][:]
