@@ -393,21 +393,12 @@ def find_separatrix(eq, opoint=None, xpoint=None, ntheta=20, psi=None, axis=None
     dtheta = theta_grid[1] - theta_grid[0]
 
     # Avoid putting theta grid points exactly on the X-points
-    xpoint_thetas = [arctan2(r - r0, z - z0) for r, z, _ in xpoint]
-    # Maximum number of times to adjust the grid before giving up
-    MAX_ITERATIONS = 10
-    # How close in theta to allow theta grid points to an X-point
-    TOLERANCE = 1.e-8
-    count = 1
-    for xpoint_theta in xpoint_thetas:
-        while any(abs(theta_grid - xpoint_theta) < TOLERANCE):
-            if count > MAX_ITERATIONS:
-                message = ("Maximum number of iterations ({}) when adjusting theta grid"
-                           .format(MAX_ITERATIONS))
-                warn(message)
-                break
-            theta_grid += dtheta / 2.
-            count += 1
+    xpoint_theta = arctan2(xpoint[0][0] - r0, xpoint[0][1] - z0)
+    # How close in theta to allow theta grid points to the X-point
+    TOLERANCE = 1.e-3
+    if any(abs(theta_grid - xpoint_theta) < TOLERANCE):
+        warn("Theta grid too close to X-point, shifting by half-step")
+        theta_grid += dtheta / 2
 
     isoflux = []
     for theta in theta_grid:
