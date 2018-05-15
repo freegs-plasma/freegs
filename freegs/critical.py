@@ -24,7 +24,9 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 from scipy import interpolate
 from numpy import zeros
 from numpy.linalg import inv
-from numpy import dot, linspace, argmax, argmin, abs, clip, sin, cos, pi, amax
+from numpy import dot, linspace, argmax, argmin, abs, clip, sin, cos, pi, amax, arctan2
+from warnings import warn
+
 
 def find_critical(R, Z, psi,discard_xpoints=False):
     """
@@ -359,29 +361,52 @@ def find_psisurface(eq, psifunc, r0,z0, r1,z1, psival=1.0, n=100, axis=None):
     
     return r,z
 
+
 def find_separatrix(eq, opoint=None, xpoint=None, ntheta=20, psi=None, axis=None):
-    """
-    
+    """Find the R, Z coordinates of the separatrix for equilbrium
+    eq. Returns a tuple of (R, Z, R_X, Z_X), where R_X, Z_X are the
+    coordinates of the X-point on the separatrix. Points are equally
+    spaced in geometric poloidal angle.
+
+    If opoint, xpoint or psi are not given, they are calculated from eq
+
+    eq - Equilibrium object
+    opoint - List of O-point tuples of (R, Z, psi)
+    xpoint - List of X-point tuples of (R, Z, psi)
+    ntheta - Number of points to find
+    psi - Grid of psi on (R, Z)
+    axis - A matplotlib axis object to plot points on
     """
     if psi is None:
         psi = eq.psi()
-        
+
     if (opoint is None) or (xpoint is None):
         opoint, xpoint = find_critical(eq.R, eq.Z, psi)
-    
+
     psinorm = (psi - opoint[0][2])/(xpoint[0][2] - opoint[0][2])
     
     psifunc = interpolate.RectBivariateSpline(eq.R[:,0], eq.Z[0,:], psinorm)
 
+    r0, z0 = opoint[0][0:2]
+
+    theta_grid = linspace(0, 2*pi, ntheta, endpoint=False)
+    dtheta = theta_grid[1] - theta_grid[0]
+
+    # Avoid putting theta grid points exactly on the X-points
+    xpoint_theta = arctan2(xpoint[0][0] - r0, xpoint[0][1] - z0)
+    # How close in theta to allow theta grid points to the X-point
+    TOLERANCE = 1.e-3
+    if any(abs(theta_grid - xpoint_theta) < TOLERANCE):
+        warn("Theta grid too close to X-point, shifting by half-step")
+        theta_grid += dtheta / 2
+
     isoflux = []
-    
-    for theta in linspace(0, 2*pi, ntheta, endpoint=False):
-        r0, z0 = opoint[0][0:2]
-        r,z = find_psisurface(eq, psifunc, 
-                              r0, z0, 
-                              r0 + 10.*sin(theta), z0 + 10.*cos(theta),
-                              psival=1.0,
-                              axis=axis)
-        isoflux.append( (r,z, xpoint[0][0], xpoint[0][1]) )
-    
+    for theta in theta_grid:
+        r, z = find_psisurface(eq, psifunc,
+                               r0, z0,
+                               r0 + 10.*sin(theta), z0 + 10.*cos(theta),
+                               psival=1.0,
+                               axis=axis)
+        isoflux.append((r, z, xpoint[0][0], xpoint[0][1]))
+
     return isoflux
