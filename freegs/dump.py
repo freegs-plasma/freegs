@@ -36,8 +36,6 @@ solenoid_dtype = np.dtype([
     ("control", np.bool),
 ])
 
-EQUILIBRIUM_GROUP_NAME = "equilbrium"
-
 
 class OutputFile(object):
     """
@@ -69,6 +67,11 @@ class OutputFile(object):
     **kwds
            Other keyword arguments to pass to `h5py.File`
     """
+
+    # Names of the groups in the file
+    EQUILIBRIUM_GROUP_NAME = "equilbrium"
+    MACHINE_GROUP_NAME = "tokamak"
+    COILS_GROUP_NAME = "coils"
 
     def __init__(self, name, mode=None, **kwds):
         self.handle = h5py.File(name, mode, **kwds)
@@ -105,7 +108,7 @@ class OutputFile(object):
             Solenoid: solenoid_dtype_id,
         }
 
-        equilibrium_group = self.handle.require_group(EQUILIBRIUM_GROUP_NAME)
+        equilibrium_group = self.handle.require_group(self.EQUILIBRIUM_GROUP_NAME)
 
         equilibrium_group.create_dataset("Rmin", data=equilibrium.Rmin)
         equilibrium_group.create_dataset("Rmax", data=equilibrium.Rmax)
@@ -138,7 +141,7 @@ class OutputFile(object):
         equilibrium_group.create_dataset("boundary_function",
                                          data=equilibrium._applyBoundary.__name__)
 
-        tokamak_group = equilibrium_group.create_group("tokamak")
+        tokamak_group = equilibrium_group.create_group(self.MACHINE_GROUP_NAME)
 
         if equilibrium.tokamak.wall is not None:
             tokamak_group.create_dataset(
@@ -146,7 +149,7 @@ class OutputFile(object):
             tokamak_group.create_dataset(
                 "wall_Z", data=equilibrium.tokamak.wall.Z)
 
-        coils_group = tokamak_group.create_group("coils")
+        coils_group = tokamak_group.create_group(self.COILS_GROUP_NAME)
         for label, coil in equilibrium.tokamak.coils:
             dtype = type_to_dtype[type(coil)]
             coils_group.create_dataset(label, dtype=dtype,
@@ -185,9 +188,9 @@ class OutputFile(object):
             make_func = dtype_to_type[thing.dtype]
             return make_func(thing[()])
 
-        equilibrium_group = self.handle[EQUILIBRIUM_GROUP_NAME]
-        tokamak_group = equilibrium_group["tokamak"]
-        coil_group = tokamak_group["coils"]
+        equilibrium_group = self.handle[self.EQUILIBRIUM_GROUP_NAME]
+        tokamak_group = equilibrium_group[self.MACHINE_GROUP_NAME]
+        coil_group = tokamak_group[self.COILS_GROUP_NAME]
 
         # Unfortunately this creates the coils in lexographical order
         # by label, losing the origin
