@@ -18,6 +18,7 @@ coil_dtype = np.dtype([
     ("R", np.float64),
     ("Z", np.float64),
     ("current", np.float64),
+    ("turns", np.int),
     ("control", np.bool),
 ])
 
@@ -166,7 +167,7 @@ class OutputFile(object):
         """
 
         def make_coil(coil):
-            return Coil(coil["R"], coil["Z"], coil["current"], coil["control"])
+            return Coil(coil["R"], coil["Z"], coil["current"], coil["turns"], coil["control"])
 
         def make_circuit(circuit):
             return Circuit([(label, make_coil(coil), multiplier)

@@ -123,7 +123,7 @@ class Coil:
         """
         Helper method for writing output
         """
-        return (self.R, self.Z, self.current, self.control)
+        return (self.R, self.Z, self.current, self.turns, self.control)
 
 
 class Circuit:
