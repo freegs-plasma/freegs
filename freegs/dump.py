@@ -40,10 +40,43 @@ EQUILIBRIUM_GROUP_NAME = "equilbrium"
 
 
 class OutputFile(object):
+    """
+    Read/write freegs Equilibrium objects to file
+
+    Currently supports HDF5 format only
+
+    Given an Equilibrium object, eq, write to file like:
+
+    >>> with freegs.OutputFile("test_readwrite.h5", 'w') as f:
+    ...     f.write_equilibrium(eq)
+
+    Read back into an Equilibrium like so:
+
+    >>> with freegs.OutputFile("test_readwrite.h5", 'r') as f:
+    ...      eq = f.read_equilibrium()
+
+    Parameters
+    ----------
+    name : str
+           Name of file to open
+    mode : str
+           Mode string to pass to `h5py.File`, one of:
+             r  - Read-only, file must exist
+             r+ - Read-write, file must exist
+             w  - Create file, truncate if exists
+             w- - Create file, fail if exists
+             a  - Read-write if exists, create otherwise
+    **kwds
+           Other keyword arguments to pass to `h5py.File`
+    """
+
     def __init__(self, name, mode=None, **kwds):
         self.handle = h5py.File(name, mode, **kwds)
 
     def close(self):
+        """
+        Close the file
+        """
         self.handle.close()
 
     def __enter__(self):
@@ -54,7 +87,7 @@ class OutputFile(object):
 
     def write_equilibrium(self, equilibrium):
         """
-        Write equilbrium to file
+        Write `equilbrium` to file
         """
 
         self.handle["coil_dtype"] = coil_dtype
@@ -122,6 +155,11 @@ class OutputFile(object):
     def read_equilibrium(self):
         """
         Read an equilibrium from the file
+
+        Returns
+        -------
+        Equilibrium
+            A new `Equilibrium` object
         """
 
         def make_coil(coil):
