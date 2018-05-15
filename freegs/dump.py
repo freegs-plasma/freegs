@@ -1,8 +1,12 @@
 # Py2/3 compatibility
 from __future__ import unicode_literals
-from builtins import str
 
-import h5py
+try:
+    import h5py
+    has_hdf5 = True
+except ImportError:
+    has_hdf5 = False
+
 import numpy as np
 
 from .equilibrium import Equilibrium
@@ -36,6 +40,13 @@ solenoid_dtype = np.dtype([
     ("current", np.float64),
     ("control", np.bool),
 ])
+class OutputFormatNotAvailableError(Exception):
+    """Raised when we couldn't import HDF5 (or some other library)
+    required for this OutputFile format
+
+    """
+    def __init__(self, file_format="HDF5"):
+        self.message = "Sorry, {} is not available!".format(file_format)
 
 
 class OutputFile(object):
@@ -75,6 +86,9 @@ class OutputFile(object):
     COILS_GROUP_NAME = "coils"
 
     def __init__(self, name, mode=None, **kwds):
+        if not has_hdf5:
+            raise OutputFormatNotAvailableError("HDF5")
+
         self.handle = h5py.File(name, mode, **kwds)
 
     def close(self):
