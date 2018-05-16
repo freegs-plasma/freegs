@@ -18,87 +18,86 @@ from . import multigrid
 
 from . import machine
 
+
 class Equilibrium:
     """
     Represents the equilibrium state, including
     plasma and coil currents
-    
+
     Data members
     ------------
-    
+
     These can be read, but should not be modified directly
-    
+
     R[nx,ny]
-    Z[nx,ny] 
-    
+    Z[nx,ny]
+
     Rmin, Rmax
     Zmin, Zmax
 
     tokamak - The coils and circuits
-    
+
     Private data members
-    
+
     _applyBoundary()
     _solver - Grad-Shafranov elliptic solver
-    
+
     """
-    
-    def __init__(self, tokamak=machine.EmptyTokamak(), 
+
+    def __init__(self, tokamak=machine.EmptyTokamak(),
                  Rmin=0.1, Rmax=2.0,
                  Zmin=-1.0, Zmax=1.0,
                  nx=65, ny=65,
-                 boundary=freeBoundary):
-        """
-        Initialises a plasma equilibrium
-        
+                 boundary=freeBoundary,
+                 psi=None, current=0.0):
+        """Initialises a plasma equilibrium
+
         Rmin, Rmax  - Range of major radius R [m]
         Zmin, Zmax  - Range of height Z [m]
-        
+
         nx - Resolution in R. This must be 2^n + 1
         ny - Resolution in Z. This must be 2^m + 1
-        
+
         boundary - The boundary condition, either freeBoundary or fixedBoundary
-        
+
+        psi - Magnetic flux. If None, use concentric circular flux
+              surfaces as starting guess
+
+        current - Plasma current (default = 0.0)
         """
 
         self.tokamak = tokamak
 
         self._applyBoundary = boundary
-        
+
         self.Rmin = Rmin
         self.Rmax = Rmax
         self.Zmin = Zmin
         self.Zmax = Zmax
-        
-        dR = (Rmax - Rmin)/(nx - 1)
-        dZ = (Zmax - Zmin)/(ny - 1)
-        
+
+        self.R_1D = linspace(Rmin, Rmax, nx)
+        self.Z_1D = linspace(Zmin, Zmax, ny)
+        self.R, self.Z = meshgrid(self.R_1D, self.Z_1D, indexing='ij')
+
         yymid = 1 - Zmax/(Zmax - Zmin)
-        
-        # Starting guess for psi
-        xx, yy = meshgrid(linspace(0,1,nx), linspace(0,1,ny), indexing='ij')
-        psi = exp( - ( (xx - 0.5)**2 + (yy - yymid)**2 ) / 0.4**2 )
-        
-        psi[0,:] = 0.0
-        psi[:,0] = 0.0
-        psi[-1,:] = 0.0
-        psi[:,-1] = 0.0
-        
-        self.R = zeros([nx,ny])
-        for x in range(nx):
-            self.R[x,:] = Rmin + x * dR
-            
-        self.Z = zeros([nx,ny])
-        for y in range(ny):
-            self.Z[:,y] = Zmin + y*dZ
-            
+
+        if psi is None:
+            # Starting guess for psi
+            xx, yy = meshgrid(linspace(0, 1, nx), linspace(0, 1, ny), indexing='ij')
+            psi = exp(-((xx - 0.5)**2 + (yy - yymid)**2) / 0.4**2)
+
+            psi[0, :] = 0.0
+            psi[:, 0] = 0.0
+            psi[-1, :] = 0.0
+            psi[:, -1] = 0.0
+
         self._updatePlasmaPsi(psi)
-        
+
         # Calculate coil Greens functions. This is an optimisation,
         # used in self.psi() to speed up calculations
         self._pgreen = tokamak.createPsiGreens(self.R, self.Z)
 
-        self._current = 0.0 # Plasma current
+        self._current = current  # Plasma current
 
         # Create the solver
         generator = GSsparse(Rmin, Rmax, Zmin, Zmax)

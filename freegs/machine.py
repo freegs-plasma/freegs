@@ -25,6 +25,17 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 from .gradshafranov import Greens, GreensBr, GreensBz
 
 from numpy import linspace
+import numpy as np
+
+# We need this for the `label` part of the Circuit dtype for writing
+# to HDF5 files. See the following for information:
+# http://docs.h5py.org/en/latest/strings.html#how-to-store-text-strings
+try:
+    import h5py
+    has_hdf5 = True
+except ImportError:
+    has_hdf5 = False
+
 
 class Coil:
     """
@@ -40,7 +51,16 @@ class Coil:
 
     The total toroidal current carried by the coil is current * turns
     """
-    
+
+    # A dtype for converting to Numpy array and storing in HDF5 files
+    dtype = np.dtype([
+        (str("R"), np.float64),
+        (str("Z"), np.float64),
+        (str("current"), np.float64),
+        (str("turns"), np.int),
+        (str("control"), np.bool),
+    ])
+
     def __init__(self, R, Z, current=0.0, turns=1, control=True):
         """
         R, Z - Location of the coil
@@ -106,7 +126,32 @@ class Coil:
         return GreensBz(self.R,self.Z, R, Z) * self.turns
         
     def __repr__(self):
-        return "Coil(R={0},Z={1},current={2},turns={3},control={4})".format(self.R, self.Z, self.current, self.turns, self.control)
+        return ("Coil(R={0}, Z={1}, current={2}, turns={3}, control={4})"
+                .format(self.R, self.Z, self.current, self.turns, self.control))
+
+    def __eq__(self, other):
+        return (self.R == other.R
+                and self.Z == other.Z
+                and self.current == other.current
+                and self.turns == other.turns
+                and self.control == other.control)
+
+    def __ne__(self, other):
+        return not self == other
+
+    def to_numpy_array(self):
+        """
+        Helper method for writing output
+        """
+        return np.array((self.R, self.Z, self.current, self.turns, self.control),
+                        dtype=self.dtype)
+
+    @classmethod
+    def from_numpy_array(cls, value):
+        if value.dtype != cls.dtype:
+            raise ValueError("Can't create {this} from dtype: {got} (expected: {dtype})"
+                             .format(this=type(cls), got=value.dtype, dtype=cls.dtype))
+        return Coil(*value[()])
 
 
 class Circuit:
@@ -119,6 +164,27 @@ class Circuit:
     current  Current in the circuit [Amps]
     control  Use feedback control? [bool]
     """
+
+    # We need a variable-length unicode string in the dtype. The numpy
+    # 'S' dtype is not suitable, so we only fallback to it if we don't
+    # have HDF5 (in which case, it doesn't matter, but we need
+    # something)
+    if has_hdf5:
+        # Python 2/3 compatibility
+        try:
+            string_dtype = h5py.special_dtype(vlen=unicode)
+        except NameError:
+            string_dtype = h5py.special_dtype(vlen=str)
+    else:
+        string_dtype = np.dtype(str('S'))
+
+    # A dtype for converting to Numpy array and storing in HDF5 files
+    dtype = np.dtype([
+        (str("label"), string_dtype),
+        (str("coil"), Coil.dtype),
+        (str("multiplier"), np.float64),
+    ])
+
     def __init__(self, coils, current=0.0, control=True):
         """
         coils - A list [ (label, Coil, multiplier) ]
@@ -204,14 +270,42 @@ class Circuit:
         for label, coil, multiplier in self.coils:
             result += multiplier * coil.controlBz(R, Z)
         return result
-        
+
     def __repr__(self):
-        result = "Circuit( " 
-        for label, coil, multiplier in self.coils:
-            result += label+ ":" + str(coil)+ " "
-        return result + ")"
-        
-    
+        result = "Circuit(["
+        coils = ['("{0}", {1}, {2})'.format(label, coil, multiplier)
+                 for label, coil, multiplier in self.coils]
+        result += ", ".join(coils)
+        return result + "], current={0}, control={1})".format(self.current, self.control)
+
+    def __eq__(self, other):
+        return (self.coils == other.coils
+                and self.current == other.current
+                and self.control == other.control)
+
+    def __ne__(self, other):
+        return not self == other
+
+    def to_numpy_array(self):
+        """
+        Helper method for writing output
+        """
+        return np.array([(label, coil.to_numpy_array(), multiplier)
+                         for label, coil, multiplier in self.coils],
+                        dtype=self.dtype)
+
+    @classmethod
+    def from_numpy_array(cls, value):
+        if value.dtype != cls.dtype:
+            raise ValueError("Can't create {this} from dtype: {got} (expected: {dtype})"
+                             .format(this=type(cls), got=value.dtype, dtype=cls.dtype))
+        # Use the current/control values from the first coil in the circuit
+        # Should be consistent!
+        return Circuit([(label, Coil(*coil), multiplier) for
+                        label, coil, multiplier in value],
+                       current=value[0][1]["current"] / value[0]["multiplier"],
+                       control=value[0][1]["control"])
+
 
 class Solenoid:
     """
@@ -224,6 +318,17 @@ class Solenoid:
     control - enable or disable control system
     
     """
+
+    # A dtype for converting to Numpy array and storing in HDF5 files
+    dtype = np.dtype([
+        (str("Rs"), np.float64),
+        (str("Zsmin"), np.float64),
+        (str("Zsmax"), np.float64),
+        (str("Ns"), np.float64),
+        (str("current"), np.float64),
+        (str("control"), np.bool),
+    ])
+
     def __init__(self, Rs, Zsmin, Zsmax, Ns, current=0.0, control=True):
         """
         Rs - Radius of the solenoid
@@ -302,7 +407,34 @@ class Solenoid:
         return result
 
     def __repr__(self):
-        return "Solenoid(R={0},Zmin={1},Zmax={2},current={3},N={4},control={5})".format(self.Rs, self.Zsmin, self.Zsmax, self.current, self.Ns, self.control)
+        return ("Solenoid(Rs={0}, Zsmin={1}, Zsmax={2}, current={3}, Ns={4}, control={5})"
+                .format(self.Rs, self.Zsmin, self.Zsmax, self.current, self.Ns, self.control))
+
+    def __eq__(self, other):
+        return (self.Rs == other.Rs
+                and self.Zsmin == other.Zsmin
+                and self.Zsmax == other.Zsmax
+                and self.Ns == other.Ns
+                and self.current == other.current
+                and self.control == other.control)
+
+    def __ne__(self, other):
+        return not self == other
+
+    def to_numpy_array(self):
+        """
+        Helper method for writing output
+        """
+        return np.array((self.Rs, self.Zsmin, self.Zsmax, self.Ns,
+                         self.current, self.control),
+                        dtype=self.dtype)
+
+    @classmethod
+    def from_numpy_array(cls, value):
+        if value.dtype != cls.dtype:
+            raise ValueError("Can't create {this} from dtype: {got} (expected: {dtype})"
+                             .format(this=type(cls), got=value.dtype, dtype=cls.dtype))
+        return Solenoid(*value[()])
 
 
 class Wall:
@@ -313,6 +445,16 @@ class Wall:
     def __init__(self, R, Z):
         self.R = R
         self.Z = Z
+
+    def __repr__(self):
+        return "Wall(R={R}, Z={Z})".format(R=self.R, Z=self.Z)
+
+    def __eq__(self, other):
+        return (self.R == other.R
+                and self.Z == other.Z)
+
+    def __ne__(self, other):
+        return not self == other
     
     
 class Machine:
@@ -335,6 +477,19 @@ class Machine:
         
         self.coils = coils
         self.wall = wall
+
+    def __repr__(self):
+        return ("Machine(coils={coils}, wall={wall})"
+                .format(coils=self.coils, wall=self.wall))
+
+    def __eq__(self, other):
+        # Other Machine might be equivalent except for order of
+        # coils. Assume this doesn't actually matter
+        return (sorted(self.coils) == sorted(other.coils)
+                and self.wall == other.wall)
+
+    def __ne__(self, other):
+        return not self == other
 
     def __getitem__(self, name):
         for label, coil in self.coils:
