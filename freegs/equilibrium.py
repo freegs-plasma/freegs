@@ -174,14 +174,14 @@ class Equilibrium:
         Radial magnetic field due to plasma
         Br = -1/R dpsi/dZ
         """
-        return -self.psi_func(R,Z,dy=1)[0][0]/R
+        return -self.psi_func(R, Z, dy=1, grid=False)/R
         
     def plasmaBz(self, R, Z):
         """
         Vertical magnetic field due to plasma 
         Bz = (1/R) dpsi/dR
         """
-        return self.psi_func(R,Z,dx=1)[0][0]/R
+        return self.psi_func(R, Z, dx=1, grid=False)/R
         
     def Br(self, R, Z):
         """
@@ -313,14 +313,14 @@ class Equilibrium:
         """
         from .plotting import plotEquilibrium
         return plotEquilibrium(self, axis=axis, show=show, oxpoints=oxpoints)
-
-    def pressureRZ(self, R=None, Z=None):
+    
+    def psinormRZ(self, R=None, Z=None):
         """
-        Calculates the pressure on a 2D R-Z mesh. 
-        If R and Z are not given then the grid is used
+        Return normalised psi and core mask
+
+        The mask is 1 inside the plasma, and 0 outside the plasma
+        """
         
-        """
-
         if R is None:
             R = self.R
         if Z is None:
@@ -341,15 +341,22 @@ class Equilibrium:
             # No X-points
             psi_bndry = psi[0,0]
             mask = None
-
-        dR = R[1,0] - R[0,0]
-        dZ = Z[0,1] - Z[0,0]
         
         # Calculate normalised psi.
         # 0 = magnetic axis
         # 1 = plasma boundary
         psinorm = (psi - psi_axis)  / (psi_bndry - psi_axis)
-        np.clip(psinorm, 0.0, 1.0)
+        np.clip(psinorm, 0.0, 1.0) # This to prevent potential issues with interpolation
+
+        return psinorm, mask
+    
+    def pressureRZ(self, R=None, Z=None):
+        """
+        Calculates the pressure on a 2D R-Z mesh. 
+        If R and Z are not given then the grid is used
+        
+        """
+        psinorm, mask = self.psinormRZ(R, Z)
         
         pressure = self._profiles.pressure(psinorm)
         
@@ -376,7 +383,48 @@ class Equilibrium:
         
         return (8.*pi/mu0) * intp / Ip**2
     
+    def normInternalInductance(self):
+        """
+        Normalised internal inductance l_i
+        This appears in the Shafranov parameter, and is a measure of how
+        peaked the current profile is.
+        
+        Delta = beta_p + l_i/2
+
+        Calculated using:
+
+        li = <Bp^2>_S / <Bp>_L^2
     
+        where <.>_S is the surface average over the poloidal plane inside the plasma
+              <.>_L is the line average over the plasma boundary
+        """
+        
+        psinorm, mask = self.psinormRZ()
+
+        R = self.R
+        Z = self.Z
+
+        dR = self.R[1,0] - self.R[0,0]
+        dZ = self.Z[0,1] - self.Z[0,0]
+        
+        Bp2 = self.Br(R,Z)**2 + self.Bz(R,Z)**2
+        
+        # Integrate Bp**2 over the poloidal cross-section inside the plasma
+        int_Bp2 = romb(romb(Bp2 * mask)) * dR*dZ
+        area = np.sum(mask) * dR*dZ
+        
+        # Points on separatrix 
+        sep_rz = self.separatrix()
+        sep_r = sep_rz[:,0]
+        sep_z = sep_rz[:,1]
+
+        sep_bp = np.sqrt(self.Bp(sep_r)**2 + self.Bp(sep_z)**2)
+        
+        # Line integrate Bp over the separatrix
+        
+        
+        return None
+        
 
 def refine(eq):
     """
