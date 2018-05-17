@@ -3,12 +3,14 @@ Defines class to represent the equilibrium
 state, including plasma and coil currents
 """
 
-from numpy import meshgrid, linspace, exp, zeros, nditer, array
+from numpy import meshgrid, linspace, exp, zeros, nditer, array, pi
+import numpy as np
 from scipy import interpolate
 from scipy.integrate import romb, quad # Romberg integration
 
 from .boundary import fixedBoundary, freeBoundary
-from .critical import find_separatrix
+from . import critical
+
 
 # Operators which define the G-S equation
 from .gradshafranov import mu0, GSsparse
@@ -201,7 +203,7 @@ class Equilibrium:
         """
         Return poloidal flux psi at given (R,Z) location
         """
-        return self.psi_func(R,Z) + self.tokamak.psi(R,Z)
+        return self.psi_func(R,Z,grid=False) + self.tokamak.psi(R,Z)
 
     def fpol(self,psinorm):
         """
@@ -244,7 +246,7 @@ class Equilibrium:
         Returns an array of ntheta (R, Z) coordinates of the separatrix,
         equally spaced in geometric poloidal angle.
         """
-        return array(find_separatrix(self, ntheta=ntheta, psi=self.psi()))[:, 0:2]
+        return array(critical.find_separatrix(self, ntheta=ntheta, psi=self.psi()))[:, 0:2]
 
     def solve(self, profiles):
         """
@@ -311,6 +313,69 @@ class Equilibrium:
         """
         from .plotting import plotEquilibrium
         return plotEquilibrium(self, axis=axis, show=show, oxpoints=oxpoints)
+
+    def pressureRZ(self, R=None, Z=None):
+        """
+        Calculates the pressure on a 2D R-Z mesh. 
+        If R and Z are not given then the grid is used
+        
+        """
+
+        if R is None:
+            R = self.R
+        if Z is None:
+            Z = self.Z
+        
+        psi = self.psiRZ(R,Z)
+        
+        # Analyse the equilibrium, finding O- and X-points
+        opt, xpt = critical.find_critical(R, Z, psi)
+        if not opt:
+            raise ValueError("No O-points found!")
+        psi_axis = opt[0][2]
+
+        if xpt:
+            psi_bndry = xpt[0][2]
+            mask = critical.core_mask(R, Z, psi, opt, xpt)
+        else:
+            # No X-points
+            psi_bndry = psi[0,0]
+            mask = None
+
+        dR = R[1,0] - R[0,0]
+        dZ = Z[0,1] - Z[0,0]
+        
+        # Calculate normalised psi.
+        # 0 = magnetic axis
+        # 1 = plasma boundary
+        psinorm = (psi - psi_axis)  / (psi_bndry - psi_axis)
+        np.clip(psinorm, 0.0, 1.0)
+        
+        pressure = self._profiles.pressure(psinorm)
+        
+        if mask is not None:
+            # If there is a masking function (X-points, limiters)
+            pressure *= mask  # Zero in the SOL
+            
+        return pressure
+    
+    def poloidalBeta(self):
+        """
+        Calculates the poloidal beta using
+
+        betap = (8pi/mu0) * int(p)dRdZ / Ip^2
+        """
+        pressure = self.pressureRZ()  # 2D array [R,Z]
+        Ip = self.plasmaCurrent()
+        
+        dR = self.R[1,0] - self.R[0,0]
+        dZ = self.Z[0,1] - self.Z[0,0]
+
+        # Integrate the pressure over the poloidal cross-section
+        intp = romb(romb(pressure)) * dR*dZ
+        
+        return (8.*pi/mu0) * intp / Ip**2
+    
     
 
 def refine(eq):
