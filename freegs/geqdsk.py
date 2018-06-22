@@ -33,6 +33,7 @@ from . import picard
 
 from scipy import interpolate
 from numpy import linspace, amin, amax, reshape, ravel, zeros, argmax, clip, sin, cos, pi
+import math
 
 def write(eq, fh, label=None, oxpoints=None, fileformat=_geqdsk.write):
     """
@@ -102,6 +103,19 @@ def write(eq, fh, label=None, oxpoints=None, fileformat=_geqdsk.write):
 
 import matplotlib.pyplot as plt
 
+def isPow2(val):
+    """
+    Returns True if val is a power of 2
+    val     - Integer
+    """
+    return val & (val-1) == 0
+
+def ceilPow2(val):
+    """
+    Find a power of two greater than or equal to val
+    """
+    return 2**math.ceil(math.log2(val))
+
 def read(fh, machine, rtol=1e-3, ntheta=8, show=False, axis=None, cocos=1):
     """
     Reads a G-EQDSK format file
@@ -139,14 +153,37 @@ def read(fh, machine, rtol=1e-3, ntheta=8, show=False, axis=None, cocos=1):
     # If data contains a limiter, set the machine wall
     if "rlim" in data and len(data["rlim"]) > 0:
         machine.wall = Wall(data["rlim"], data["zlim"])
-    
+
+    nx = data["nx"]
+    ny = data["ny"]
+    psi = data["psi"]
+
+    if not (isPow2(nx-1) and isPow2(ny-1)):
+        print("Warning: Input grid size %d x %d has sizes which are not 2^n+1" % (nx, ny))
+        
+        rin = linspace(0, 1, nx)
+        zin = linspace(0, 1, ny)
+        psi_interp = interpolate.RectBivariateSpline(rin, zin, psi)
+        
+        # Ensure that newnx, newny is 2^n + 1
+        nx = ceilPow2(nx-1) + 1
+        ny = ceilPow2(ny-1) + 1
+        print("   => Resizing to %d x %d" % (nx, ny))
+
+        rnew = linspace(0, 1, nx)
+        znew = linspace(0, 1, ny)
+
+        # Interpolate onto new grid
+        psi = psi_interp(rnew, znew)
+        
+        
     # Create an Equilibrium object
     eq = Equilibrium(tokamak = machine,
                      Rmin = data["rleft"],
                      Rmax = data["rleft"] + data["rdim"],
                      Zmin = data["zmid"] - 0.5*data["zdim"],
                      Zmax = data["zmid"] + 0.5*data["zdim"],
-                     nx=data["nx"], ny=data["ny"]         # Number of grid points
+                     nx=nx, ny=ny         # Number of grid points
                  )
 
     # Range of psi normalises psi derivatives
@@ -194,7 +231,7 @@ def read(fh, machine, rtol=1e-3, ntheta=8, show=False, axis=None, cocos=1):
     # This requires a bit of a hack to set the poloidal flux
     
     coil_psi = machine.psi(eq.R, eq.Z)
-    eq._updatePlasmaPsi(data["psi"] - coil_psi)
+    eq._updatePlasmaPsi(psi - coil_psi)
     
     # Perform a linear solve, calculating plasma psi
     eq.solve(profiles)
@@ -203,10 +240,10 @@ def read(fh, machine, rtol=1e-3, ntheta=8, show=False, axis=None, cocos=1):
     
     # Identify points to constrain: X-points, O-points and separatrix shape
 
-    psi_in = interpolate.RectBivariateSpline(eq.R[:,0], eq.Z[0,:], data["psi"])
+    psi_in = interpolate.RectBivariateSpline(eq.R[:,0], eq.Z[0,:], psi)
     
     # Find all the O- and X-points
-    opoint, xpoint = critical.find_critical(eq.R, eq.Z, data["psi"])
+    opoint, xpoint = critical.find_critical(eq.R, eq.Z, psi)
     
     if show:
         if axis is None:
@@ -216,20 +253,20 @@ def read(fh, machine, rtol=1e-3, ntheta=8, show=False, axis=None, cocos=1):
         axis.set_xlabel("Major radius [m]")
         axis.set_ylabel("Height [m]")
     
-        levels = linspace(amin(data["psi"]), amax(data["psi"]), 50)
-        axis.contour(eq.R,eq.Z,data["psi"], levels=levels, colors='k')
+        levels = linspace(amin(psi), amax(psi), 50)
+        axis.contour(eq.R,eq.Z,psi, levels=levels, colors='k')
         
         # Put red dots on X-points
         for r,z,_ in xpoint:
             axis.plot(r,z,'ro')
 
-        sep_contour=axis.contour(eq.R, eq.Z, data["psi"], levels=[xpoint[0][2]], colors='r')
+        sep_contour=axis.contour(eq.R, eq.Z, psi, levels=[xpoint[0][2]], colors='r')
         
     # Find the separatrix
-    isoflux = critical.find_separatrix(eq, opoint, xpoint, ntheta=ntheta, psi=data["psi"], axis=axis)
+    isoflux = critical.find_separatrix(eq, opoint, xpoint, ntheta=ntheta, psi=psi, axis=axis)
 
     # Find best fit for coil currents
-    controlsystem = control.ConstrainPsi2D(data["psi"])
+    controlsystem = control.ConstrainPsi2D(psi)
     #controlsystem = control.constrain(xpoints=xpoint, isoflux=isoflux, gamma=1e-14)
     controlsystem(eq)
     
