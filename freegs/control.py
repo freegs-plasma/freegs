@@ -6,6 +6,7 @@ Use constraints to adjust coil currents
 
 from numpy import dot, transpose, eye, array
 from numpy.linalg import inv
+import numpy as np
 
 from scipy import optimize
 
@@ -172,12 +173,24 @@ class ConstrainPsi2D(object):
     """
     Adjusts coil currents to minimise the square differences
     between psi[R,Z] and a target psi.
+
+    Ignores constant offset differences between psi array
     """
-    def __init__(self, target_psi):
+    def __init__(self, target_psi, weight=1.0):
         """
-        target_psi - a 2D (R,Z) array, which must be the same size as the equilibrium psi
+        target_psi : 2D (R,Z) array
+            Must be the same size as the equilibrium psi
+
+        weight : float or 2D array of same size as target_psi
+            Relative importance of each (R,Z) point in the fitting
+            By default every point is equally weighted
+            Set points to zero to ignore them in fitting.
+           
         """
-        self.target_psi = target_psi
+        # Remove the average so constant offsets are ignored
+        self.target_psi = target_psi - np.mean(target_psi)
+        
+        self.weight = weight
         
     def __call__(self, eq):
         """
@@ -198,4 +211,5 @@ class ConstrainPsi2D(object):
         """
         eq.getMachine().setControlCurrents(currents)
         psi = eq.psi()
-        return (psi - self.target_psi).ravel() # flatten array
+        psi_av = np.mean(psi)
+        return ((psi - psi_av - self.target_psi)*self.weight).ravel() # flatten array

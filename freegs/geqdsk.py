@@ -30,10 +30,14 @@ from .machine import Wall
 from . import jtor
 from . import control
 from . import picard
+from .gradshafranov import mu0
 
 from scipy import interpolate
 from numpy import linspace, amin, amax, reshape, ravel, zeros, argmax, clip, sin, cos, pi
 import math
+import numpy as np
+
+from scipy.integrate import romb
 
 def write(eq, fh, label=None, oxpoints=None, fileformat=_geqdsk.write):
     """
@@ -157,13 +161,13 @@ def read(fh, machine, rtol=1e-3, ntheta=8, show=False, axis=None, cocos=1):
     nx = data["nx"]
     ny = data["ny"]
     psi = data["psi"]
-
+    
     if not (isPow2(nx-1) and isPow2(ny-1)):
         print("Warning: Input grid size %d x %d has sizes which are not 2^n+1" % (nx, ny))
         
         rin = linspace(0, 1, nx)
         zin = linspace(0, 1, ny)
-        psi_interp = interpolate.RectBivariateSpline(rin, zin, psi)
+        psi_interp = interpolate.RectBivariateSpline(rin, zin, psi, kx=1, ky=1)
         
         # Ensure that newnx, newny is 2^n + 1
         nx = ceilPow2(nx-1) + 1
@@ -175,8 +179,8 @@ def read(fh, machine, rtol=1e-3, ntheta=8, show=False, axis=None, cocos=1):
 
         # Interpolate onto new grid
         psi = psi_interp(rnew, znew)
-        
-        
+
+
     # Create an Equilibrium object
     eq = Equilibrium(tokamak = machine,
                      Rmin = data["rleft"],
@@ -187,6 +191,8 @@ def read(fh, machine, rtol=1e-3, ntheta=8, show=False, axis=None, cocos=1):
                  )
 
     # Range of psi normalises psi derivatives
+    psi_bndry = data["sibdry"]
+    psi_axis = data["simagx"]
     psirange = data["sibdry"] - data["simagx"]
     
     psinorm = linspace(0.0, 1.0, data["nx"], endpoint=True)
@@ -218,7 +224,20 @@ def read(fh, machine, rtol=1e-3, ntheta=8, show=False, axis=None, cocos=1):
         if hasattr(psinorm, "shape"):
             return reshape(ffprime_spl(ravel(psinorm)),psinorm.shape)
         return ffprime_spl(psinorm)
+    
+    # Calculate normalised psi.
+    # 0 = magnetic axis
+    # 1 = plasma boundary
+    psi_norm = clip((psi - psi_axis)  / (psi_bndry - psi_axis), 0.0, 1.0)
 
+    # Toroidal current
+    Jtor = eq.R * pprime_func(psi_norm) + ffprime_func(psi_norm)/(eq.R * mu0)
+
+    # Quick calculation of total toroidal current
+    dR = eq.R[1,0] - eq.R[0,0]
+    dZ = eq.Z[0,1] - eq.Z[0,0]
+    print("Psi range: ", psirange)
+    print("CURRENT: ", romb(romb(Jtor)) * dR*dZ)
     
     # Create a set of profiles to calculate toroidal current density Jtor
     profiles = jtor.ProfilesPprimeFfprime(pprime_func,
@@ -229,19 +248,19 @@ def read(fh, machine, rtol=1e-3, ntheta=8, show=False, axis=None, cocos=1):
 
     # Use these profiles to calculate plasma psi
     # This requires a bit of a hack to set the poloidal flux
-    
+
+    # Note: In most cases coil_psi will be zero, but
+    # the user could set coil currents before calling
     coil_psi = machine.psi(eq.R, eq.Z)
     eq._updatePlasmaPsi(psi - coil_psi)
     
     # Perform a linear solve, calculating plasma psi
-    eq.solve(profiles)
-
+    eq.solve(profiles, Jtor=Jtor)
+    
     print("Plasma current: {0} Amps, input: {1} Amps".format(eq.plasmaCurrent(), data["cpasma"]))
     
     # Identify points to constrain: X-points, O-points and separatrix shape
 
-    psi_in = interpolate.RectBivariateSpline(eq.R[:,0], eq.Z[0,:], psi)
-    
     # Find all the O- and X-points
     opoint, xpoint = critical.find_critical(eq.R, eq.Z, psi)
     
@@ -252,26 +271,25 @@ def read(fh, machine, rtol=1e-3, ntheta=8, show=False, axis=None, cocos=1):
         axis.set_aspect('equal')
         axis.set_xlabel("Major radius [m]")
         axis.set_ylabel("Height [m]")
-    
-        levels = linspace(amin(psi), amax(psi), 50)
-        axis.contour(eq.R,eq.Z,psi, levels=levels, colors='k')
-        
+
+        # Note: psi can be offset by a constant in the input
+        axis.contour(eq.R, eq.Z, psi, 50, colors='k')
         # Put red dots on X-points
         for r,z,_ in xpoint:
             axis.plot(r,z,'ro')
-
-        sep_contour=axis.contour(eq.R, eq.Z, psi, levels=[xpoint[0][2]], colors='r')
         
-    # Find the separatrix
-    isoflux = critical.find_separatrix(eq, opoint, xpoint, ntheta=ntheta, psi=psi, axis=axis)
-
+        if len(xpoint) > 0:
+            sep_contour=axis.contour(eq.R, eq.Z, psi, levels=[xpoint[0][2]], colors='r')
+    
+    mask = np.ones(psi.shape)
+    mask[psi_norm > 1. - 1e-6] = 0.0  # Ignore areas outside the plasma
+    
     # Find best fit for coil currents
-    controlsystem = control.ConstrainPsi2D(psi)
-    #controlsystem = control.constrain(xpoints=xpoint, isoflux=isoflux, gamma=1e-14)
+    controlsystem = control.ConstrainPsi2D(psi, weight=mask)
     controlsystem(eq)
     
     if show:
-        axis.contour(eq.R,eq.Z, eq.psi(), levels=levels, colors='r')
+        axis.contour(eq.R,eq.Z, eq.psi(), 50, colors='r')
         plt.pause(1)
     
     # Print the coil currents
@@ -293,6 +311,6 @@ def read(fh, machine, rtol=1e-3, ntheta=8, show=False, axis=None, cocos=1):
 
     # Save the control system to eq
     # Use x-point and o-point constraints because the size of the grid may be changed
-    eq.control = control.constrain(xpoints=xpoint, isoflux=isoflux, gamma=1e-14)
+    #eq.control = control.constrain(xpoints=xpoint, isoflux=isoflux, gamma=1e-14)
     
     return eq

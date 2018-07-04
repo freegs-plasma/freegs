@@ -246,7 +246,7 @@ class Equilibrium:
         """
         return array(find_separatrix(self, ntheta=ntheta, psi=self.psi()))[:, 0:2]
 
-    def solve(self, profiles):
+    def solve(self, profiles, Jtor=None):
         """
         Calculate the plasma equilibrium given new profiles
         replacing the current equilibrium.
@@ -260,12 +260,17 @@ class Equilibrium:
              .ffprime(psinorm)
              .pressure(psinorm)
              .fpol(psinorm)
+
+        Jtor : 2D array
+            If supplied, specifies the toroidal current at each (R,Z) point
+            If not supplied, Jtor is calculated from profiles by finding O,X-points
         """
         
         self._profiles = profiles
-        
-        # Calculate toroidal current density
-        Jtor = profiles.Jtor(self.R, self.Z, self.psi())
+
+        if Jtor is None:
+            # Calculate toroidal current density
+            Jtor = profiles.Jtor(self.R, self.Z, self.psi())
         
         # Set plasma boundary
         # Note that the Equilibrium is passed to the boundary function
@@ -274,7 +279,7 @@ class Equilibrium:
         
         # Right hand side of G-S equation
         rhs = -mu0 * self.R * Jtor
-
+        
         # Copy boundary conditions
         rhs[0,:] = self.plasma_psi[0,:]
         rhs[:,0] = self.plasma_psi[:,0]
