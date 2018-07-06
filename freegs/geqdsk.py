@@ -357,7 +357,7 @@ def read(fh, machine, rtol=1e-3, ntheta=8, show=False, axis=None, cocos=1, domai
     picard.solve(eq,          # The equilibrium to adjust
                  profiles,    # The toroidal current profile function
                  controlsystem, show=show, axis=axis,
-                 rtol=rtol)
+                 rtol=rtol, blend=0.5)
     
     print("Plasma current: {0} Amps, input: {1} Amps".format(eq.plasmaCurrent(), data["cpasma"]))
     print("Plasma pressure on axis: {0} Pascals".format(eq.pressure(0.0)))

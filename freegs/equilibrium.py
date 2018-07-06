@@ -246,7 +246,7 @@ class Equilibrium:
         """
         return array(find_separatrix(self, ntheta=ntheta, psi=self.psi()))[:, 0:2]
 
-    def solve(self, profiles, Jtor=None):
+    def solve(self, profiles, Jtor=None, psi=None):
         """
         Calculate the plasma equilibrium given new profiles
         replacing the current equilibrium.
@@ -270,7 +270,10 @@ class Equilibrium:
 
         if Jtor is None:
             # Calculate toroidal current density
-            Jtor = profiles.Jtor(self.R, self.Z, self.psi())
+
+            if psi is None:
+                psi = self.psi()
+            Jtor = profiles.Jtor(self.R, self.Z, psi)
         
         # Set plasma boundary
         # Note that the Equilibrium is passed to the boundary function
