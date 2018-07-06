@@ -230,9 +230,13 @@ def read(fh, machine, rtol=1e-3, ntheta=8, show=False, axis=None, cocos=1):
     # 1 = plasma boundary
     psi_norm = clip((psi - psi_axis)  / (psi_bndry - psi_axis), 0.0, 1.0)
 
+    # Create masking function: 1 inside plasma, 0 outside
+    mask = np.ones(psi.shape)
+    mask[psi_norm > 1. - 1e-6] = 0.0  # Ignore areas outside the plasma
     # Toroidal current
     Jtor = eq.R * pprime_func(psi_norm) + ffprime_func(psi_norm)/(eq.R * mu0)
-
+    Jtor *= mask
+    
     # Quick calculation of total toroidal current
     dR = eq.R[1,0] - eq.R[0,0]
     dZ = eq.Z[0,1] - eq.Z[0,0]
@@ -280,12 +284,8 @@ def read(fh, machine, rtol=1e-3, ntheta=8, show=False, axis=None, cocos=1):
         
         if len(xpoint) > 0:
             sep_contour=axis.contour(eq.R, eq.Z, psi, levels=[xpoint[0][2]], colors='r')
-    
-    mask = np.ones(psi.shape)
-    mask[psi_norm > 1. - 1e-6] = 0.0  # Ignore areas outside the plasma
-    
     # Find best fit for coil currents
-    controlsystem = control.ConstrainPsi2D(psi, weight=mask)
+    controlsystem = control.ConstrainPsi2D(psi, weights=mask)
     controlsystem(eq)
     
     if show:
