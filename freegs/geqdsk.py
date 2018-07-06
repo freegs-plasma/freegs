@@ -120,24 +120,40 @@ def ceilPow2(val):
     """
     return 2**math.ceil(math.log2(val))
 
-def read(fh, machine, rtol=1e-3, ntheta=8, show=False, axis=None, cocos=1, domain=None):
+def read(fh, machine, rtol=1e-3, ntheta=8, show=False, axis=None, cocos=1, domain=None, blend=0.0, fit_sol=False):
     """
     Reads a G-EQDSK format file
     
-    fh      - file handle
-    machine - a Machine object defining coil locations
-    rtol    - Relative error in nonlinear solve
-    ntheta  - Number of points in poloidal angle on the separatrix
-              this is used to constrain the plasma shape
-    show    - Set to true to show solution in a new figure
-    axis    - Set to an axis for plotting. Implies show=True
-    
-    cocos   - COordinate COnventions. Not fully handled yet,
-              only whether psi is divided by 2pi or not.
-              if < 10 then psi is divided by 2pi, otherwise not.
-
+    fh : File handle
+    machine : Machine object defining coil locations
+    rtol : float
+        Relative error in nonlinear solve
+    ntheta : integer
+        Number of points in poloidal angle on the separatrix
+        this is used to constrain the plasma shape
+    show : Boolean
+        Set to true to show solution in a new figure
+    axis : Matplotlib Axis object
+       Set to an axis for plotting. Implies show=True
+    cocos : integer
+        COordinate COnventions. Not fully handled yet,
+        only whether psi is divided by 2pi or not.
+        if < 10 then psi is divided by 2pi, otherwise not.
     domain : list/tuple of 4 elements
-           (Rmin, Rmax, Zmin, Zmax)
+        Sets the (R,Z) domain to solve for
+        (Rmin, Rmax, Zmin, Zmax)
+    blend : float between 0 and 1
+        Weighting of the previous poloidal flux at each step of the
+        Picard iteration. The default (0.0) is to use no blending.
+        Blending slows convergence, but can stabilise some oscillating
+        unstable solutions.
+    fit_sol : Boolean
+        If False (default) then only the poloidal flux inside the
+        separatrix is used to constrain the coil currents.
+        This is particularly for reading SCENE input, which is not valid 
+        outside the separatrix.
+        If True, the whole domain is used in the fitting.
+        This is useful if the locations of strike points need to be constrained.
 
     A nonlinear solve will be performed, using Picard iteration
     
@@ -151,6 +167,9 @@ def read(fh, machine, rtol=1e-3, ntheta=8, show=False, axis=None, cocos=1, domai
     
     """
 
+    if fit_sol and domain:
+        raise ValueError("Sorry, fit_sol cannot be used with the domain keyword")
+    
     if axis is not None:
         show = True
 
@@ -337,7 +356,12 @@ def read(fh, machine, rtol=1e-3, ntheta=8, show=False, axis=None, cocos=1, domai
             sep_contour=axis.contour(eq.R, eq.Z, psi, levels=[xpoint[0][2]], colors='r')
         
     # Find best fit for coil currents
-    controlsystem = control.ConstrainPsi2D(psi, weights=mask)
+    # First create a control system (see control.py)
+    if fit_sol:
+        controlsystem = control.ConstrainPsi2D(psi) # Fit entire domain
+    else:
+        controlsystem = control.ConstrainPsi2D(psi, weights=mask) # Remove SOL from fitting
+    # Run control system to find coil currents
     controlsystem(eq)
     
     if show:
@@ -363,8 +387,18 @@ def read(fh, machine, rtol=1e-3, ntheta=8, show=False, axis=None, cocos=1, domai
     print("Plasma pressure on axis: {0} Pascals".format(eq.pressure(0.0)))
     machine.printCurrents()
 
-    # Save the control system to eq
-    # Use x-point and o-point constraints because the size of the grid may be changed
-    #eq.control = control.constrain(xpoints=xpoint, isoflux=isoflux, gamma=1e-14)
-    
+    # Attempt to find O- and X-points
+    psi = eq.psi()
+    opoint, xpoint = critical.find_critical(eq.R, eq.Z, psi)
+
+    if xpoint:
+        # Use x-point and o-point constraints because the size of the grid may be changed
+        # in which case the 2D psi constraints would fail
+        
+        # Find the separatrix
+        isoflux = critical.find_separatrix(eq, opoint, xpoint, ntheta=ntheta, psi=psi, axis=axis)
+        
+        # Save the control system to eq
+        eq.control = control.constrain(xpoints=xpoint, isoflux=isoflux, gamma=1e-14)
+        
     return eq

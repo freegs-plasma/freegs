@@ -52,6 +52,30 @@ This ``read`` function has the following stages:
 
 The ``show`` optional parameter displays a plot of the equilibrium, and shows the stages in the Grad-shafranov solve.
 
+Some options are:
+
+#. `domain = (Rmin, Rmax, Zmin, Zmax)` which can be used to specify
+   the (R,Z) domain to solve on. This is useful for reading inputs
+   from fixed boundary codes like SCENE, where the X-point(s) may lie
+   outside the domain. The coil current feedback needs to find where
+   the edge of the plasma is, so needs to find an X-point to work
+   correctly. The grid spacing is never allowed to increase, so this
+   may result in an increase in the number of grid points.
+#. `blend` is a number between 0 and 1, and is used in the nonlinear
+   Picard iteration. It determines what fraction of the previous
+   solution is used in the next solution. The default is 0, so no
+   blending is done. Adding blending (e.g. 0.5, 0.7) usually slows
+   convergence, but can stabilise oscillating or unstable solutions.
+#. `fit_sol` is `False` by default, so only points inside the
+   separatrix are used when fitting the coil currents to match the
+   input poloidal flux. This is useful in cases like reading SCENE
+   inputs, where the poloidal flux in the Scrape-Off Layer (SOL) is
+   not valid in the input. Setting `fit_sol=True` causes the whole
+   input domain to be used in the fitting. Currently this is NOT
+   compatible with setting a domain. It is useful when the locations
+   of strike points need to be matched, and may better constrain coil
+   currents for free boundary inputs (e.g. EFIT).
+
 Specifying coil currents
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
