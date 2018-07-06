@@ -351,6 +351,8 @@ def read(fh, machine, rtol=1e-3, ntheta=8, show=False, axis=None, cocos=1, domai
     # Refine the equilibrium to ensure consistency 
     # Solve using Picard iteration
     #
+
+    controlsystem = control.ConstrainPsiNorm2D(psi_norm, weights=mask)
     
     picard.solve(eq,          # The equilibrium to adjust
                  profiles,    # The toroidal current profile function

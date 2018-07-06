@@ -172,14 +172,14 @@ class Equilibrium:
         Radial magnetic field due to plasma
         Br = -1/R dpsi/dZ
         """
-        return -self.psi_func(R,Z,dy=1)[0][0]/R
+        return -self.psi_func(R,Z,dy=1, grid=False)/R
         
     def plasmaBz(self, R, Z):
         """
         Vertical magnetic field due to plasma 
         Bz = (1/R) dpsi/dR
         """
-        return self.psi_func(R,Z,dx=1)[0][0]/R
+        return self.psi_func(R,Z,dx=1, grid=False)/R
         
     def Br(self, R, Z):
         """
