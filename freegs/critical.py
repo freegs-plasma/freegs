@@ -57,7 +57,13 @@ def find_critical(R, Z, psi,discard_xpoints=False):
     f = interpolate.RectBivariateSpline(R[:,0], Z[0,:], psi)
 
     # Find candidate locations, based on minimising Bp^2
-    Bp2 = (f(R,Z,dx=1,grid=False)**2 + f(R,Z,dy=1,grid=False)**2) / R
+    Bp2 = (f(R,Z,dx=1,grid=False)**2 + f(R,Z,dy=1,grid=False)**2) / R**2
+
+    # Get grid resolution, which determines a reasonable tolerance
+    # for the Newton iteration search area
+    dR = R[1,0] - R[0,0]
+    dZ = Z[0,1] - Z[0,0]
+    radius_sq = 9*(dR**2 + dZ**2)
     
     # Find local minima
 
@@ -91,8 +97,8 @@ def find_critical(R, Z, psi,discard_xpoints=False):
                 count = 0
                 while True:
                 
-                    Br = -f(R1, Z1, dy=1)[0][0]/R1
-                    Bz = f(R1, Z1, dx=1)[0][0]/R1
+                    Br = -f(R1, Z1, dy=1, grid=False)/R1
+                    Bz = f(R1, Z1, dx=1, grid=False)/R1
 
                     if Br**2 + Bz**2 < 1e-6:
                         # Found a minimum. Classify as either
@@ -156,7 +162,7 @@ def find_critical(R, Z, psi,discard_xpoints=False):
                     count += 1
                     # If (R1,Z1) is too far from (R0,Z0) then discard
                     # or if we've taken too many iterations
-                    if ((R1 - R0)**2 + (Z1 - Z0)**2 > 1e-2) or (count > 100):
+                    if ((R1 - R0)**2 + (Z1 - Z0)**2 > radius_sq) or (count > 100):
                         # Discard this point
                         break
     

@@ -6,8 +6,11 @@ Use constraints to adjust coil currents
 
 from numpy import dot, transpose, eye, array
 from numpy.linalg import inv
+import numpy as np
 
 from scipy import optimize
+
+from . import critical
 
 class constrain(object):
     """
@@ -172,12 +175,24 @@ class ConstrainPsi2D(object):
     """
     Adjusts coil currents to minimise the square differences
     between psi[R,Z] and a target psi.
+
+    Ignores constant offset differences between psi array
     """
-    def __init__(self, target_psi):
+    def __init__(self, target_psi, weights=1.0):
         """
-        target_psi - a 2D (R,Z) array, which must be the same size as the equilibrium psi
+        target_psi : 2D (R,Z) array
+            Must be the same size as the equilibrium psi
+
+        weights : float or 2D array of same size as target_psi
+            Relative importance of each (R,Z) point in the fitting
+            By default every point is equally weighted
+            Set points to zero to ignore them in fitting.
+           
         """
-        self.target_psi = target_psi
+        # Remove the average so constant offsets are ignored
+        self.target_psi = target_psi - np.average(target_psi, weights=weights)
+        
+        self.weights = weights
         
     def __call__(self, eq):
         """
@@ -198,4 +213,61 @@ class ConstrainPsi2D(object):
         """
         eq.getMachine().setControlCurrents(currents)
         psi = eq.psi()
-        return (psi - self.target_psi).ravel() # flatten array
+        psi_av = np.average(psi, weights=self.weights)
+        return ((psi - psi_av - self.target_psi)*self.weights).ravel() # flatten array
+
+
+class ConstrainPsiNorm2D(object):
+    """
+    Adjusts coil currents to minimise the square differences
+    between normalised psi[R,Z] and a target normalised psi.
+    """
+    def __init__(self, target_psinorm, weights=1.0):
+        """
+        target_psinorm : 2D (R,Z) array
+            Must be the same size as the equilibrium psi
+
+        weights : float or 2D array of same size as target_psinorm
+            Relative importance of each (R,Z) point in the fitting
+            By default every point is equally weighted
+            Set points to zero to ignore them in fitting.
+           
+        """
+        self.target_psinorm = target_psinorm
+        self.weights = weights
+        
+    def __call__(self, eq):
+        """
+        Apply constraints to Equilibrium eq
+        """
+        
+        tokamak = eq.getMachine()
+        start_currents = tokamak.controlCurrents()
+        
+        end_currents, _ = optimize.leastsq(self.psinorm_difference, start_currents, args=(eq,))
+        
+        tokamak.setControlCurrents(end_currents)
+        
+    def psinorm_difference(self, currents, eq):
+        """
+        Difference between normalised psi from equilibrium with the given currents
+        and the target psinorm
+        """
+        eq.getMachine().setControlCurrents(currents)
+        psi = eq.psi()
+
+        opt, xpt = critical.find_critical(eq.R, eq.Z, psi)
+        if not opt:
+            raise ValueError("No O-points found!")
+        psi_axis = opt[0][2]
+        
+        if not xpt:
+            raise ValueError("No X-points found")
+        psi_bndry = xpt[0][2]
+        
+        # Calculate normalised psi.
+        # 0 = magnetic axis
+        # 1 = plasma boundary
+        psi_norm = (psi - psi_axis)  / (psi_bndry - psi_axis)
+        
+        return ((psi_norm - self.target_psinorm)*self.weights).ravel() # flatten array

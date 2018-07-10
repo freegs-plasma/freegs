@@ -172,14 +172,14 @@ class Equilibrium:
         Radial magnetic field due to plasma
         Br = -1/R dpsi/dZ
         """
-        return -self.psi_func(R,Z,dy=1)[0][0]/R
+        return -self.psi_func(R,Z,dy=1, grid=False)/R
         
     def plasmaBz(self, R, Z):
         """
         Vertical magnetic field due to plasma 
         Bz = (1/R) dpsi/dR
         """
-        return self.psi_func(R,Z,dx=1)[0][0]/R
+        return self.psi_func(R,Z,dx=1, grid=False)/R
         
     def Br(self, R, Z):
         """
@@ -246,7 +246,7 @@ class Equilibrium:
         """
         return array(find_separatrix(self, ntheta=ntheta, psi=self.psi()))[:, 0:2]
 
-    def solve(self, profiles):
+    def solve(self, profiles, Jtor=None, psi=None):
         """
         Calculate the plasma equilibrium given new profiles
         replacing the current equilibrium.
@@ -260,12 +260,20 @@ class Equilibrium:
              .ffprime(psinorm)
              .pressure(psinorm)
              .fpol(psinorm)
+
+        Jtor : 2D array
+            If supplied, specifies the toroidal current at each (R,Z) point
+            If not supplied, Jtor is calculated from profiles by finding O,X-points
         """
         
         self._profiles = profiles
-        
-        # Calculate toroidal current density
-        Jtor = profiles.Jtor(self.R, self.Z, self.psi())
+
+        if Jtor is None:
+            # Calculate toroidal current density
+
+            if psi is None:
+                psi = self.psi()
+            Jtor = profiles.Jtor(self.R, self.Z, psi)
         
         # Set plasma boundary
         # Note that the Equilibrium is passed to the boundary function
@@ -274,7 +282,7 @@ class Equilibrium:
         
         # Right hand side of G-S equation
         rhs = -mu0 * self.R * Jtor
-
+        
         # Copy boundary conditions
         rhs[0,:] = self.plasma_psi[0,:]
         rhs[:,0] = self.plasma_psi[:,0]

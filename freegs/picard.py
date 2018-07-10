@@ -80,15 +80,15 @@ def solve(eq, profiles, constrain=None, rtol=1e-3, blend=0.0,
         # Copy psi to compare at the end
         psi_last = psi.copy()
         
-        # Solve equilbrium
-        eq.solve(profiles)
+        # Solve equilbrium, using the given psi to calculate Jtor
+        eq.solve(profiles, psi=psi)
         
         # Get the new psi, including coils
         psi = eq.psi()
     
         # Compare against last solution
-        psi_last -= psi 
-        psi_maxchange = amax(abs(psi_last))
+        psi_change = psi_last - psi 
+        psi_maxchange = amax(abs(psi_change))
         psi_relchange = psi_maxchange/(amax(psi) - amin(psi))
         
         print("Maximum change in psi: %e. Relative: %e" % (psi_maxchange, psi_relchange))
