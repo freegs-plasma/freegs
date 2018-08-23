@@ -49,12 +49,21 @@ class ChunkOutput:
             self.fh.write("\n")
             self.counter = 0
 
+    def endblock(self):
+        """
+        Make sure next block of data is on new line
+        """
+        self.fh.write("\n")
+        self.counter=0
+        
 def write_1d(val, out):
     """
     Writes a 1D variable val to the file handle out
     """
     for i in range(len(val)):
         out.write(val[i])
+    out.endblock()
+    
 
 def write_2d(val, out):
     """
@@ -65,6 +74,7 @@ def write_2d(val, out):
     for y in range(ny):
         for x in range(nx):
             out.write(val[x,y])
+    out.endblock()
 
 def next_value(fh):
     """
