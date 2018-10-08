@@ -22,10 +22,12 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 
 
 from scipy import interpolate
-from numpy import zeros
+from numpy import zeros, shape
 from numpy.linalg import inv
-from numpy import dot, linspace, argmax, argmin, abs, clip, sin, cos, pi, amax, arctan2
+from numpy import dot, linspace, argmax, argmin, abs, clip, sin, cos, pi, amax, arctan2, sqrt, sum
+import numpy as np
 from warnings import warn
+import matplotlib.pyplot as plt
 
 
 def find_critical(R, Z, psi,discard_xpoints=False):
@@ -349,7 +351,7 @@ def find_psisurface(eq, psifunc, r0,z0, r1,z1, psival=1.0, n=100, axis=None):
         axis.plot(r,z)
 
     pnorm = psifunc(r, z, grid=False)
-
+   
     if hasattr(psival, "__len__"):
         pass
         
@@ -357,7 +359,10 @@ def find_psisurface(eq, psifunc, r0,z0, r1,z1, psival=1.0, n=100, axis=None):
         # Only one value
         ind = argmax(pnorm > psival)
 
-        f = (pnorm[ind] - 1.0)/(pnorm[ind] - pnorm[ind-1])
+        #Edited by Bhavin 31/07/18
+        #Changed 1.0 to psival in f
+        #make f gradient to psival surface
+        f = (pnorm[ind] - psival)/(pnorm[ind] - pnorm[ind-1])
         
         r = (1. - f) * r[ind] + f * r[ind-1]
         z = (1. - f) * z[ind] + f * z[ind-1]
@@ -368,7 +373,7 @@ def find_psisurface(eq, psifunc, r0,z0, r1,z1, psival=1.0, n=100, axis=None):
     return r,z
 
 
-def find_separatrix(eq, opoint=None, xpoint=None, ntheta=20, psi=None, axis=None):
+def find_separatrix(eq, opoint=None, xpoint=None, ntheta=20, psi=None, axis=None, psival=1.0):
     """Find the R, Z coordinates of the separatrix for equilbrium
     eq. Returns a tuple of (R, Z, R_X, Z_X), where R_X, Z_X are the
     coordinates of the X-point on the separatrix. Points are equally
@@ -411,8 +416,98 @@ def find_separatrix(eq, opoint=None, xpoint=None, ntheta=20, psi=None, axis=None
         r, z = find_psisurface(eq, psifunc,
                                r0, z0,
                                r0 + 10.*sin(theta), z0 + 10.*cos(theta),
-                               psival=1.0,
+                               psival=psival,
                                axis=axis)
         isoflux.append((r, z, xpoint[0][0], xpoint[0][1]))
 
     return isoflux
+
+def find_safety(eq, npsi=1, psinorm=None, ntheta=128, psi=None, opoint=None, xpoint=None,axis=None):
+    """Find the safety factor for each value of psi
+    Calculates equally spaced flux surfaces. Points on 
+    each flux surface are equally paced in poloidal angle
+    Performs line integral around flux surface to get q
+    
+    eq - The equilbrium object
+    psinorm flux surface to calculate it for
+    npsi - Number of flux surface values to find q for
+    ntheta - Number of poloidal points to find it on
+
+    If opoint, xpoint or psi are not given, they are calculated from eq
+
+    returns safety factor for npsi points in normalised psi 
+    """
+
+
+    if psi is None:
+        psi = eq.psi()
+
+    if (opoint is None) or (xpoint is None):
+        opoint, xpoint = find_critical(eq.R, eq.Z, psi)
+
+    psinormal = (psi - opoint[0][2])/(xpoint[0][2] - opoint[0][2])
+    
+    psifunc = interpolate.RectBivariateSpline(eq.R[:,0], eq.Z[0,:], psinormal)
+
+    r0, z0 = opoint[0][0:2]
+    
+    theta_grid = linspace(0, 2*pi, ntheta, endpoint=False)
+    dtheta = theta_grid[1] - theta_grid[0]
+    
+     # Avoid putting theta grid points exactly on the X-points
+    xpoint_theta = arctan2(xpoint[0][0] - r0, xpoint[0][1] - z0)
+    # How close in theta to allow theta grid points to the X-point
+    TOLERANCE = 1.e-3
+    
+    if any(abs(theta_grid - xpoint_theta) < TOLERANCE):
+        warn("Theta grid too close to X-point, shifting by half-step")
+        theta_grid += dtheta / 2
+
+
+    if psinorm is None:
+        npsi = 100
+        psirange = linspace(0.,1.0,npsi)
+    else:
+        psirange = psinorm
+        npsi = len(psinorm)
+
+    psisurf = zeros([npsi,ntheta,2])
+
+
+    #Calculate flux surface positions 
+    for i in range(npsi):
+        psin = psirange[i]
+        for j in range(ntheta):
+            theta = theta_grid[j]
+            r, z = find_psisurface(eq, psifunc,
+                                   r0, z0,
+                                   r0 + 8.*sin(theta), z0 + 8.*cos(theta),
+                                   psival=psin,
+                                   axis=axis)
+            psisurf[i,j,:] = [r,z]
+
+    
+    #Get variables for loop integral around flux surface
+    r = psisurf[:,:,0]
+    z = psisurf[:,:,1]
+    fpol = eq.fpol(psirange[:]).reshape(npsi,1)
+    Br = eq.Br(r,z)
+    Bz = eq.Bz(r,z)
+    Bthe = sqrt(Br**2+Bz**2)
+
+
+    # Differentiate location w.r.t. index
+    dr_di = (np.roll(r, 1, axis=1) - np.roll(r,-1,axis=1))/2.0
+    dz_di = (np.roll(z, 1, axis=1) - np.roll(z,-1,axis=1))/2.0
+
+    # Distance between points
+    dl = sqrt(dr_di**2 + dz_di**2)
+
+    #Integrand - Btor/(R*Bthe) = Fpol/(R**2*Bthe)
+    qint = fpol/(r**2*Bthe)
+
+    #Integral
+    q = sum(qint*dl,axis=1)/(2*pi)
+ 
+     
+    return  q

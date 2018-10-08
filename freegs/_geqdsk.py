@@ -59,7 +59,7 @@ def write(data, fh, label=None):
         label = "FREEGS %s" % date.today().strftime("%d/%m/%Y")
         
     # First line: Identification string, followed by resolution
-    fh.write("  " + label + "   3  {0}  {1}\n".format(nx, ny))
+    fh.write("  " + label + "                               0 {0} {1}\n".format(nx, ny))
     
     # Second line
     fh.write(f2s(data["rdim"])+f2s(data["zdim"])+f2s(data["rcentr"])+f2s(data["rleft"])+f2s(data["zmid"])+"\n")
@@ -73,8 +73,9 @@ def write(data, fh, label=None):
     # 5th line
     fh.write(f2s(data["zmagx"]) + f2s(0.0) + f2s(data["sibdry"]) + f2s(0.0) + f2s(0.0) + "\n")
 
+    #SCENE has actual ff' and p' data so can use that 
     # fill arrays
-    workk = zeros([nx])
+    #workk = zeros([nx])
     
     # Write arrays
     co = ChunkOutput(fh)
@@ -93,7 +94,6 @@ def write(data, fh, label=None):
     write_1d(data["qpsi"], co)
 
     # Boundary / limiters
-        
     nbdry = 0
     nlim = 0
     if "rbdry" in data:
@@ -208,7 +208,7 @@ def read(fh, cocos=1):
     data["psi"] = read_2d(nx,ny)
     
     data["qpsi"] = read_1d(nx)
-
+    
     # Ensure that psi is divided by 2pi
     if cocos > 10:
         for var in ["psi", "simagx", "sibdry"]:
@@ -217,10 +217,11 @@ def read(fh, cocos=1):
     nbdry = next(values)
     nlim = next(values)
 
-    print(nbdry, nlim)
+    #print(nbdry, nlim)
     
     if nbdry > 0:
         # Read (R,Z) pairs
+        print(nbdry)
         data["rbdry"] = zeros(nbdry)
         data["zbdry"] = zeros(nbdry)
         for i in range(nbdry):

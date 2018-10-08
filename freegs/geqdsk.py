@@ -52,7 +52,7 @@ def write(eq, fh, label=None, oxpoints=None, fileformat=_geqdsk.write):
     """
     # Get poloidal flux
     psi = eq.psi()
-
+    #psi = psi - np.amin(psi)
     # Get size of the grid
     nx,ny = psi.shape
 
@@ -81,8 +81,9 @@ def write(eq, fh, label=None, oxpoints=None, fileformat=_geqdsk.write):
             
     
     data["rmagx"], data["zmagx"], data["simagx"] = opoint[0] # magnetic axis
-    
-    data["sibdry"] = xpoint[0][2]  # Psi at boundary
+
+    #Remove Psi magi axis to set it to zero at mag x
+    data["sibdry"] = xpoint[0][2]  - data["simagx"] # Psi at boundary
     
     data["cpasma"] = eq.plasmaCurrent() # Plasma current [A]
 
@@ -93,7 +94,11 @@ def write(eq, fh, label=None, oxpoints=None, fileformat=_geqdsk.write):
     data['ffprime'] = eq.ffprime(psinorm)
     data['pprime'] = eq.pprime(psinorm)
 
-    data["psi"] = psi
+    #Added the pprime and ffprime data into geqdsk.write
+    data["fprim"] = eq.ffprime(psinorm)
+    data["pprim"] = eq.pprime(psinorm)
+    data["psi"] = psi - data["simagx"]
+    data["simagx"] = 0.0
     
     qpsi = zeros([nx])
     qpsi[1:] = eq.q(psinorm[1:]) # Exclude axis
@@ -105,6 +110,23 @@ def write(eq, fh, label=None, oxpoints=None, fileformat=_geqdsk.write):
         data["zlim"] = eq.tokamak.wall.Z
     
     # Call fileformat to write the data
+    isoflux = np.array(critical.find_separatrix(eq,ntheta=101,opoint=opoint, xpoint=xpoint, psi=psi))
+
+    ind = np.argmin(isoflux[:,1])
+    data["rbdry"] = np.roll(isoflux[:,0],-ind)
+    data["rbdry"] = np.append(data["rbdry"],data["rbdry"][0])
+
+    data["zbdry"] = np.roll(isoflux[:,1][::-1],-ind)
+    data["zbdry"] = np.append(data["zbdry"],data["zbdry"][0])
+
+    
+    isoflux = np.array(critical.find_separatrix(eq,ntheta=101,opoint=opoint, xpoint=xpoint, psi=psi, psival=1.1))
+    
+    data["rlim"] = np.roll(isoflux[:,0][::-1],-ind)
+    data["zlim"] = np.roll(isoflux[:,1][::-1],-ind)
+
+    data["rlim"] = np.append(data["rlim"],data["rlim"][0])
+    data["zlim"] = np.append(data["zlim"],data["zlim"][0])
     fileformat(data, fh, label=label)
 
 import matplotlib.pyplot as plt
@@ -221,7 +243,9 @@ def read(fh, machine, rtol=1e-3, ntheta=8, show=False, axis=None, cocos=1, domai
     pprime_spl = interpolate.InterpolatedUnivariateSpline(psinorm, data["pres"] / psirange).derivative()
     
     f_spl = interpolate.InterpolatedUnivariateSpline(psinorm, data["fpol"])
-    ffprime_spl = interpolate.InterpolatedUnivariateSpline(psinorm, 0.5*data["fpol"]**2/psirange).derivative() 
+    ffprime_spl = interpolate.InterpolatedUnivariateSpline(psinorm, 0.5*data["fpol"]**2/psirange).derivative()
+
+    q_spl = interpolate.InterpolatedUnivariateSpline(psinorm, data["qpsi"])
 
     # functions to return p, pprime, f and ffprime
     def p_func(psinorm):
@@ -243,6 +267,11 @@ def read(fh, machine, rtol=1e-3, ntheta=8, show=False, axis=None, cocos=1, domai
         if hasattr(psinorm, "shape"):
             return reshape(ffprime_spl(ravel(psinorm)),psinorm.shape)
         return ffprime_spl(psinorm)
+
+    def q_func(psinorm):
+        if hasattr(psinorm, "shape"):
+            return reshape(q_spl(ravel(psinorm)),psinorm.shape)
+        return q_spl(psinorm)
     
     # Create a set of profiles to calculate toroidal current density Jtor
     profiles = jtor.ProfilesPprimeFfprime(pprime_func,
@@ -254,11 +283,11 @@ def read(fh, machine, rtol=1e-3, ntheta=8, show=False, axis=None, cocos=1, domai
     # Calculate normalised psi.
     # 0 = magnetic axis
     # 1 = plasma boundary
-    psi_norm = clip((psi - psi_axis)  / (psi_bndry - psi_axis), 0.0, 1.0)
+    psi_norm = clip((psi - psi_axis)  / (psi_bndry - psi_axis), 0.0, 1.1)
 
     # Create masking function: 1 inside plasma, 0 outside
     mask = np.ones(psi.shape)
-    mask[psi_norm > 1. - 1e-6] = 0.0  # Ignore areas outside the plasma
+    mask[psi_norm > 1.- 1e-6] = 0.0  # Ignore areas outside the plasma
     
     # Create an Equilibrium object
     eq = Equilibrium(tokamak = machine,
@@ -379,7 +408,6 @@ def read(fh, machine, rtol=1e-3, ntheta=8, show=False, axis=None, cocos=1, domai
     #
 
     controlsystem = control.ConstrainPsiNorm2D(psi_norm, weights=mask)
-    
     picard.solve(eq,          # The equilibrium to adjust
                  profiles,    # The toroidal current profile function
                  controlsystem, show=show, axis=axis,
@@ -388,6 +416,8 @@ def read(fh, machine, rtol=1e-3, ntheta=8, show=False, axis=None, cocos=1, domai
     print("Plasma current: {0} Amps, input: {1} Amps".format(eq.plasmaCurrent(), data["cpasma"]))
     print("Plasma pressure on axis: {0} Pascals".format(eq.pressure(0.0)))
     machine.printCurrents()
+    
+
 
     # Attempt to find O- and X-points
     psi = eq.psi()
@@ -402,5 +432,5 @@ def read(fh, machine, rtol=1e-3, ntheta=8, show=False, axis=None, cocos=1, domai
         
         # Save the control system to eq
         eq.control = control.constrain(xpoints=xpoint, isoflux=isoflux, gamma=1e-14)
-        
+
     return eq

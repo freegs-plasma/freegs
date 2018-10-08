@@ -8,7 +8,7 @@ from scipy import interpolate
 from scipy.integrate import romb, quad # Romberg integration
 
 from .boundary import fixedBoundary, freeBoundary
-from .critical import find_separatrix
+from .critical import find_separatrix, find_safety
 
 # Operators which define the G-S equation
 from .gradshafranov import mu0, GSsparse
@@ -219,7 +219,7 @@ class Equilibrium:
         """
         Returns safety factor q at specified values of normalised psi
         """
-        return psinorm * 0.0
+        return find_safety(self,psinorm=psinorm)
         
     def pprime(self, psinorm):
         """
