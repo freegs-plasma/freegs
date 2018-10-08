@@ -82,10 +82,14 @@ def write(data, fh, label=None):
 
     write_1d(data["fpol"], co)
     write_1d(data["pres"], co)
-    #write_1d(workk, co)
-    #write_1d(workk, co)
-    write_1d(data["fprim"], co)
-    write_1d(data["pprim"], co)
+    if 'ffprime' in data:
+        write_1d(data["ffprime"], co)
+    else:
+        write_1d(workk, co)
+    if 'pprime' in data:
+        write_1d(data["pprime"], co)
+    else:
+        write_1d(workk, co)
     write_2d(data["psi"], co)
     write_1d(data["qpsi"], co)
 
@@ -198,8 +202,8 @@ def read(fh, cocos=1):
     
     data["fpol"] = read_1d(nx)
     data["pres"] = read_1d(nx)
-    data["workk1"] = read_1d(nx)
-    data["workk2"] = read_1d(nx)
+    data["ffprime"] = read_1d(nx)
+    data["pprime"] = read_1d(nx)
     
     data["psi"] = read_2d(nx,ny)
     

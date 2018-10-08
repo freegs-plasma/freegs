@@ -91,6 +91,8 @@ def write(eq, fh, label=None, oxpoints=None, fileformat=_geqdsk.write):
 
     data["fpol"] = eq.fpol(psinorm)
     data["pres"] = eq.pressure(psinorm)
+    data['ffprime'] = eq.ffprime(psinorm)
+    data['pprime'] = eq.pprime(psinorm)
 
     #Added the pprime and ffprime data into geqdsk.write
     data["fprim"] = eq.ffprime(psinorm)
