@@ -1,6 +1,11 @@
 
 from . import _fileutils
-import StringIO
+
+try:
+    from io import StringIO
+except:
+    # Python 2
+    from StringIO import StringIO
 
 def test_f2s():
     assert _fileutils.f2s(0.0)  == " 0.000000000E+00"
@@ -11,7 +16,7 @@ def test_f2s():
     
     
 def test_ChunkOutput():
-    output = StringIO.StringIO()
+    output = StringIO()
     co = _fileutils.ChunkOutput(output)
 
     for val in [1.0, -3.2, 6.2e5, 8.7654e-12, 42, -76]:
