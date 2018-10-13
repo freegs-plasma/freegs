@@ -124,7 +124,34 @@ class Coil:
         Calculate vertical magnetic field Bz at (R,Z) due to a unit current
         """
         return GreensBz(self.R,self.Z, R, Z) * self.turns
+
+    def getForces(self, equilibrium):
+        """
+        Calculate forces on the coils in Newtons
         
+        Returns an array of two elements: [ Fr, Fz ]
+
+        
+        Force on coil due to its own current:
+            Lorentz self‐forces on curved current loops
+            Physics of Plasmas 1, 3425 (1998); https://doi.org/10.1063/1.870491
+            David A. Garren and James Chen
+        """
+        current = self.current
+
+        # Calculate field at this coil due to all other coils
+        # and plasma. Need to zero this coil's current
+        self.current = 0.0
+        Br = equilibrium.Br(self.R, self.Z)
+        Bz = equilibrium.Bz(self.R, self.Z)
+        self.current = current
+
+        ### NOTE: Need to add self-force
+        
+        Ltor = 2*np.pi*self.R  # Length of coil
+        return np.array([ current * Bz * Ltor, # Jphi x Bz = Fr
+                          -current * Br * Ltor]) # Jphi x Br = - Fz
+    
     def __repr__(self):
         return ("Coil(R={0}, Z={1}, current={2}, turns={3}, control={4})"
                 .format(self.R, self.Z, self.current, self.turns, self.control))
@@ -271,6 +298,17 @@ class Circuit:
             result += multiplier * coil.controlBz(R, Z)
         return result
 
+    def getForces(self, equilibrium):
+        """
+        Calculate forces on the coils
+
+        Returns a dictionary of coil label -> force
+        """
+        forces = {}
+        for label, coil, multiplier in self.coils:
+            forces[label] = coil.getForces(equilibrium)
+        return forces
+    
     def __repr__(self):
         result = "Circuit(["
         coils = ['("{0}", {1}, {2})'.format(label, coil, multiplier)
@@ -406,6 +444,13 @@ class Solenoid:
             result += GreensBz(self.Rs, Zs, R, Z)
         return result
 
+    def getForces(self, equilibrium):
+        """
+        Calculate forces on the solenoid.
+        Not currently implemented
+        """
+        return {}
+    
     def __repr__(self):
         return ("Solenoid(Rs={0}, Zsmin={1}, Zsmax={2}, current={3}, Ns={4}, control={5})"
                 .format(self.Rs, self.Zsmin, self.Zsmax, self.current, self.Ns, self.control))
@@ -606,6 +651,23 @@ class Machine:
         for label, coil in self.coils:
             print(label + " : " + str(coil))
         print("==========================")
+
+    def getForces(self, equilibrium = None):
+        """
+        Calculate forces on the coils, given the plasma equilibrium.
+        If no plasma equilibrium given then the forces due to 
+        the coils alone will be calculated.
+    
+        Returns a dictionary of coil label -> force
+        """
+
+        if equilibrium is None:
+            equilibrium = self
+        
+        forces = {}
+        for label, coil in self.coils:
+            forces[label] = coil.getForces(equilibrium)
+        return forces
         
         
 def EmptyTokamak():

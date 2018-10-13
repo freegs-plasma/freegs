@@ -320,6 +320,13 @@ class Equilibrium:
         from .plotting import plotEquilibrium
         return plotEquilibrium(self, axis=axis, show=show, oxpoints=oxpoints)
     
+    def getForces(self):
+        """
+        Calculate forces on the coils
+
+        Returns a dictionary of coil label -> force
+        """
+        return self.tokamak.getForces(self)
 
 def refine(eq):
     """
