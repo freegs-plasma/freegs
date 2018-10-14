@@ -328,6 +328,20 @@ class Equilibrium:
         """
         return self.tokamak.getForces(self)
 
+    def printForces(self):
+        """
+        Prints a table of forces on coils
+        """
+        def print_forces(forces, prefix=""):
+            for label, force in forces.items():
+                if isinstance(force, dict):
+                    print(prefix + label + " (circuit)")
+                    print_forces(force, prefix=prefix + "  ")
+                else:
+                    print(prefix + label+ " : "  + str(force))
+
+        print_forces(self.getForces())
+
 def refine(eq):
     """
     Double grid resolution, returning a new equilibrium
