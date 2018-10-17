@@ -25,7 +25,7 @@ from numpy import zeros, linspace, pi
 
 from ._fileutils import f2s, ChunkOutput, write_1d, write_2d, next_value
 
-def write(data, fh, label=None):
+def write(data, fh, label=None, shot=None, time=None):
     """
     Write a GEQDSK equilibrium file, given a dictionary of data
     
@@ -54,13 +54,35 @@ def write(data, fh, label=None):
     
     nx = data["nx"]
     ny = data["ny"]
-    
+
     if not label:
-        label = "FREEGS %s" % date.today().strftime("%d/%m/%Y")
-        
+        label = "FREEGS"
+    if len(label) > 11:
+        label = label[0:12]
+        print('WARNING: label too long, it will be shortened to {}'.format(label))
+
+    creation_date = date.today().strftime("%d/%m/%Y")
+
+    if not shot:
+        shot = 0
+
+    if isinstance(shot, int):
+        shot = '# {:d}'.format(shot)
+
+    if not time:
+        time = 0
+
+    if isinstance(time, int):
+        time = '  {:d}ms'.format(time)
+
+    # I have no idea what idum is, here it is set to 3
+    idum = 3
+    header = "{0:11s}{1:10s}   {2:>8s}{3:16s}{4:4d}{5:4d}{6:4d}\n" \
+        .format(label, creation_date, shot, time, idum, nx, ny)
+
     # First line: Identification string, followed by resolution
-    fh.write("  " + label + "                               0 {0} {1}\n".format(nx, ny))
-    
+    fh.write(header)
+
     # Second line
     fh.write(f2s(data["rdim"])+f2s(data["zdim"])+f2s(data["rcentr"])+f2s(data["rleft"])+f2s(data["zmid"])+"\n")
     
@@ -75,7 +97,9 @@ def write(data, fh, label=None):
 
     #SCENE has actual ff' and p' data so can use that 
     # fill arrays
-    #workk = zeros([nx])
+    # Lukas Kripner (16/10/2018): uncommenting this, since you left there
+    # check for data existence bellow. This seems to as safer variant.
+    workk = zeros([nx])
     
     # Write arrays
     co = ChunkOutput(fh)
@@ -90,6 +114,7 @@ def write(data, fh, label=None):
         write_1d(data["pprime"], co)
     else:
         write_1d(workk, co)
+
     write_2d(data["psi"], co)
     write_1d(data["qpsi"], co)
 
@@ -102,7 +127,7 @@ def write(data, fh, label=None):
         nlim = len(data["rlim"])
     
     co.newline()
-    fh.write("   {0}   {1}\n".format(nbdry, nlim))
+    fh.write("{0:5d}{1:5d}\n".format(nbdry, nlim))
 
     if nbdry > 0:
         for r,z in zip(data["rbdry"], data["zbdry"]):
