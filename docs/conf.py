@@ -156,4 +156,8 @@ texinfo_documents = [
 ]
 
 
+# Set the Matplotlib backend to 'agg' to prevent problems
+# when importing in freegs
 
+import matplotlib
+matplotlib.use('agg')
