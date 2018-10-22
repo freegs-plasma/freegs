@@ -295,13 +295,6 @@ def smoothVcycle(A, x, b, dx, dy, niter=10, sublevels=0, direct=True):
         x = x + xupdate
         
         errup = A(xupdate, dx, dy)
-
-        #plt.figure()
-        #plt.plot(error[2,:],label="error")
-        #plt.plot(Cerror[2,:],label="Cerror")
-        #plt.plot(errup[2,:],label="errup")
-        #plt.legend()
-        #plt.show()
         
     # Smooth
     for i in range(niter):

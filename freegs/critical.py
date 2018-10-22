@@ -27,7 +27,6 @@ from numpy.linalg import inv
 from numpy import dot, linspace, argmax, argmin, abs, clip, sin, cos, pi, amax, arctan2, sqrt, sum
 import numpy as np
 from warnings import warn
-import matplotlib.pyplot as plt
 
 
 def find_critical(R, Z, psi,discard_xpoints=False):

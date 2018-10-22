@@ -129,8 +129,6 @@ def write(eq, fh, label=None, oxpoints=None, fileformat=_geqdsk.write):
     data["zlim"] = np.append(data["zlim"],data["zlim"][0])
     fileformat(data, fh, label=label)
 
-import matplotlib.pyplot as plt
-
 def isPow2(val):
     """
     Returns True if val is a power of 2
@@ -191,6 +189,9 @@ def read(fh, machine, rtol=1e-3, ntheta=8, show=False, axis=None, cocos=1, domai
     
     """
 
+    if show:
+        import matplotlib.pyplot as plt
+    
     if fit_sol and domain:
         raise ValueError("Sorry, fit_sol cannot be used with the domain keyword")
     

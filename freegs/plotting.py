@@ -20,13 +20,12 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 
 """
 
-import matplotlib.pyplot as plt
-
 from numpy import linspace, amin, amax
 from . import critical
 
-
 def plotCoils(coils, axis=None):
+    import matplotlib.pyplot as plt
+    
     if axis is None:
         fig = plt.figure()
         axis = fig.add_subplot(111)
@@ -44,6 +43,8 @@ def plotConstraints(control, axis=None, show=True):
     
     """
 
+    import matplotlib.pyplot as plt
+    
     if axis is None:
         fig = plt.figure()
         axis = fig.add_subplot(111)
@@ -79,6 +80,8 @@ def plotEquilibrium(eq, axis=None, show=True, oxpoints=True, wall=True):
     
     """
 
+    import matplotlib.pyplot as plt
+    
     R = eq.R
     Z = eq.Z
     psi = eq.psi()
