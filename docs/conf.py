@@ -20,6 +20,7 @@ import os
 import sys
 sys.path.insert(0, os.path.abspath('..'))
 
+autodoc_mock_imports = ['_tkinter']
 
 # -- General configuration ------------------------------------------------
 
@@ -155,9 +156,3 @@ texinfo_documents = [
      'Miscellaneous'),
 ]
 
-
-# Set the Matplotlib backend to 'agg' to prevent problems
-# when importing in freegs
-
-import matplotlib
-matplotlib.use('agg')
