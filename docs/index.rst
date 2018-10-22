@@ -12,7 +12,7 @@ Welcome to FreeGS's documentation!
 
    creating_equilibria
    input_and_output
-
+   diagnostics
              
 .. automodule:: freegs
              

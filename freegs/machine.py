@@ -22,10 +22,11 @@ You should have received a copy of the GNU Lesser General Public License
 along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-from .gradshafranov import Greens, GreensBr, GreensBz
+from .gradshafranov import Greens, GreensBr, GreensBz, mu0
 
 from numpy import linspace
 import numpy as np
+import numbers
 
 # We need this for the `label` part of the Circuit dtype for writing
 # to HDF5 files. See the following for information:
@@ -37,6 +38,28 @@ except ImportError:
     has_hdf5 = False
 
 
+class AreaCurrentLimit:
+    """
+    Calculate the coil area based on a fixed current density limit
+    """
+    def __init__(self, current_density = 3.5e9):
+        """
+        current_density   - Maximum current density in A/m^2
+        
+        Limits in general depend on the magnetic field
+        Typical values Nb3Sn ~ 3.5e9 A/m^2
+        https://doi.org/10.1016/0167-899X(86)90010-8
+        
+        """
+        self._current_density = current_density
+    
+    def __call__(self, coil):
+        """
+        Return the area in m^2, given a Coil object
+        """
+        return abs(coil.current * coil.turns) / self._current_density
+
+    
 class Coil:
     """
     Represents a poloidal field coil
@@ -45,9 +68,10 @@ class Coil:
     --------------
     
     R, Z - Location of the coil
-    current - current in the coil
+    current - current in the coil in Amps
     turns   - Number of turns
     control - enable or disable control system
+    area    - Cross-section area in m^2
 
     The total toroidal current carried by the coil is current * turns
     """
@@ -61,12 +85,26 @@ class Coil:
         (str("control"), np.bool),
     ])
 
-    def __init__(self, R, Z, current=0.0, turns=1, control=True):
+    def __init__(self, R, Z, current=0.0, turns=1, control=True, area=AreaCurrentLimit()):
         """
         R, Z - Location of the coil
         
-        current - current in the coil
+        current - current in each turn of the coil in Amps
+        turns   - Number of turns. Total coil current is current * turns
         control - enable or disable control system
+        area    - Cross-section area in m^2
+
+        Area can be a fixed value (e.g. 0.025 for 5x5cm coil), or can be specified
+        using a function which takes a coil as an input argument.
+        To specify a current density limit, use:
+      
+        area = AreaCurrentLimit(current_density)
+        
+        where current_density is in A/m^2. The area of the coil will be recalculated
+        as the coil current is changed.
+
+        The most important effect of the area is on the coil self-force:
+        The smaller the area the larger the hoop force for a given current.
         """
         self.R = R
         self.Z = Z
@@ -74,6 +112,7 @@ class Coil:
         self.current = current
         self.turns = turns
         self.control = control
+        self.area = area
 
     def psi(self, R, Z):
         """
@@ -124,7 +163,45 @@ class Coil:
         Calculate vertical magnetic field Bz at (R,Z) due to a unit current
         """
         return GreensBz(self.R,self.Z, R, Z) * self.turns
+
+    def getForces(self, equilibrium):
+        """
+        Calculate forces on the coils in Newtons
         
+        Returns an array of two elements: [ Fr, Fz ]
+
+        
+        Force on coil due to its own current:
+            Lorentz self‐forces on curved current loops
+            Physics of Plasmas 1, 3425 (1998); https://doi.org/10.1063/1.870491
+            David A. Garren and James Chen
+        """
+        current = self.current # current per turn
+        total_current = current * self.turns # Total toroidal current
+
+        # Calculate field at this coil due to all other coils
+        # and plasma. Need to zero this coil's current
+        self.current = 0.0
+        Br = equilibrium.Br(self.R, self.Z)
+        Bz = equilibrium.Bz(self.R, self.Z)
+        self.current = current
+
+        # Assume circular cross-section for hoop (self) force
+        minor_radius = np.sqrt(self.area / np.pi)
+        
+        # Self inductance factor, depending on internal current
+        # distribution. 0.5 for uniform current, 0 for surface current
+        self_inductance = 0.5
+
+        # Force per unit length.
+        # In cgs units f = I^2/(c^2 * R) * (ln(8*R/a) - 1 + xi/2)
+        # In SI units f = mu0 * I^2 / (4*pi*R) * (ln(8*R/a) - 1 + xi/2)
+        self_fr = (mu0 * total_current**2 / (4.*np.pi*self.R)) * (np.log(8.*self.R/minor_radius) - 1 + self_inductance/2.)
+        
+        Ltor = 2*np.pi*self.R  # Length of coil
+        return np.array([ (total_current * Bz  + self_fr) * Ltor, # Jphi x Bz = Fr, self force always outwards
+                          -total_current * Br * Ltor]) # Jphi x Br = - Fz
+    
     def __repr__(self):
         return ("Coil(R={0}, Z={1}, current={2}, turns={3}, control={4})"
                 .format(self.R, self.Z, self.current, self.turns, self.control))
@@ -152,6 +229,23 @@ class Coil:
             raise ValueError("Can't create {this} from dtype: {got} (expected: {dtype})"
                              .format(this=type(cls), got=value.dtype, dtype=cls.dtype))
         return Coil(*value[()])
+
+    @property
+    def area(self):
+        """
+        The cross-section area of the coil in m^2
+        """
+        if isinstance(self._area, numbers.Number):
+            assert self._area > 0
+            return self._area
+        # Calculate using functor
+        area = self._area(self)
+        assert area > 0
+        return area
+    
+    @area.setter
+    def area(self, area):
+        self._area = area
 
 
 class Circuit:
@@ -271,6 +365,17 @@ class Circuit:
             result += multiplier * coil.controlBz(R, Z)
         return result
 
+    def getForces(self, equilibrium):
+        """
+        Calculate forces on the coils
+
+        Returns a dictionary of coil label -> force
+        """
+        forces = {}
+        for label, coil, multiplier in self.coils:
+            forces[label] = coil.getForces(equilibrium)
+        return forces
+    
     def __repr__(self):
         result = "Circuit(["
         coils = ['("{0}", {1}, {2})'.format(label, coil, multiplier)
@@ -406,6 +511,13 @@ class Solenoid:
             result += GreensBz(self.Rs, Zs, R, Z)
         return result
 
+    def getForces(self, equilibrium):
+        """
+        Calculate forces on the solenoid.
+        Not currently implemented
+        """
+        return {}
+    
     def __repr__(self):
         return ("Solenoid(Rs={0}, Zsmin={1}, Zsmax={2}, current={3}, Ns={4}, control={5})"
                 .format(self.Rs, self.Zsmin, self.Zsmax, self.current, self.Ns, self.control))
@@ -606,6 +718,23 @@ class Machine:
         for label, coil in self.coils:
             print(label + " : " + str(coil))
         print("==========================")
+
+    def getForces(self, equilibrium = None):
+        """
+        Calculate forces on the coils, given the plasma equilibrium.
+        If no plasma equilibrium given then the forces due to 
+        the coils alone will be calculated.
+    
+        Returns a dictionary of coil label -> force
+        """
+
+        if equilibrium is None:
+            equilibrium = self
+        
+        forces = {}
+        for label, coil in self.coils:
+            forces[label] = coil.getForces(equilibrium)
+        return forces
         
         
 def EmptyTokamak():
