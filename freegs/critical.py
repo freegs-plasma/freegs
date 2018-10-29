@@ -278,8 +278,8 @@ def core_mask(R, Z, psi, opoint, xpoint):
         jx = argmin(abs(Z[0,:] - zx))
         xpt_inds.append((ix,jx))
         # Fill this point and all around with '2'
-        for i in [ix-1,ix,ix+1]:
-            for j in [jx-1,jx,jx+1]:
+        for i in np.clip([ix-1,ix,ix+1], 0, nx-1):
+            for j in np.clip([jx-1,jx,jx+1], 0, ny-1):
                 mask[i,j] = 2
 
     # Find nearest index to start
@@ -313,8 +313,8 @@ def core_mask(R, Z, psi, opoint, xpoint):
     
     # Now return to X-point locations
     for ix, jx in xpt_inds:
-        for i in [ix-1,ix,ix+1]:
-            for j in [jx-1,jx,jx+1]:
+        for i in np.clip([ix-1,ix,ix+1], 0, nx-1):
+            for j in np.clip([jx-1,jx,jx+1], 0, ny-1):
                 if psin[i,j] < 1.0:
                     mask[i,j] = 1
                 else:
