@@ -3,7 +3,7 @@
 
  These must have the following methods:
 
-   Jtor(R, Z, psi) 
+   Jtor(R, Z, psi, psi_bndry=None) 
       -> Return a numpy array of toroidal current density [J/m^2]
    pprime(psinorm)
       -> return p' at given normalised psi
@@ -156,7 +156,7 @@ class ConstrainBetapIp(Profile):
         self.alpha_n = alpha_n
         self.Raxis = Raxis
 
-    def Jtor(self, R, Z, psi):
+    def Jtor(self, R, Z, psi, psi_bndry=None):
         """ Calculate toroidal plasma current
         
          Jtor = L * (Beta0*R/Raxis + (1-Beta0)*Raxis/R)*jtorshape
@@ -171,7 +171,9 @@ class ConstrainBetapIp(Profile):
             raise ValueError("No O-points found!")
         psi_axis = opt[0][2]
         
-        if xpt:
+        if psi_bndry is not None:
+            mask = critical.core_mask(R, Z, psi, opt, xpt, psi_bndry)
+        elif xpt:
             psi_bndry = xpt[0][2]
             mask = critical.core_mask(R, Z, psi, opt, xpt)
         else:
@@ -302,7 +304,7 @@ class ConstrainPaxisIp(Profile):
         self.alpha_n = alpha_n
         self.Raxis = Raxis
 
-    def Jtor(self, R, Z, psi):
+    def Jtor(self, R, Z, psi, psi_bndry=None):
         """ Calculate toroidal plasma current
         
          Jtor = L * (Beta0*R/Raxis + (1-Beta0)*Raxis/R)*jtorshape
@@ -317,7 +319,9 @@ class ConstrainPaxisIp(Profile):
             raise ValueError("No O-points found!")
         psi_axis = opt[0][2]
         
-        if xpt:
+        if psi_bndry is not None:
+            mask = critical.core_mask(R, Z, psi, opt, xpt, psi_bndry)
+        elif xpt:
             psi_bndry = xpt[0][2]
             mask = critical.core_mask(R, Z, psi, opt, xpt)
         else:
@@ -424,7 +428,7 @@ class ProfilesPprimeFfprime:
         self.f_func = f_func
         self._fvac = fvac
         
-    def Jtor(self, R, Z, psi):
+    def Jtor(self, R, Z, psi, psi_bndry=None):
         """
         Calculate toroidal plasma current
         
@@ -437,7 +441,9 @@ class ProfilesPprimeFfprime:
             raise ValueError("No O-points found!")
         psi_axis = opt[0][2]
         
-        if xpt:
+        if psi_bndry is not None:
+            mask = critical.core_mask(R, Z, psi, opt, xpt, psi_bndry)
+        elif xpt:
             psi_bndry = xpt[0][2]
             mask = critical.core_mask(R, Z, psi, opt, xpt)
         else:

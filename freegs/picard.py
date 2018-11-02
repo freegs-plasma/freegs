@@ -22,7 +22,7 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 from numpy import amin, amax
 
 def solve(eq, profiles, constrain=None, rtol=1e-3, blend=0.0,
-          show=False, axis=None, pause=0.0001):
+          show=False, axis=None, pause=0.0001, psi_bndry=None):
     """
     Perform Picard iteration to find solution to the Grad-Shafranov equation
     
@@ -81,7 +81,7 @@ def solve(eq, profiles, constrain=None, rtol=1e-3, blend=0.0,
         psi_last = psi.copy()
         
         # Solve equilbrium, using the given psi to calculate Jtor
-        eq.solve(profiles, psi=psi)
+        eq.solve(profiles, psi=psi, psi_bndry=psi_bndry)
         
         # Get the new psi, including coils
         psi = eq.psi()
