@@ -18,7 +18,6 @@ from . import multigrid
 
 from . import machine
 
-
 class Equilibrium:
     """
     Represents the equilibrium state, including
@@ -246,7 +245,7 @@ class Equilibrium:
         """
         return array(find_separatrix(self, ntheta=ntheta, psi=self.psi()))[:, 0:2]
 
-    def solve(self, profiles, Jtor=None, psi=None):
+    def solve(self, profiles, Jtor=None, psi=None, psi_bndry=None):
         """
         Calculate the plasma equilibrium given new profiles
         replacing the current equilibrium.
@@ -264,6 +263,9 @@ class Equilibrium:
         Jtor : 2D array
             If supplied, specifies the toroidal current at each (R,Z) point
             If not supplied, Jtor is calculated from profiles by finding O,X-points
+
+        psi_bndry  - Poloidal flux to use as the separatrix (plasma boundary)
+                     If not given then X-point locations are used.
         """
         
         self._profiles = profiles
@@ -273,7 +275,7 @@ class Equilibrium:
 
             if psi is None:
                 psi = self.psi()
-            Jtor = profiles.Jtor(self.R, self.Z, psi)
+            Jtor = profiles.Jtor(self.R, self.Z, psi, psi_bndry=psi_bndry)
         
         # Set plasma boundary
         # Note that the Equilibrium is passed to the boundary function

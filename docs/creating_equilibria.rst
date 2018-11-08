@@ -164,6 +164,10 @@ or an existing machine can be modified::
   tokamak.wall = wall
   
 
+Note that the location of these walls does not currently affect the
+equilibrium, but is used by some diagnostics, and is written to
+output files such as EQDSK format. 
+  
 Equilibrium and plasma domain
 -----------------------------
 
@@ -209,9 +213,68 @@ To use this, specify the ``freeBoundaryHagenow`` boundary function:
                         boundary=freegs.boundary.freeBoundaryHagenow)
 
 Alternatively for simple tests the ``fixedBoundary`` function sets the poloidal flux to zero
-on the computational boundary. 
+on the computational boundary.
 
+Conducting walls
+~~~~~~~~~~~~~~~~
 
+To specify a conducting wall on which the poloidal flux is fixed, so
+that there is a skin current on the wall, a series of coils can be
+used. The current in each coil is set using the feedback controller,
+to satisfy a fixed poloidal flux constraint.
+
+For the full example code, see (and try running) ``09-metal-wall.py``.
+
+First create an array of R,Z locations, here called ``Rwalls`` and
+``Zwalls``. For example a circular wall::
+
+  R0 = 1.0     # Middle of the circle
+  rwall = 0.5  # Radius of the circular wall
+
+  npoints = 200 # Number of points on the wall
+  
+  # Poloidal angles
+  thetas = np.linspace(0, 2*np.pi, npoints, endpoint=False)
+  
+  # Points on the wall
+  Rwalls = R0 + rwall * np.cos(thetas)
+  Zwalls = rwall * np.sin(thetas)
+
+Then create a set of coils, one at each of these locations::
+
+  coils = [ ("wall_"+str(theta),    # Label 
+             freegs.machine.Coil(R, Z)) # Coil at (R,Z)
+            for theta, R, Z in zip(thetas, Rwalls, Zwalls) ]
+
+The label doesn't have to be unique , but having unique names makes
+referring to them later easier. The tokamak can then be created::
+
+  tokamak = freegs.machine.Machine(coils)
+
+The next part is to control the currents in the coils using fixed
+poloidal flux constraints::
+
+  psivals = [ (R, Z, 0.0) for R, Z in zip(Rwalls, Zwalls) ]
+
+This is a list of ``(R, Z, value)`` tuples, which specify that the
+poloidal flux should be fixed to zero (in this case) at the given
+``(R,Z)`` location. The control system is then created::
+
+  constrain = freegs.control.constrain(psivals=psivals)
+
+The final modification to the usual solve is that we can specify a
+poloidal flux for the plasma boundary::
+
+  freegs.solve(eq,          # The equilibrium to adjust
+             profiles,    # The toroidal current profile function
+             constrain,   # Constraint function to set coil currents
+             psi_bndry=0.0)  # Because no X-points, specify the separatrix psi
+
+If ``psi_bndry`` is set then this overrides the usual process, which
+uses the innermost X-point to set the plasma boundary psi. In this
+case there are some X-points between coils, but its more reliable to
+set the boundary like this.
+             
 Plasma profiles
 ---------------
 

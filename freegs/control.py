@@ -105,7 +105,7 @@ class constrain(object):
 
         # Constraint matrix
         A = array(constraint_matrix)
-        b = array(constraint_rhs)
+        b = np.reshape(array(constraint_rhs), (-1,))
     
         # Solve by Tikhonov regularisation
         # minimise || Ax - b ||^2 + ||gamma x ||^2

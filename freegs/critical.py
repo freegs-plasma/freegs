@@ -237,7 +237,7 @@ def find_critical(R, Z, psi,discard_xpoints=False):
     return opoint, xpoint
 
 
-def core_mask(R, Z, psi, opoint, xpoint):
+def core_mask(R, Z, psi, opoint, xpoint=[], psi_bndry=None):
     """
     Mark the parts of the domain which are in the core
     
@@ -249,7 +249,10 @@ def core_mask(R, Z, psi, opoint, xpoint):
     psi[nx,ny] - 2D array of poloidal flux
 
     opoint, xpoint  - Values returned by find_critical
-    
+
+    If psi_bndry is not None, then that is used to find the
+    separatrix, not the X-points.
+
     Returns
     -------
     
@@ -262,7 +265,8 @@ def core_mask(R, Z, psi, opoint, xpoint):
 
     # Start and end points
     Ro, Zo, psi_axis = opoint[0]
-    _, _, psi_bndry = xpoint[0]
+    if not psi_bndry:
+        _, _, psi_bndry = xpoint[0]
 
     # Normalise psi
     psin = (psi - psi_axis)/(psi_bndry - psi_axis)
