@@ -695,7 +695,8 @@ class Machine:
         controlcoils = [coil for label,coil in self.coils if coil.control]
         
         for coil, dI in zip(controlcoils, current_change):
-            coil.current += dI
+            # Ensure that dI is a scalar
+            coil.current += np.asscalar(dI)
 
     def controlCurrents(self):
         """
