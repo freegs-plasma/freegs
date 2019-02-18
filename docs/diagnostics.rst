@@ -1,7 +1,7 @@
 Diagnostics
 ===========
 
-Once an equilibrium has been generated (see `Creating equilibria`_)
+Once an equilibrium has been generated (see creating_equilibria_)
 there are routines for diagnosing and calculating derived quantities.
 Here the ``Equilibrium`` object is assumed to be called ``eq`` and the
 ``Tokamak`` object called ``tokamak``.
@@ -9,11 +9,60 @@ Here the ``Equilibrium`` object is assumed to be called ``eq`` and the
 Safety factor, q
 ----------------
 
-The safety factor at a given normalised poloidal flux (0 on the
-magnetic axis, 1 at the separatrix) can be calculated using the
-``q(psinorm)`` function::
+The safety factor :math:`q` at a given normalised poloidal flux
+:math:`\psi_{norm}` (0 on the magnetic axis, 1 at the separatrix) can
+be calculated using the ``q(psinorm)`` function::
 
   eq.q(0.9)  # safety factor at psi_norm = 0.9
+
+Note that calculating :math:`q` on either the magnetic axis or separatrix
+is problematic, so values calculated at :math:`\psi_{norm}=0` and :math:`\psi_{norm}=1`
+are likely to be inaccurate.
+  
+This function can be used to print the safety factor on a set of flux
+surfaces::
+  
+  print("\nSafety factor:\n\tpsi \t q")
+  for psi in [0.01, 0.9, 0.95]:
+    print("\t{:.2f}\t{:.2f}".format(psi, eq.q(psi)))
+
+If no value is given for the normalised psi, then a uniform array of
+values between 0 and 1 is generated (not including the end points). In
+this case both the values of normalised psi and the values of q are returned::
+
+  psinorm, q = eq.q()
+
+which can be used to make a plot of the safety factor::
+
+  import matplotlib.pyplot as plt
+  
+  plt.plot(*eq.q())
+  plt.xlabel(r"Normalised $\psi$")
+  plt.ylabel(r"Safety factor $q$")
+  plt.show()
+
+Poloidal beta
+-------------
+
+The poloidal beta :math:`\beta_p` is given by::
+
+  betap = eq.poloidalBeta()
+
+This is calculated using the expression
+
+.. math::
+
+   \beta_p = \frac{8\pi}{\mu_0} \frac{1}{I_p^2}\iint p\left(\psi\right) dRdZ 
+
+i.e. the same calculation as is done in the poloidal beta constraint constrain_betap_ip_.
+
+Plasma pressure
+---------------
+
+The pressure at a specified normalised psi is::
+
+  p = eq.pressure(0.0)  # Pressure on axis
+
 
 Separatrix location
 -------------------
@@ -33,10 +82,19 @@ A set of points on the separatrix, measured in meters::
 Currents in the coils
 ---------------------
 
+The coil objects can be accessed and their currents queried. The
+current in a coil named "P1L" is given by::
+
+  eq.tokamak["P1L"].current
+
 The currents in all coils can be printed using::
 
-  tokamak.printCurrent()
+  tokamak.printCurrents()
 
+which is the same as::
+
+  for label, coil in eq.tokamak.coils:
+    print(label + " : " + str(coil))
 
 Forces on the coils
 -------------------

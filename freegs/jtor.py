@@ -40,7 +40,7 @@ from . import critical
 from .gradshafranov import mu0
 
 from numpy import clip, zeros, reshape, sqrt, pi
-
+import numpy as np
 
 class Profile(object):
     """
@@ -90,8 +90,8 @@ class Profile(object):
         
         """
         
-        if not hasattr(psinorm, 'shape'):
-            # Assume  a single value
+        if not hasattr(psinorm, '__len__'):
+            # Assume a single value
             
             val, _ = quad(self.ffprime, psinorm, 1.0)
             # Convert from integral in normalised psi to integral in psi
@@ -101,7 +101,8 @@ class Profile(object):
             # Apply boundary condition at psinorm=1 val = fvac**2
             return sqrt(2.*val + self.fvac()**2)
             
-        # Assume it's a NumPy array
+        # Assume it's a NumPy array, or can be converted to one
+        psinorm = np.array(psinorm)
         
         if out is None:
             out = zeros(psinorm.shape)

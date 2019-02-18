@@ -18,8 +18,8 @@ eq = freegs.Equilibrium(tokamak=tokamak,
 #########################################
 # Plasma profiles
 
-profiles = freegs.jtor.ConstrainPaxisIp(1e4, # Plasma pressure on axis [Pascals]
-                                        1e6, # Plasma current [Amps]
+profiles = freegs.jtor.ConstrainPaxisIp(1e3, # Plasma pressure on axis [Pascals]
+                                        2e5, # Plasma current [Amps]
                                         2.0) # Vacuum f=R*Bt
 
 #########################################
@@ -55,6 +55,10 @@ tokamak.printCurrents()
 # Forces on the coils
 eq.printForces()
 
+print("\nSafety factor:\n\tpsi \t q")
+for psi in [0.01, 0.9, 0.95]:
+    print("\t{:.2f}\t{:.2f}".format(psi, eq.q(psi)))
+
 ##############################################
 # Save to G-EQDSK file
 
@@ -64,8 +68,15 @@ with open("lsn.geqdsk", "w") as f:
     geqdsk.write(eq, f)
 
 ##############################################
-# Final plot
+# Final plot of equilibrium
 
 axis = eq.plot(show=False)
 constrain.plot(axis=axis, show=True)
 
+# Safety factor
+
+import matplotlib.pyplot as plt
+plt.plot(*eq.q())
+plt.xlabel(r"Normalised $\psi$")
+plt.ylabel("Safety factor")
+plt.show()

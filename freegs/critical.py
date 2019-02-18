@@ -448,7 +448,11 @@ def find_safety(eq, npsi=1, psinorm=None, ntheta=128, psi=None, opoint=None, xpo
     if (opoint is None) or (xpoint is None):
         opoint, xpoint = find_critical(eq.R, eq.Z, psi)
 
-    psinormal = (psi - opoint[0][2])/(xpoint[0][2] - opoint[0][2])
+    if (xpoint is None) or (len(xpoint) == 0):
+        # No X-point
+        raise ValueError("No X-point so no separatrix")
+    else:
+        psinormal = (psi - opoint[0][2])/(xpoint[0][2] - opoint[0][2])
     
     psifunc = interpolate.RectBivariateSpline(eq.R[:,0], eq.Z[0,:], psinormal)
 
@@ -469,10 +473,14 @@ def find_safety(eq, npsi=1, psinorm=None, ntheta=128, psi=None, opoint=None, xpo
 
     if psinorm is None:
         npsi = 100
-        psirange = linspace(0.,1.0,npsi)
+        psirange = linspace(1./(npsi+1), 1.0, npsi, endpoint=False)
     else:
-        psirange = psinorm
-        npsi = len(psinorm)
+        try:
+            psirange = psinorm
+            npsi = len(psinorm)
+        except TypeError:
+            npsi = 1
+            psirange = [psinorm]
 
     psisurf = zeros([npsi,ntheta,2])
 

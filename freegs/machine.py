@@ -203,7 +203,7 @@ class Coil:
                           -total_current * Br * Ltor]) # Jphi x Br = - Fz
     
     def __repr__(self):
-        return ("Coil(R={0}, Z={1}, current={2}, turns={3}, control={4})"
+        return ("Coil(R={0}, Z={1}, current={2:.1f}, turns={3}, control={4})"
                 .format(self.R, self.Z, self.current, self.turns, self.control))
 
     def __eq__(self, other):

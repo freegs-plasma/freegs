@@ -3,12 +3,13 @@ Defines class to represent the equilibrium
 state, including plasma and coil currents
 """
 
-from numpy import meshgrid, linspace, exp, zeros, nditer, array
+from numpy import pi, meshgrid, linspace, exp, zeros, nditer, array
+import numpy as np
 from scipy import interpolate
 from scipy.integrate import romb, quad # Romberg integration
 
 from .boundary import fixedBoundary, freeBoundary
-from .critical import find_separatrix, find_safety
+from . import critical
 
 # Operators which define the G-S equation
 from .gradshafranov import mu0, GSsparse
@@ -165,7 +166,48 @@ class Equilibrium:
         Plasma current [Amps]
         """
         return self._current
-    
+
+    def poloidalBeta(self):
+        """ 
+        Return the poloidal beta 
+        betap = (8pi/mu0) * int(p)dRdZ / Ip^2
+        """
+
+        # Total poloidal flux (plasma + coils)
+        psi = self.psi()
+        
+        # Analyse the equilibrium, finding O- and X-points
+        opt, xpt = critical.find_critical(self.R, self.Z, psi)
+        if not opt:
+            raise ValueError("No O-points found!")
+        psi_axis = opt[0][2]
+
+        if xpt:
+            psi_bndry = xpt[0][2]
+            mask = critical.core_mask(R, Z, psi, opt, xpt)
+        else:
+            # No X-points
+            if psi[0,0] > psi_axis:
+                psi_bndry = np.amax(psi)
+            else:
+                psi_bndry = np.amin(psi)
+            mask = None
+        
+        dR = self.R[1,0] - self.R[0,0]
+        dZ = self.Z[0,1] - self.Z[0,0]
+
+        # Normalised psi
+        psi_norm = (psi - psi_axis)  / (psi_bndry - psi_axis)
+
+        # Plasma pressure
+        pressure = self.pressure(psi_norm)
+        if mask is not None:
+            # If there is a masking function (X-points, limiters)
+            pressure *= mask
+
+        # Integrate pressure in 2D
+        return ((8.*pi)/mu0)*romb(romb(pressure))*dR*dZ / (self.plasmaCurrent()**2)
+        
     def plasmaBr(self, R,Z):
         """
         Radial magnetic field due to plasma
@@ -214,11 +256,33 @@ class Equilibrium:
         """
         return self._profiles.fvac()
     
-    def q(self, psinorm):
+    def q(self, psinorm = None, npsi=100):
         """
         Returns safety factor q at specified values of normalised psi
+        
+        psinorm is a scalar, list or array of floats betweem 0 and 1.
+        
+        >>> safety_factor = eq.q([0.2, 0.5, 0.9])
+        
+        If psinorm is None, then q on a uniform psi grid will be returned,
+        along with the psi values
+
+        >>> psinorm, q = eq.q()
+        
+        Note: psinorm = 0 is the magnetic axis, and psinorm = 1 is the separatrix.
+              Calculating q on either of these flux surfaces is problematic,
+              and the results will probably not be accurate.
         """
-        return find_safety(self,psinorm=psinorm)
+        if psinorm is None:
+            # An array which doesn't include psinorm = 0 or 1
+            psinorm = linspace(1./(npsi+1), 1.0, npsi, endpoint=False)
+            return psinorm, critical.find_safety(self, psinorm=psinorm)
+
+        result = critical.find_safety(self, psinorm=psinorm)
+        # Convert to a scalar if only one result
+        if len(result) == 1:
+            return np.asscalar(result)
+        return result
         
     def pprime(self, psinorm):
         """
@@ -243,7 +307,7 @@ class Equilibrium:
         Returns an array of ntheta (R, Z) coordinates of the separatrix,
         equally spaced in geometric poloidal angle.
         """
-        return array(find_separatrix(self, ntheta=ntheta, psi=self.psi()))[:, 0:2]
+        return array(critical.find_separatrix(self, ntheta=ntheta, psi=self.psi()))[:, 0:2]
 
     def solve(self, profiles, Jtor=None, psi=None, psi_bndry=None):
         """
@@ -341,7 +405,7 @@ class Equilibrium:
                     print(prefix + label + " (circuit)")
                     print_forces(force, prefix=prefix + "  ")
                 else:
-                    print(prefix + label+ " : R = {0:.2f} MN , Z = {1:.2f} MN".format(force[0]*1e-6, force[1]*1e-6))
+                    print(prefix + label+ " : R = {0:.2f} kN , Z = {1:.2f} kN".format(force[0]*1e-3, force[1]*1e-3))
 
         print_forces(self.getForces())
 

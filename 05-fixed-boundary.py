@@ -10,8 +10,8 @@ import freegs
 # Boundary conditions
 import freegs.boundary as boundary
 
-profiles = freegs.jtor.ConstrainPaxisIp(1e4, # Plasma pressure on axis [Pascals]
-                                        1e6, # Plasma current [Amps]
+profiles = freegs.jtor.ConstrainPaxisIp(1e3, # Plasma pressure on axis [Pascals]
+                                        1e5, # Plasma current [Amps]
                                         1.0) # fvac = R*Bt
 
 eq = freegs.Equilibrium(Rmin=0.1, Rmax=2.0,
@@ -25,9 +25,12 @@ freegs.solve(eq,           # The equilibrium to adjust
 
 print("Done!")
 
+# Some diagnostics
+print("Poloidal beta: {}".format(eq.poloidalBeta()))
+print("Pressure on axis: {} Pa".format(eq.pressure(0.0)))
+
 # Plot equilibrium
 from freegs.plotting import plotEquilibrium
-
 plotEquilibrium(eq)
 
 
