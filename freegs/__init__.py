@@ -28,7 +28,7 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 
 """
 
-__version__ = "0.1.5"
+__version__ = "0.1.6"
 
 from .equilibrium import Equilibrium
 
