@@ -48,6 +48,7 @@ print("Done!")
 
 print("Plasma current: %e Amps" % (eq.plasmaCurrent()))
 print("Plasma pressure on axis: %e Pascals" % (eq.pressure(0.0)))
+print("Poloidal beta: %e" % (eq.poloidalBeta()))
 
 # Currents in the coils
 tokamak.printCurrents()

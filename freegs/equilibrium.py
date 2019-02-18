@@ -184,7 +184,7 @@ class Equilibrium:
 
         if xpt:
             psi_bndry = xpt[0][2]
-            mask = critical.core_mask(R, Z, psi, opt, xpt)
+            mask = critical.core_mask(self.R, self.Z, psi, opt, xpt)
         else:
             # No X-points
             if psi[0,0] > psi_axis:
