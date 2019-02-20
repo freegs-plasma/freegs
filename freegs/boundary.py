@@ -132,26 +132,7 @@ def freeBoundaryHagenow(eq, Jtor, psi):
     psi_fixed = eq.callSolver(psi, rhs)
     
     # Differentiate at the boundary
-    
-    #########################################################
-    # First order accurate method
-    
-    #dUdn_L = (psi_fixed[0,:] - psi_fixed[1,:])/dR   # left boundary
-    #dUdn_R = (psi_fixed[-1,:] - psi_fixed[-2,:])/dR # Right boundary
-    #dUdn_D = (psi_fixed[:,0] - psi_fixed[:,1])/dZ  # Down boundary
-    #dUdn_U = (psi_fixed[:,-1] - psi_fixed[:,-2])/dZ  # Upper boundary
-    
-    # Left down corner
-    #dUdn_L[0] = dUdn_D[0] = (psi_fixed[0,0] - psi_fixed[1,1]) / dd
-    # Left upper corner
-    #dUdn_L[-1] = dUdn_U[0] = (psi_fixed[0,-1] - psi_fixed[1,-2]) / dd
-    # Right down corner
-    #dUdn_R[0] = dUdn_D[-1] = (psi_fixed[-1,0] - psi_fixed[-2,1]) / dd
-    # Right upper corner
-    #dUdn_R[-1] = dUdn_U[-1] = (psi_fixed[-1,-1] - psi_fixed[-2,-2]) / dd
-    
-    #########################################################
-    # Second-order one-sided differences at the boundary
+    # Second-order one-sided differences
     
     dUdn_L = (1.5*psi_fixed[0,:] - 2.*psi_fixed[1,:] + 0.5*psi_fixed[2,:])/dR   # left boundary
     
@@ -190,9 +171,6 @@ def freeBoundaryHagenow(eq, Jtor, psi):
         [(0,y,   -eps, 0.0) for y in range(ny)],    # Left boundary
         [(nx-1,y, eps, 0.0) for y in range(ny)]]) # Right boundary
 
-    ### APPLY FREE BOUNDARY USING GREENS METHOD
-    #freeBoundary(eq, Jtor, psi)
-
     # Loop through points on boundary
     for x,y,Reps,Zeps in bndry_indices:
         # x and y can be floats here (Python 3.6.4)
@@ -219,8 +197,5 @@ def freeBoundaryHagenow(eq, Jtor, psi):
         greenfunc = Greens(R[:,-1], Z[:,-1], Rpos, Zpos)
         result += romb(greenfunc * dUdn_U / R[:,-1]) * dR
         
-        ### Compare against Greens method
-        #print("%d,%d, %e, %e, %e" % (x,y,psi[x,y], result, result/psi[x,y]))
-
         psi[x,y] = result
-    
+
