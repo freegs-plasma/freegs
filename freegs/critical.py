@@ -218,8 +218,8 @@ def find_critical(R, Z, psi,discard_xpoints=False):
             # rather than the distance in space
             
             maxp = amax(pline)
-            if (maxp - pline[-1])/(maxp - pline[0]) > 0.05:
-                # More than 5% drop in psi from maximum to X-point
+            if (maxp - pline[-1])/(maxp - pline[0]) > 0.001:
+                # More than 0.1% drop in psi from maximum to X-point
                 # -> Discard
                 continue
             
@@ -229,7 +229,7 @@ def find_critical(R, Z, psi,discard_xpoints=False):
                 continue
             xpt_keep.append(xpt)
         xpoint = xpt_keep
-
+        
     # Sort X-points by distance to primary O-point in psi space
     psi_axis = opoint[0][2]
     xpoint.sort(key=lambda x: (x[2] - psi_axis)**2)
