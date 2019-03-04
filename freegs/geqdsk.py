@@ -104,29 +104,25 @@ def write(eq, fh, label=None, oxpoints=None, fileformat=_geqdsk.write):
     qpsi[1:] = eq.q(psinorm[1:]) # Exclude axis
     qpsi[0] = qpsi[1]
     data["qpsi"] = qpsi
+
+    # rlim, zlim contain the wall, if there is one.
     
     if eq.tokamak.wall:
         data["rlim"] = eq.tokamak.wall.R
         data["zlim"] = eq.tokamak.wall.Z
-    
-    # Call fileformat to write the data
+
+    # rbdry, zbdry contain the boundary of the plasma
+        
     isoflux = np.array(critical.find_separatrix(eq,ntheta=101,opoint=opoint, xpoint=xpoint, psi=psi))
 
     ind = np.argmin(isoflux[:,1])
-    data["rbdry"] = np.roll(isoflux[:,0],-ind)
+    data["rbdry"] = np.roll(isoflux[:,0][::-1],-ind)
     data["rbdry"] = np.append(data["rbdry"],data["rbdry"][0])
 
     data["zbdry"] = np.roll(isoflux[:,1][::-1],-ind)
     data["zbdry"] = np.append(data["zbdry"],data["zbdry"][0])
 
-    
-    isoflux = np.array(critical.find_separatrix(eq,ntheta=101,opoint=opoint, xpoint=xpoint, psi=psi, psival=1.1))
-    
-    data["rlim"] = np.roll(isoflux[:,0][::-1],-ind)
-    data["zlim"] = np.roll(isoflux[:,1][::-1],-ind)
-
-    data["rlim"] = np.append(data["rlim"],data["rlim"][0])
-    data["zlim"] = np.append(data["zlim"],data["zlim"][0])
+    # Call fileformat to write the data
     fileformat(data, fh, label=label)
 
 def isPow2(val):
