@@ -207,7 +207,42 @@ class Equilibrium:
 
         # Integrate pressure in 2D
         return ((8.*pi)/mu0)*romb(romb(pressure))*dR*dZ / (self.plasmaCurrent()**2)
+
+    def plasmaVolume(self):
+        """Calculate the volume of the plasma in m^3"""
         
+        # Total poloidal flux (plasma + coils)
+        psi = self.psi()
+        
+        # Analyse the equilibrium, finding O- and X-points
+        opt, xpt = critical.find_critical(self.R, self.Z, psi)
+        if not opt:
+            raise ValueError("No O-points found!")
+        psi_axis = opt[0][2]
+
+        if xpt:
+            psi_bndry = xpt[0][2]
+            mask = critical.core_mask(self.R, self.Z, psi, opt, xpt)
+        else:
+            # No X-points
+            if psi[0,0] > psi_axis:
+                psi_bndry = np.amax(psi)
+            else:
+                psi_bndry = np.amin(psi)
+            mask = None
+
+        dR = self.R[1,0] - self.R[0,0]
+        dZ = self.Z[0,1] - self.Z[0,0]
+
+        # Volume element
+        dV = 2.*pi*self.R * dR * dZ
+        
+        if mask is not None:   # Only include points in the core
+            dV *= mask
+        
+        # Integrate volume in 2D
+        return romb(romb(dV))
+    
     def plasmaBr(self, R,Z):
         """
         Radial magnetic field due to plasma

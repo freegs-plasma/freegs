@@ -53,6 +53,8 @@ print("Done!")
 
 print("Plasma current: %e Amps" % (eq.plasmaCurrent()))
 print("Pressure on axis: %e Pascals" % (eq.pressure(0.0)))
+print("Plasma poloidal beta: %e" % (eq.poloidalBeta()))
+print("Plasma volume: %e m^3" % (eq.plasmaVolume()))
 
 eq.tokamak.printCurrents()
 

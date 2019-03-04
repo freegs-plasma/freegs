@@ -40,31 +40,12 @@ xpoints = [(Rx, -Zx),   # (R,Z) locations of X-points
 isoflux = [(Rx,-Zx, Rmid, 0.0)   # Outboard midplane, lower X-point
            ,(Rx,Zx, Rmid, 0.0)   # Outboard midplane, upper X-point
 
+           # Link inner and outer midplane locations
            ,(Rmid, 0.0, Rin, 0.0)
-           
-           # ,(Rx,-Zx, 0.73, -1.6)
-           # ,(Rx, Zx, 0.73,  1.6)
 
-           # ,(Rmid, 0.0, 0.73, -1.6)
-           # ,(Rmid, 0.0, 0.73,  1.6)
-           
-           # ,(Rx,-Zx, 0.45, -0.95)
-           # ,(Rx, Zx, 0.45,  0.95)
-           
-           # ,(Rin, 0.0, 0.45, -0.95)
-           # ,(Rin, 0.0, 0.45,  0.95)
-           # ,(Rin, 0.0, 0.45, -0.95)
-           # ,(Rin, 0.0, 0.45,  0.95)
-           # ,(Rin, 0.0, 0.45, -0.95)
-           # ,(Rin, 0.0, 0.45,  0.95)
-
-           
-            ,(Rx,-Zx, 0.95, -1.77)
-            ,(Rx, Zx, 0.95,  1.77)
-           
-           # ,(Rx,-Zx, 1.25, -1.9)
-           # ,(Rx, Zx, 1.25,  1.9)
-           
+           # Separatrix in the divertor chamber
+           ,(Rx,-Zx, 0.95, -1.77)
+           ,(Rx, Zx, 0.95,  1.77)
            ]
 
 constrain = freegs.control.constrain(xpoints=xpoints, gamma=1e-5, isoflux=isoflux)
@@ -78,6 +59,10 @@ freegs.solve(eq,          # The equilibrium to adjust
              profiles,    # The plasma profiles
              constrain,   # Plasma control constraints
              show=False)   # Shows results at each nonlinear iteration
+
+#########################################
+# Now adjust the equilibrium manually
+# 
 
 isoflux = [(Rx,-Zx, Rmid, 0.0)   # Outboard midplane, lower X-point
            ,(Rx,Zx, Rmid, 0.0)   # Outboard midplane, upper X-point
@@ -136,6 +121,7 @@ print("Done!")
 print("Plasma current: %e Amps" % (eq.plasmaCurrent()))
 print("Pressure on axis: %e Pascals" % (eq.pressure(0.0)))
 print("Poloidal beta: %e" % (eq.poloidalBeta()))
+print("Plasma volume: %e m^3" % (eq.plasmaVolume()))
 
 eq.tokamak.printCurrents()
 
