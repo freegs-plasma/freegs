@@ -12,7 +12,7 @@ from .boundary import fixedBoundary, freeBoundary
 from . import critical
 
 # Operators which define the G-S equation
-from .gradshafranov import mu0, GSsparse
+from .gradshafranov import mu0, GSsparse, GSsparse4thOrder
 
 # Multigrid solver
 from . import multigrid
@@ -100,7 +100,7 @@ class Equilibrium:
         self._current = current  # Plasma current
 
         # Create the solver
-        generator = GSsparse(Rmin, Rmax, Zmin, Zmax)
+        generator = GSsparse4thOrder(Rmin, Rmax, Zmin, Zmax)
         self._solver = multigrid.createVcycle(nx, ny,
                                               generator,
                                               nlevels=1,
