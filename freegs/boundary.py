@@ -133,29 +133,33 @@ def freeBoundaryHagenow(eq, Jtor, psi):
     
     # Differentiate at the boundary
     # Second-order one-sided differences
+
+    coeffs = [(0,  1.5),
+              (1, -2.0),
+              (2,  0.5)]
     
-    dUdn_L = (1.5*psi_fixed[0,:] - 2.*psi_fixed[1,:] + 0.5*psi_fixed[2,:])/dR   # left boundary
+    dUdn_L = sum([weight * psi_fixed[index, :] for index, weight in coeffs]) / dR    # left boundary
     
-    dUdn_R = (1.5*psi_fixed[-1,:] - 2.*psi_fixed[-2,:] + 0.5*psi_fixed[-3,:])/dR # Right boundary
+    dUdn_R = sum([weight * psi_fixed[-(1 + index), :] for index, weight in coeffs]) / dR    # Right boundary
     
-    dUdn_D = (1.5*psi_fixed[:,0] - 2.*psi_fixed[:,1] + 0.5*psi_fixed[:,2])/dZ  # Down boundary
+    dUdn_D = sum([weight * psi_fixed[:, index] for index, weight in coeffs]) / dZ  # Down boundary
     
-    dUdn_U = (1.5*psi_fixed[:,-1] - 2.*psi_fixed[:,-2] + 0.5*psi_fixed[:,-3])/dZ  # Upper boundary
+    dUdn_U = sum([weight * psi_fixed[:, -(1 + index)] for index, weight in coeffs]) / dZ  # Upper boundary
     
     dd = sqrt(dR**2 + dZ**2) # Diagonal spacing
 
     # Left down corner 
-    dUdn_L[0] = dUdn_D[0] = (1.5*psi_fixed[0,0] - 2.*psi_fixed[1,1] + 0.5*psi_fixed[2,2]) / dd
+    dUdn_L[0] = dUdn_D[0] = sum([weight * psi_fixed[index, index] for index, weight in coeffs]) / dd
     
     # Left upper corner
-    dUdn_L[-1] = dUdn_U[0] = (1.5*psi_fixed[0,-1] - 2.*psi_fixed[1,-2] + 0.5*psi_fixed[2,-3]) / dd
+    dUdn_L[-1] = dUdn_U[0] = sum([weight * psi_fixed[index, -(1 + index)] for index, weight in coeffs]) / dd
 
     # Right down corner
-    dUdn_R[0] = dUdn_D[-1] = (1.5*psi_fixed[-1,0] - 2.*psi_fixed[-2,1] + 0.5*psi_fixed[-3,2]) / dd
+    dUdn_R[0] = dUdn_D[-1] = sum([weight * psi_fixed[-(1 + index), index] for index, weight in coeffs]) / dd
 
     # Right upper corner
-    dUdn_R[-1] = dUdn_U[-1] = (1.5*psi_fixed[-1,-1] - 2.*psi_fixed[-2,-2] + 0.5*psi_fixed[-3,-3]) / dd
-    
+    dUdn_R[-1] = dUdn_U[-1] = sum([weight * psi_fixed[-(1 + index), -(1 + index)] for index, weight in coeffs]) / dd
+
     # Now for each point on the boundary perform a loop integral
     
     eps = 1e-2
