@@ -91,14 +91,14 @@ class Equilibrium:
             psi[-1, :] = 0.0
             psi[:, -1] = 0.0
 
-        self._updatePlasmaPsi(psi)
-
         # Calculate coil Greens functions. This is an optimisation,
         # used in self.psi() to speed up calculations
         self._pgreen = tokamak.createPsiGreens(self.R, self.Z)
 
         self._current = current  # Plasma current
-
+        
+        self._updatePlasmaPsi(psi)  # Needs to be after _pgreen
+        
         # Create the solver
         generator = GSsparse(Rmin, Rmax, Zmin, Zmax)
         self._solver = multigrid.createVcycle(nx, ny,
@@ -172,38 +172,18 @@ class Equilibrium:
         Return the poloidal beta 
         betap = (8pi/mu0) * int(p)dRdZ / Ip^2
         """
-
-        # Total poloidal flux (plasma + coils)
-        psi = self.psi()
-        
-        # Analyse the equilibrium, finding O- and X-points
-        opt, xpt = critical.find_critical(self.R, self.Z, psi)
-        if not opt:
-            raise ValueError("No O-points found!")
-        psi_axis = opt[0][2]
-
-        if xpt:
-            psi_bndry = xpt[0][2]
-            mask = critical.core_mask(self.R, self.Z, psi, opt, xpt)
-        else:
-            # No X-points
-            if psi[0,0] > psi_axis:
-                psi_bndry = np.amax(psi)
-            else:
-                psi_bndry = np.amin(psi)
-            mask = None
         
         dR = self.R[1,0] - self.R[0,0]
         dZ = self.Z[0,1] - self.Z[0,0]
 
         # Normalised psi
-        psi_norm = (psi - psi_axis)  / (psi_bndry - psi_axis)
+        psi_norm = (self.psi() - self.psi_axis)  / (self.psi_bndry - self.psi_axis)
 
         # Plasma pressure
         pressure = self.pressure(psi_norm)
-        if mask is not None:
+        if self.mask is not None:
             # If there is a masking function (X-points, limiters)
-            pressure *= mask
+            pressure *= self.mask
 
         # Integrate pressure in 2D
         return ((8.*pi)/mu0)*romb(romb(pressure))*dR*dZ / (self.plasmaCurrent()**2)
@@ -211,34 +191,14 @@ class Equilibrium:
     def plasmaVolume(self):
         """Calculate the volume of the plasma in m^3"""
         
-        # Total poloidal flux (plasma + coils)
-        psi = self.psi()
-        
-        # Analyse the equilibrium, finding O- and X-points
-        opt, xpt = critical.find_critical(self.R, self.Z, psi)
-        if not opt:
-            raise ValueError("No O-points found!")
-        psi_axis = opt[0][2]
-
-        if xpt:
-            psi_bndry = xpt[0][2]
-            mask = critical.core_mask(self.R, self.Z, psi, opt, xpt)
-        else:
-            # No X-points
-            if psi[0,0] > psi_axis:
-                psi_bndry = np.amax(psi)
-            else:
-                psi_bndry = np.amin(psi)
-            mask = None
-
         dR = self.R[1,0] - self.R[0,0]
         dZ = self.Z[0,1] - self.Z[0,0]
 
         # Volume element
         dV = 2.*pi*self.R * dR * dZ
         
-        if mask is not None:   # Only include points in the core
-            dV *= mask
+        if self.mask is not None:   # Only include points in the core
+            dV *= self.mask
         
         # Integrate volume in 2D
         return romb(romb(dV))
@@ -268,8 +228,30 @@ class Equilibrium:
         Total vertical magnetic field
         """
         return self.plasmaBz(R,Z) + self.tokamak.Bz(R,Z)
-    
+
+    def Btor(self, R, Z):
+        """
+        Toroidal magnetic field
+        """
+        # Normalised psi
+        psi_norm = (self.psiRZ(R, Z) - self.psi_axis)  / (self.psi_bndry - self.psi_axis)
+
+        # Get f = R * Btor in the core. May be invalid outside the core
+        fpol = self.fpol(psi_norm)
+        
+        if self.mask is not None:
+            # Get the values of the core mask at the requested R,Z locations
+            # This is 1 in the core, 0 outside
+            mask = self.mask_func(R,Z, grid=False)
+            fpol = fpol * mask + (1.0 - mask)*self.fvac()
+
+        return fpol / R
+
     def psi(self):
+        """
+        Total poloidal flux ψ (psi), including contribution from
+        plasma and external coils.
+        """
         #return self.plasma_psi + self.tokamak.psi(self.R, self.Z)
         return self.plasma_psi + self.tokamak.calcPsiFromGreens(self._pgreen)
         
@@ -277,9 +259,9 @@ class Equilibrium:
         """
         Return poloidal flux psi at given (R,Z) location
         """
-        return self.psi_func(R,Z) + self.tokamak.psi(R,Z)
+        return self.psi_func(R, Z, grid=False) + self.tokamak.psi(R,Z)
 
-    def fpol(self,psinorm):
+    def fpol(self, psinorm):
         """
         Return f = R*Bt at specified values of normalised psi
         """
@@ -402,13 +384,38 @@ class Equilibrium:
         
     def _updatePlasmaPsi(self, plasma_psi):
         """
-        Sets the plasma psi data, updates spline interpolation coefficients
+        Sets the plasma psi data, updates spline interpolation coefficients.
+        Also updates:
+
+        self.mask        2D (R,Z) array which is 1 in the core, 0 outside
+        self.psi_axis    Value of psi on the magnetic axis
+        self.psi_bndry   Value of psi on plasma boundary
         """
         self.plasma_psi = plasma_psi
 
         # Update spline interpolation
         self.psi_func = interpolate.RectBivariateSpline(self.R[:,0], self.Z[0,:], plasma_psi)
-     
+
+        # Update the locations of the X-points, core mask, psi ranges.
+        # Note that this may fail if there are no X-points, so it should not raise an error
+        # Analyse the equilibrium, finding O- and X-points
+        psi = self.psi()
+        opt, xpt = critical.find_critical(self.R, self.Z, psi)
+        if opt:
+            self.psi_axis = opt[0][2]
+
+            if xpt:
+                self.psi_bndry = xpt[0][2]
+                self.mask = critical.core_mask(self.R, self.Z, psi, opt, xpt)
+                
+                # Use interpolation to find if a point is in the core.
+                self.mask_func = interpolate.RectBivariateSpline(self.R[:,0], self.Z[0,:], self.mask)
+            else:
+                self.psi_bndry = None
+                self.mask = None
+            
+        
+
     def plot(self, axis=None, show=True, oxpoints=True):
         """
         Plot the equilibrium flux surfaces
