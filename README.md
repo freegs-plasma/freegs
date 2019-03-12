@@ -109,3 +109,13 @@ References
 * YoungMu Jeon, [Development of a free boundary Tokamak Equlibrium Solver](http://link.springer.com/article/10.3938/jkps.67.843)  [arXiv:1503.03135](https://arxiv.org/abs/1503.03135)
 * S.Jardin "Computational Methods in Plasma Physics" CRC Press
 
+
+Versions
+--------
+
+0.2.0  12th March 2019
+  - Add field line tracer, `freegs.fieldtracer`
+  - Add Equilibrium.Btor toroidal field calculation
+  - Add Equilibrium.plasmaVolume
+  - Fix rlim, zlim saved into GEQDSK files
+

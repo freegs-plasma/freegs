@@ -200,8 +200,8 @@ does the actual field line following::
 
   result = tracer.follow([1.35], [0.0], np.linspace(0.0, 2*np.pi, 20))
 
-This follows a magnetic field in the direction of B, starting at ``R=1.35``m,
-``Z=0.0``m, outputting positions at 20 toroidal angles between 0 and 2pi
+This follows a magnetic field in the direction of B, starting at :math:`R=1.35m`,
+:math:`Z=0`, outputting positions at 20 toroidal angles between 0 and 2pi
 i.e. one toroidal turn. The R and Z starting locations should be an array or
 list with the same shape.
 

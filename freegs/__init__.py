@@ -11,7 +11,7 @@ Free boundary Grad-Shafranov solver
 License
 -------
 
-Copyright 2016-2018 Ben Dudson, University of York. Email: benjamin.dudson@york.ac.uk
+Copyright 2016-2019 Ben Dudson, University of York. Email: benjamin.dudson@york.ac.uk
 
 FreeGS is free software: you can redistribute it and/or modify
 it under the terms of the GNU Lesser General Public License as published by
@@ -28,7 +28,7 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 
 """
 
-__version__ = "0.1.6"
+__version__ = "0.2.0"
 
 from .equilibrium import Equilibrium
 
