@@ -412,9 +412,7 @@ class Equilibrium:
                 self.mask_func = interpolate.RectBivariateSpline(self.R[:,0], self.Z[0,:], self.mask)
             else:
                 self.psi_bndry = None
-                self.mask = None
-            
-        
+                self.mask = None        
 
     def plot(self, axis=None, show=True, oxpoints=True):
         """
@@ -424,6 +422,11 @@ class Equilibrium:
         show     - Call matplotlib.pyplot.show() before returning
         oxpoints - Plot X points as red circles, O points as green circles
     
+        Returns
+        -------
+
+        axis  object from Matplotlib
+
         """
         from .plotting import plotEquilibrium
         return plotEquilibrium(self, axis=axis, show=show, oxpoints=oxpoints)
