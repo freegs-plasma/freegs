@@ -146,3 +146,78 @@ This can be changed e.g::
   tokamak["P1L"].area = machine.AreaCurrentLimit(1e9)
 
 would set the current limit for coil "P1L" to 1e9 Amps per square meter.
+
+Field line connection length
+----------------------------
+
+Example: ``10-mastu-connection.py``. Requires the file ``mast-upgrade.geqdsk``
+which is created by running ``08-mast-upgrade.py``.
+
+To calculate the distance along magnetic field lines from the outboard midplane
+to the walls in an equilibrium ``eq``, the simplest way is::
+
+  from freegs import fieldtracer
+  forward, backward = fieldtracer.traceFieldLines(eq)
+
+
+To also plot the field lines on top of the equilibrium::
+  
+  axis = eq.plot(show=False)
+  forward, backward = fieldtracer.traceFieldLines(eq, axis=axis)
+  plt.show()
+  
+This will display the poloidal cross-section of the plasma, and plot field lines
+traced in both directions along the magnetic field from the outboard midplane.
+
+To plot the distances along the magnetic field from midplane to target as a
+function of the starting radius::
+
+  plt.plot(forward.R[0,:], forward.length[-1,:], label="Forward")
+  plt.plot(backward.R[0,:], backward.length[-1,:], label="Backward")
+  plt.legend()
+  plt.xlabel("Starting major radius [m]")
+  plt.ylabel("Parallel connection length [m]")
+  
+  plt.show()
+
+Here ``forward.R`` and ``forward.length`` are 2D arrays, where the first index
+is the point along the magnetic field (0 = start, -1 = end), and the second
+index is the field line number. There is also ``forward.Z`` with the height in meters.
+
+The output can be customised by passing keywords to ``traceFieldLines``:
+``solwidth`` sets the width of the starting region at the outboard midplane;
+``nlines`` is the number of field lines to follow in each direction;
+``nturns`` the number of times around the torus to follow the field;
+``npoints`` is the number of points along each field line.
+
+For more control over which field lines are followed, the ``FieldTracer`` class
+does the actual field line following::
+
+  from freegs import fieldtracer
+  import numpy as np
+  
+  tracer = fieldtracer.FieldTracer(eq)
+
+  result = tracer.follow([1.35], [0.0], np.linspace(0.0, 2*np.pi, 20))
+
+This follows a magnetic field in the direction of B, starting at ``R=1.35``m,
+``Z=0.0``m, outputting positions at 20 toroidal angles between 0 and 2pi
+i.e. one toroidal turn. The R and Z starting locations should be an array or
+list with the same shape.
+
+The ``result`` is an array: The first index is the angle (size 20 here), and the
+last index has size 3 (R, Z, length). Between the first and last indices the
+result has the same shape as the R and Z starting positions. In the above code
+``result`` has size ``(20, 1, 3)``. To plot the field line on top of the
+equilibrium::
+
+  import matplotlib.pyplot as plt
+  
+  eq.plot(show=False)
+  plt.plot(result[:,0,0], result[:,0,1])
+  plt.show()
+
+The direction to follow along the field can be reversed by passing
+``backward=True`` keyword to ``tracer.follow``.
+
+
