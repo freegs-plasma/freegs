@@ -12,7 +12,7 @@ from .boundary import fixedBoundary, freeBoundary
 from . import critical
 
 # Operators which define the G-S equation
-from .gradshafranov import mu0, GSsparse
+from .gradshafranov import mu0, GSsparse, GSsparse4thOrder
 
 # Multigrid solver
 from . import multigrid
@@ -49,7 +49,7 @@ class Equilibrium:
                  Zmin=-1.0, Zmax=1.0,
                  nx=65, ny=65,
                  boundary=freeBoundary,
-                 psi=None, current=0.0):
+                 psi=None, current=0.0, order=4):
         """Initialises a plasma equilibrium
 
         Rmin, Rmax  - Range of major radius R [m]
@@ -64,6 +64,9 @@ class Equilibrium:
               surfaces as starting guess
 
         current - Plasma current (default = 0.0)
+
+        order - The order of the differential operators to use.
+                Valid values are 2 or 4.
         """
 
         self.tokamak = tokamak
@@ -100,7 +103,14 @@ class Equilibrium:
         self._updatePlasmaPsi(psi)  # Needs to be after _pgreen
         
         # Create the solver
-        generator = GSsparse(Rmin, Rmax, Zmin, Zmax)
+        if order == 2:
+            generator = GSsparse(Rmin, Rmax, Zmin, Zmax)
+        elif order == 4:
+            generator = GSsparse4thOrder(Rmin, Rmax, Zmin, Zmax)
+        else:
+            raise ValueError("Invalid choice of order ({}). Valid values are 2 or 4.".format(order))
+        self.order = order
+        
         self._solver = multigrid.createVcycle(nx, ny,
                                               generator,
                                               nlevels=1,
@@ -454,22 +464,33 @@ class Equilibrium:
 
         print_forces(self.getForces())
 
-def refine(eq):
+def refine(eq, nx=None, ny=None):
     """
     Double grid resolution, returning a new equilibrium
+
     
     """
     # Interpolate the plasma psi
-    plasma_psi = multigrid.interpolate(eq.plasma_psi)
-    nx, ny = plasma_psi.shape
+    #plasma_psi = multigrid.interpolate(eq.plasma_psi)
+    #nx, ny = plasma_psi.shape
     
+    # By default double the number of intervals
+    if not nx:
+        nx = 2*(eq.R.shape[0] - 1) + 1
+    if not ny:
+        ny = 2*(eq.R.shape[1] - 1) + 1
+
     result = Equilibrium(tokamak=eq.tokamak,
                          Rmin = eq.Rmin,
                          Rmax = eq.Rmax,
                          Zmin = eq.Zmin,
                          Zmax = eq.Zmax,
+                         boundary=eq._applyBoundary,
+                         order = eq.order,
                          nx=nx, ny=ny)
-
+    
+    plasma_psi = eq.psi_func(result.R, result.Z, grid=False)
+    
     result._updatePlasmaPsi(plasma_psi)
     
     if hasattr(eq, "_profiles"):

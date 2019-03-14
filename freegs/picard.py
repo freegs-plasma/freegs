@@ -21,7 +21,7 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 
 from numpy import amin, amax
 
-def solve(eq, profiles, constrain=None, rtol=1e-3, blend=0.0,
+def solve(eq, profiles, constrain=None, rtol=1e-3, atol=1e-10, blend=0.0,
           show=False, axis=None, pause=0.0001, psi_bndry=None):
     """
     Perform Picard iteration to find solution to the Grad-Shafranov equation
@@ -30,6 +30,7 @@ def solve(eq, profiles, constrain=None, rtol=1e-3, blend=0.0,
     profiles - A Profile object for toroidal current (jtor.py)
 
     rtol     - Relative tolerance (change in psi)/( max(psi) - min(psi) )
+    atol     - Absolute tolerance, change in psi
     blend    - Blending of previous and next psi solution
                psi{n+1} <- psi{n+1} * (1-blend) + blend * psi{n}
 
@@ -94,7 +95,7 @@ def solve(eq, profiles, constrain=None, rtol=1e-3, blend=0.0,
         print("Maximum change in psi: %e. Relative: %e" % (psi_maxchange, psi_relchange))
         
         # Check if the relative change in psi is small enough
-        if psi_relchange < rtol:
+        if (psi_maxchange < atol) or (psi_relchange < rtol):
             break
         
         # Adjust the coil currents

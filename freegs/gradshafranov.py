@@ -38,6 +38,10 @@ class GSElliptic:
     
     \Delta^* = R^2 \nabla\cdot\frac{1}{R^2}\nabla
     
+    which is
+
+    d^2/dR^2 + d^2/dZ^2 - (1/R)*d/dR
+    
     """
 
     def __init__(self, Rmin):
@@ -135,6 +139,121 @@ class GSsparse:
                 # y+1
                 A[row, row+1] = invdZ2
                 
+        # Convert to Compressed Sparse Row (CSR) format
+        return A.tocsr()
+
+class GSsparse4thOrder:
+    """
+    Calculates sparse matrices for the Grad-Shafranov operator using 4th-order
+    finite differences. 
+    """
+
+    # Coefficients for first derivatives
+    # (index offset, weight)
+    
+    centred_1st = [(-2,  1./12),
+                   (-1, -8./12),
+                   ( 1,  8./12),
+                   ( 2, -1./12)]
+    
+    offset_1st = [(-1,  -3./12),
+                  ( 0, -10./12),
+                  ( 1,  18./12),
+                  ( 2,  -6./12),
+                  ( 3,   1./12)]
+        
+    # Coefficients for second derivatives
+    # (index offset, weight)
+    centred_2nd = [(-2, -1./12),
+                   (-1, 16./12),
+                   ( 0, -30./12),
+                   ( 1, 16./12),
+                   ( 2, -1./12)]
+    
+    offset_2nd = [(-1,  10./12),
+                  ( 0, -15./12),
+                  ( 1,  -4./12),
+                  ( 2,  14./12),
+                  ( 3,  -6./12),
+                  ( 4,   1./12)]
+    
+    def __init__(self, Rmin, Rmax, Zmin, Zmax):
+        self.Rmin = Rmin
+        self.Rmax = Rmax
+        self.Zmin = Zmin
+        self.Zmax = Zmax
+        
+    def __call__(self, nx, ny):
+        """
+        Create a sparse matrix with given resolution
+        
+        """
+
+        # Calculate grid spacing
+        dR = (self.Rmax - self.Rmin)/(nx - 1)
+        dZ = (self.Zmax - self.Zmin)/(ny - 1)
+        
+        # Total number of points, including boundaries
+        N = nx * ny
+
+        # Create a linked list sparse matrix
+        A = lil_matrix((N,N))
+        
+        invdR2 = 1./dR**2
+        invdZ2 = 1./dZ**2
+        
+        for x in range(1,nx-1):
+            R = self.Rmin + dR*x  # Major radius of this point
+            for y in range(1,ny-1):
+                row = x*ny + y
+
+                # d^2 / dZ^2
+                if y == 1:
+                    # One-sided derivatives in Z
+                    for offset, weight in self.offset_2nd:
+                        A[row, row + offset] += weight * invdZ2
+                elif y == ny-2:
+                    # One-sided, reversed direction.
+                    # Note that for second derivatives the sign of the weights doesn't change
+                    for offset, weight in self.offset_2nd:
+                        A[row, row - offset] += weight * invdZ2
+                else:
+                    # Central differencing
+                    for offset, weight in self.centred_2nd:
+                        A[row, row + offset] += weight * invdZ2
+
+                # d^2 / dR^2 - (1/R) d/dR
+
+                if x == 1:
+                    for offset, weight in self.offset_2nd:
+                        A[row, row + offset*ny] += weight * invdR2
+                        
+                    for offset, weight in self.offset_1st:
+                        A[row, row + offset*ny] -= weight / (R * dR)
+                        
+                elif x == nx-2:
+                    for offset, weight in self.offset_2nd:
+                        A[row, row - offset*ny] += weight * invdR2
+                        
+                    for offset, weight in self.offset_1st:
+                        A[row, row - offset*ny] += weight / (R * dR)
+                else:
+                    for offset, weight in self.centred_2nd:
+                        A[row, row + offset*ny] += weight * invdR2
+                        
+                    for offset, weight in self.centred_1st:
+                        A[row, row + offset*ny] -= weight / (R * dR)
+
+        # Set boundary rows
+        for x in range(nx):
+            for y in [0, ny-1]:
+                row = x*ny + y
+                A[row, row] = 1.0
+        for x in [0, nx-1]:
+            for y in range(ny):
+                row = x*ny + y
+                A[row, row] = 1.0
+
         # Convert to Compressed Sparse Row (CSR) format
         return A.tocsr()
     
