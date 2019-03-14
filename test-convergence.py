@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 start_resolution = 17
-nrefinements = 2 # Number of refinements 
+nrefinements = 5 # Number of refinements. Minimum 2
 rtol = 1e-10     # Relative tolerance in Picard iteration
 location = (1.2, 0.1)  # Location to record values at
 
@@ -45,26 +45,48 @@ brvals = [eq.Br(*location)]
 volumevals = [eq.plasmaVolume()]
 coilcurrents = [eq.tokamak["P1L"].current]
 
+# List of l2 and l∞ norms
+l2vals = []
+linfvals = []
+
 for i in range(nrefinements):
 
     print("\n========== Refining ===========\n")
+
+    psi_old = eq.psi()
+    R_old = eq.R
+    Z_old = eq.Z
     
     # Increase resolution
     eq = freegs.equilibrium.refine(eq)
-
-
     
     # Re-solve
     freegs.solve(eq,
-                 profiles,    # The toroidal current profile function
+                 profiles,
                  constrain,
                  rtol=rtol)
-    
+
     resolutions.append(eq.R.shape[0])
+    
+    # Get the new psi on the old points
+    psi_new = eq.psiRZ(R_old, Z_old)
+
+    # Global norms of the change in psi
+    l2 = np.sqrt(np.mean( (psi_new - psi_old)**2 ))
+    linf = np.amax(np.abs( psi_new - psi_old ))
+
+    l2vals.append(l2)
+    linfvals.append(linf)
+
+    # Point-wise values
     psivals.append(eq.psiRZ(*location))
     brvals.append(eq.Br(*location))
-    volumevals.append(eq.plasmaVolume())
+
+    # Coil current
     coilcurrents.append(eq.tokamak["P1L"].current)
+
+    # Global quantity
+    volumevals.append(eq.plasmaVolume())
 
 
 resolutions = np.squeeze(np.array(resolutions))
@@ -73,16 +95,20 @@ brvals = np.squeeze(np.array(brvals))
 volumevals = np.squeeze(np.array(volumevals))
 coilcurrents = np.squeeze(np.array(coilcurrents))
 
-fig, axes = plt.subplots(2, 2, sharex=True)
+l2vals = np.array(l2vals)
+linfvals = np.array(linfvals)
 
-def plot_convergence(axis, values, title):
+fig, axes = plt.subplots(2, 3, sharex=True)
+
+def plot_convergence(axis, title, values=None, diffs=None):
     # Absolute differences
-    diffs = np.abs(values[1:] - values[0:-1])
+    if diffs is None:
+        diffs = np.abs(values[1:] - values[0:-1])
 
     # Convergence order. Note one shorter than diffs array
     orders = np.log(diffs[:-1]/diffs[1:]) / np.log(2.)
 
-    axis.plot(resolutions[1:], diffs)
+    axis.plot(resolutions[1:]-1, diffs)
     axis.set_title(title)
     axis.set_yscale("log")
     axis.set_xscale("log")
@@ -90,10 +116,18 @@ def plot_convergence(axis, values, title):
     for x, y, order in zip(resolutions[2:], diffs[1:], orders):
         axis.text(x, y, "{:.1f}".format(order))
 
-plot_convergence(axes[0,0], psivals, "Flux at {}".format(location)) 
-plot_convergence(axes[1,0], brvals, "Br at {}".format(location))
-plot_convergence(axes[0,1], volumevals, "Plasma volume")
-plot_convergence(axes[1,1], coilcurrents, "P1L coil current")
+    resolution_list = list(resolutions[1:]-1)
+    axis.set_xticks(resolution_list)
+    axis.set_xticklabels(["{:d}".format(r) for r in resolution_list])
+    axis.set_xticks([], minor=True)
+    
+
+plot_convergence(axes[0,0], r"Change in $\psi$ at {}".format(location), values=psivals)
+plot_convergence(axes[0,1], r"$\psi$ difference $l_2$ norm", diffs=l2vals)
+plot_convergence(axes[0,2], r"$\psi$ difference $l_\infty$ norm", diffs=linfvals)
+plot_convergence(axes[1,0], "Br at {}".format(location), values=brvals)
+plot_convergence(axes[1,1], "Plasma volume", values=volumevals)
+plot_convergence(axes[1,2], "P1L coil current", values=coilcurrents)
 
 plt.savefig("test-convergence.pdf")
 plt.savefig("test-convergence.png")
