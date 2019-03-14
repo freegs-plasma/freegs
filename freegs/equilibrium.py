@@ -444,22 +444,31 @@ class Equilibrium:
 
         print_forces(self.getForces())
 
-def refine(eq):
+def refine(eq, nx=None, ny=None):
     """
     Double grid resolution, returning a new equilibrium
+
     
     """
     # Interpolate the plasma psi
-    plasma_psi = multigrid.interpolate(eq.plasma_psi)
-    nx, ny = plasma_psi.shape
+    #plasma_psi = multigrid.interpolate(eq.plasma_psi)
+    #nx, ny = plasma_psi.shape
     
+    # By default double the number of intervals
+    if not nx:
+        nx = 2*(eq.R.shape[0] - 1) + 1
+    if not ny:
+        ny = 2*(eq.R.shape[1] - 1) + 1
+
     result = Equilibrium(tokamak=eq.tokamak,
                          Rmin = eq.Rmin,
                          Rmax = eq.Rmax,
                          Zmin = eq.Zmin,
                          Zmax = eq.Zmax,
                          nx=nx, ny=ny)
-
+    
+    plasma_psi = eq.psi_func(result.R, result.Z, grid=False)
+    
     result._updatePlasmaPsi(plasma_psi)
     
     if hasattr(eq, "_profiles"):

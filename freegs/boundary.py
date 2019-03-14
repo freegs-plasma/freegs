@@ -132,11 +132,14 @@ def freeBoundaryHagenow(eq, Jtor, psi):
     psi_fixed = eq.callSolver(psi, rhs)
     
     # Differentiate at the boundary
-    # Second-order one-sided differences
-
-    coeffs = [(0,  1.5),
-              (1, -2.0),
-              (2,  0.5)]
+    # Note: normal is out of the domain, so this is -dU/dx
+    
+    # Fourth-order one-sided differences
+    coeffs = [(0, 25./12),
+              (1, -4.0),
+              (2,  3.0),
+              (3, -16./12),
+              (4, 1./4)]
     
     dUdn_L = sum([weight * psi_fixed[index, :] for index, weight in coeffs]) / dR    # left boundary
     
