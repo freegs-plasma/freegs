@@ -81,13 +81,11 @@ class Equilibrium:
         self.R_1D = linspace(Rmin, Rmax, nx)
         self.Z_1D = linspace(Zmin, Zmax, ny)
         self.R, self.Z = meshgrid(self.R_1D, self.Z_1D, indexing='ij')
-
-        yymid = 1 - Zmax/(Zmax - Zmin)
-
+        
         if psi is None:
             # Starting guess for psi
             xx, yy = meshgrid(linspace(0, 1, nx), linspace(0, 1, ny), indexing='ij')
-            psi = exp(-((xx - 0.5)**2 + (yy - yymid)**2) / 0.4**2)
+            psi = exp(-((xx - 0.5)**2 + (yy - 0.5)**2) / 0.4**2)
 
             psi[0, :] = 0.0
             psi[:, 0] = 0.0
