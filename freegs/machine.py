@@ -736,7 +736,15 @@ class Machine:
         for label, coil in self.coils:
             forces[label] = coil.getForces(equilibrium)
         return forces
-        
+
+    def getCurrents(self):
+        """
+        Returns a dictionary of coil label -> current in Amps
+        """
+        currents = {}
+        for label, coil in self.coils:
+            currents[label] = coil.current
+        return currents
         
 def EmptyTokamak():
     """
