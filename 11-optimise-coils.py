@@ -82,6 +82,7 @@ class coil_radius:
 ############################
 
 from scipy import optimize
+import random
 
 def optimise(eq, measures, controls):
     # Get initial values for all controls
@@ -104,10 +105,19 @@ def optimise(eq, measures, controls):
 
         # Sum measures to get overall score
         return sum(measure(eq) for measure in measures)
+
+    best_values = initial_values
+    best_measure = evaluate(best_values)
+    for i in range(10):
+        new_values = [value * (1. + 0.1 * (random.random() - 0.5)) for value in best_values]
+        measure = evaluate(new_values)
+        if (measure < best_measure):
+            best_values = new_values
+            best_measure = measure
+        print("MEASURE: ", best_measure)
     
-    return optimize.minimize(evaluate, initial_values)
-
-
+    return best_values
+    #return optimize.minimize(evaluate, initial_values)
 
 # Currents in the coils
 tokamak.printCurrents()
