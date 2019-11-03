@@ -118,7 +118,7 @@ class constrain(object):
         # Calculate the change in coil current
         current_change =  dot( inv(dot(transpose(A), A) + self.gamma**2 * eye(ncontrols)), 
                                dot(transpose(A),b))
-        print("Current changes: " + str(current_change))
+        #print("Current changes: " + str(current_change))
         tokamak.controlAdjust(current_change)
 
     def plot(self, axis=None, show=True):

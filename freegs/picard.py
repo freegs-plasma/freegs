@@ -92,7 +92,7 @@ def solve(eq, profiles, constrain=None, rtol=1e-3, atol=1e-10, blend=0.0,
         psi_maxchange = amax(abs(psi_change))
         psi_relchange = psi_maxchange/(amax(psi) - amin(psi))
         
-        print("Maximum change in psi: %e. Relative: %e" % (psi_maxchange, psi_relchange))
+        #print("Maximum change in psi: %e. Relative: %e" % (psi_maxchange, psi_relchange))
         
         # Check if the relative change in psi is small enough
         if (psi_maxchange < atol) or (psi_relchange < rtol):

@@ -66,6 +66,11 @@ def scale(opt_func, value):
 def soft_upper_limit(opt_func, value, width=0.1):
     return lambda eq: 0.5*(1.0 + tanh((opt_func(eq)/value - 1.0)/width))
 
+def weighted_sum(*args):
+    """
+    args should be pairs of functions and weights
+    """
+    return lambda eq: sum(func(eq) * weight for func, weight in args)
 
 #### Controls
 
@@ -83,48 +88,116 @@ class coil_radius:
 
 from scipy import optimize
 import random
+import copy
+import bisect
 
-def optimise(eq, measures, controls):
-    # Get initial values for all controls
-    initial_values = [control.get(eq) for control in controls]
+def mutate(eq, controls):
+    eq2 = copy.deepcopy(eq)
+    for control in controls:
+        control.set(eq2, control.get(eq2) * (1. + 0.1 * (random.random() - 0.5)))
+    return eq2
 
-    def evaluate(values):
-        # Modify settings
-        for control, value in zip(controls, values):
-            control.set(eq, value)
-            
-        print("SETTING: ", values)
+def optimise(eq, profiles, constrain, controls, evaluate, N=10, CR=0.3, F=1.0, showall=False, show=False):
+    """
+    Use Differential Evolution to optimise an equilibrium
+    https://en.wikipedia.org/wiki/Differential_evolution
+    
+    N >= 4 is the population size
+    CR [0,1] is the crossover probability
+    F  [0,2] is the differential weight
 
+    showall  If true, show the iteration process for every solution
+    show   If true, show best solution at each generation
+    """
+    assert N >= 4
+    
+    def measure(eq):
         # Need to update some internal caches
         eq._pgreen = eq.tokamak.createPsiGreens(eq.R, eq.Z)
-        
-        # Re-solve
-        freegs.solve(eq,
-                     profiles,
-                     constrain, show=True)
+        try:
+            # Re-solve
+            freegs.solve(eq,
+                         profiles,
+                         constrain, show=showall)
+        except:
+            # Solve failed.
+            return float("inf")
+        # Call user-supplied evaluation function
+        return evaluate(eq)
 
-        # Sum measures to get overall score
-        return sum(measure(eq) for measure in measures)
-
-    best_values = initial_values
-    best_measure = evaluate(best_values)
-    for i in range(10):
-        new_values = [value * (1. + 0.1 * (random.random() - 0.5)) for value in best_values]
-        measure = evaluate(new_values)
-        if (measure < best_measure):
-            best_values = new_values
-            best_measure = measure
-        print("MEASURE: ", best_measure)
+    if show:
+        import matplotlib.pyplot as plt
+        from freegs.plotting import plotEquilibrium
+        fig = plt.figure()
+        axis = fig.add_subplot(111)
     
-    return best_values
-    #return optimize.minimize(evaluate, initial_values)
+    best = (measure(eq), eq)  # Highest score, candidate solution (agent)
+    population = [best]  # List of (score, agent)
 
+    for i in range(N-1):
+        agent = mutate(eq, controls)
+        score_agent = (measure(agent), agent)
+        population.append(score_agent)
+        if score_agent[0] > best[0]:
+            best = score_agent
+
+    for generation in range(10):
+        next_pop = [] # Next generation
+        for ai, agent in enumerate(population):
+            # Pick three other random agents, all different
+            inds = [ai] # Sorted list of indices. Used to avoid clashes
+            others = [] # The list of three agents
+            for i in range(3):
+                newind = random.randint(0, N-2-i)
+                for ind in inds:
+                    if newind == ind:
+                        newind += 1
+                bisect.insort(inds, newind) # Insert into sorted list
+                others.append(population[newind][1])
+            
+            new_eq = copy.deepcopy(agent[1])
+            R = random.randint(0, len(controls)-1) # Pick a random control to modify
+            for i, control in enumerate(controls):
+                if i == R or random.random() < CR:
+                    control.set(new_eq,
+                                control.get(others[0]) + F * (control.get(others[1]) - control.get(others[2])))
+            score = measure(new_eq)
+            if score < agent[0]:
+                # Better than original
+                new_agent = (score, new_eq)
+                next_pop.append(new_agent)
+                if score < best[0]:
+                    # Now the best candidate
+                    best = new_agent
+            else:
+                next_pop.append(agent)
+        # end of generation. Print best score
+        print("\nGeneration: {}, best score: {}\n".format(generation, best[0]))
+
+        if show:
+            axis.clear()
+            plotEquilibrium(best[1], axis=axis, show=False)
+            # Update the canvas and pause
+            # Note, a short pause is needed to force drawing update
+            axis.figure.canvas.draw()
+            axis.set_title("Generation: {} Score: {}".format(generation, best[0]))
+            fig.savefig("generation_{}.pdf".format(generation))
+            plt.pause(0.5)
+        population = next_pop
+    # Finished, return best candidate
+    return best[1]
+            
 # Currents in the coils
 tokamak.printCurrents()
 
 # Forces on the coils
 eq.printForces()
 
-print(optimise(eq, [max_coil_force], [coil_radius("P2U")]))
+best_eq = optimise(eq, profiles, constrain,
+                   [coil_radius("P2U"),
+                    coil_radius("P2L")],
+                   max_coil_force, N=5, show=True)
 
-
+# Forces on the coils
+best_eq.printForces()
+best_eq.plot()
