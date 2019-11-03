@@ -42,6 +42,12 @@ from .gradshafranov import mu0
 from numpy import clip, zeros, reshape, sqrt, pi
 import numpy as np
 
+def psi_derivative(func, eps=1e-10):
+    """
+    Returns a function which calculates the derivative of func in psi
+    """
+    return lambda psi: (func(psi+eps) - func(psi-eps)) / (2*eps)
+
 class Profile(object):
     """
     Base class from which profiles classes can inherit
@@ -521,3 +527,126 @@ class ProfilesSafety:
         # If not, use base class to integrate
         return super(ProfilesSafety, self).q(psinorm, out)
 '''
+
+
+class PprimeFfprimeTempRotation:
+    """
+    Plasma profiles including rotation. The radial centrifugal force depends on the
+    rotation and density, but temperature is a better flux function than density.
+    Both temperature and rotation profiles are therefore needed.
+    
+    Specified profile functions p0'(psi), ff'(psi), T'(psi) and Omega(psi)
+    
+    Jtor = R*p' + ff'/(R*mu0)
+    
+    p(ψ,R) = p0(ψ)exp[ m_i * Omega^2 R_0^2 / (2*T) * ( (R/R_0)^2 - 1) ]
+
+    This form taken from
+    Haolong Li and Ping Zhu, arXiv:1906.05534 (2019)
+
+    """
+    def __init__(self, pprime_func, ffprime_func, t_func, omega_func, fvac, p_func=None, f_func=None, AA=2.0):
+        """
+        pprime_func(psi_norm)  - A function which returns dp/dpsi at given normalised flux
+        ffprime_func(psi_norm) - A function which returns f*df/dpsi at given normalised flux (f = R*Bt)
+        t_func(psi_norm)       - Electron temperature function [eV]
+        omega_func(psi_norm)   - Rotation rate [Hz]
+
+        fvac - Vacuum f = R*Bt
+        
+        AA   - Atomic mass. 2 = Deuterium
+
+        Optionally, the pressure p_func and poloidal current function f_func
+        """
+        self.pprime = pprime_func
+        self.ffprime = ffprime_func
+        self.tprime = psi_derivative(t_func)
+        self.omegaprime = psi_derivative(omega_func)
+        self.p_func = p_func
+        self.f_func = f_func
+        self.T = t_func
+        self.omega = omega_func
+        self._fvac = fvac
+        self.mi = AA * 1.67e-27 # Ion mass [kg]
+        
+    def Jtor(self, R, Z, psi, psi_bndry=None):
+        """
+        Calculate toroidal plasma current
+        
+        Jtor = R*p' + ff'/(R*mu0)
+
+        Here p' is a function of (psi, R) since rotation is included
+        """
+        
+        # Analyse the equilibrium, finding O- and X-points
+        opt, xpt = critical.find_critical(R, Z, psi)
+        if not opt:
+            raise ValueError("No O-points found!")
+
+        R_axis = opt[0][1]
+        psi_axis = opt[0][2]
+        
+        if psi_bndry is not None:
+            mask = critical.core_mask(R, Z, psi, opt, xpt, psi_bndry)
+        elif xpt:
+            psi_bndry = xpt[0][2]
+            mask = critical.core_mask(R, Z, psi, opt, xpt)
+        else:
+            # No X-points
+            psi_bndry = psi[0,0]
+            mask = None
+        
+        dR = R[1,0] - R[0,0]
+        dZ = Z[0,1] - Z[0,0]
+        
+        # Calculate normalised psi.
+        # 0 = magnetic axis
+        # 1 = plasma boundary
+        psi_norm = clip((psi - psi_axis)  / (psi_bndry - psi_axis), 0.0, 1.0)
+        Jtor = R * self.pprime(psi_norm) + self.ffprime(psi_norm)/(R * mu0)
+
+        pprime = self.pprime(psi_norm) # The pressure flux function [Pa]
+        omega = self.omega(psi_norm)   # Rotation rate [Hz]
+        T = self.T(psi_norm)           # Temperature [eV]
+
+        pressure_axis = self.pressure(0.0) # P0, Pascals
+        
+        omega_factor = self.mi * omega * (R**2 - R_axis**2) / (1.602e-19 * T)
+        omega2_factor = omega_factor * 0.5 * omega
+        
+        Jtor = ( self.ffprime(psi_norm)/(R * mu0)
+                 + R * ( pprime
+                         - pressure_axis * omega_factor * self.omegaprime(psi_norm)
+                         + pressure_axis * omega2_factor * self.tprime(psi_norm) / (1.602e-19 * T) ) * exp( omega2_factor ) )
+        
+        if mask is not None:
+            # If there is a masking function (X-points, limiters)
+            Jtor *= mask
+        
+        return Jtor
+
+    def pressure(self, psinorm, out=None):
+        """
+        Return pressure [Pa] at given value(s) of
+        normalised psi.
+        """
+        if self.p_func is not None:
+            # If a function exists then use it
+            return self.p_func(psinorm)
+        
+        # If not, use base class to integrate
+        return super(ProfilesPprimeFfprime, self).pressure(psinorm, out)
+        
+    def fpol(self, psinorm, out=None):
+        """
+        Return f=R*Bt at given value(s) of
+        normalised psi.
+        """
+        if self.f_func is not None:
+            # If a function exists then use it
+            return self.f_func(psinorm)
+        
+        # If not, use base class to integrate
+        return super(ProfilesPprimeFfprime, self).fpol(psinorm, out)
+    def fvac(self):
+        return self._fvac
