@@ -15,6 +15,11 @@ and some numerical parameters:
 #. The domain in which we want to calculate the solution
 #. The methods to be used to solve the equations
 
+These inputs are combined in a nonlinear Picard iteration with the main components shown in the figure below.
+   
+.. image:: nonlinear_solve.png
+  :width: 400
+  :alt: Main components in the Picard iteration used to solve free boundary equilibrium problem.
 
 Tokamak coils, circuits and solenoid
 ------------------------------------
