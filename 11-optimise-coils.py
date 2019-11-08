@@ -47,6 +47,8 @@ freegs.solve(eq,          # The equilibrium to adjust
 
 from math import sqrt
 
+from freegs import polygons
+
 def max_abs_coil_current(eq):
     """
     Given an equilibrium, return the maximum absolute coil current
@@ -58,6 +60,17 @@ def max_coil_force(eq):
     forces = eq.tokamak.getForces() # dictionary
     return max(sqrt(force[0]**2 + force[1]**2) for force in forces.values())
 
+def no_wall_intersection(eq):
+    """Prevent intersection of LCFS with walls by returning inf if intersections are found"""
+    separatrix = eq.separatrix() # Array [:,2]
+    wall = eq.tokamak.wall # Wall object with R and Z members (lists)
+
+    if polygons.intersect(separatrix[:,0], separatrix[:,1],
+                          wall.R, wall.Z):
+        return float("inf")
+    return 0.0 # No intersection
+
+
 #### Scaling, limits
 
 def scale(opt_func, value):
@@ -68,9 +81,21 @@ def soft_upper_limit(opt_func, value, width=0.1):
 
 def weighted_sum(*args):
     """
-    args should be pairs of functions and weights
+    Returns a function which takes a single argument (the equilibrium),
+    and passes it to a set of given functions. These functions are assumed
+    to return values, which are multiplied by weights, summed and returned. 
+    
+    args should be either functions or pairs of functions and weights.
+    If no weights are supplied then a weight of 1.0 is assumed.
     """
-    return lambda eq: sum(func(eq) * weight for func, weight in args)
+    args_with_weights = []
+    for arg in args:
+        if callable(arg):
+            args_with_weights.append( (arg, 1.0) )
+        else:
+            args_with_weights.append( arg )
+    
+    return lambda eq: sum(func(eq) * weight for func, weight in args_with_weights)
 
 #### Controls
 
@@ -132,8 +157,9 @@ from freegs import optimiser
 best_eq = optimiser.optimise(eq,
                              [coil_radius("P2U"),
                               coil_radius("P2L")],
-                             make_eq_measure(profiles, constrain, max_coil_force),
-                             N=5, monitor=PlotMonitor())
+                             make_eq_measure(profiles, constrain,
+                                             weighted_sum(max_coil_force, no_wall_intersection)),
+                             N=10, monitor=PlotMonitor(), maxgen=20)
 
 # Forces on the coils
 best_eq.printForces()
