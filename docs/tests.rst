@@ -1,6 +1,17 @@
 Tests
 =====
 
+Unit tests
+----------
+
+Unit testing is done with `pytest <https://docs.pytest.org/en/latest/>`_. Run the tests
+in the ``freegs`` directory with:
+
+::
+
+   pytest
+   
+
 Convergence test
 ----------------
 
