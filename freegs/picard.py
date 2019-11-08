@@ -22,7 +22,7 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 from numpy import amin, amax
 
 def solve(eq, profiles, constrain=None, rtol=1e-3, atol=1e-10, blend=0.0,
-          show=False, axis=None, pause=0.0001, psi_bndry=None):
+          show=False, axis=None, pause=0.0001, psi_bndry=None, maxits=50):
     """
     Perform Picard iteration to find solution to the Grad-Shafranov equation
     
@@ -38,6 +38,8 @@ def solve(eq, profiles, constrain=None, rtol=1e-3, atol=1e-10, blend=0.0,
     axis     - Specify a figure to plot onto. Default (None) creates a new figure
     pause    - Delay between output plots. If negative, waits for window to be closed
     
+    maxits   - Maximum number of iterations. 
+               If this limit is exceeded then a RuntimeError is raised.
     """
     
     if constrain is not None:
@@ -56,7 +58,8 @@ def solve(eq, profiles, constrain=None, rtol=1e-3, atol=1e-10, blend=0.0,
             # No axis specified, so create a new figure
             fig = plt.figure()
             axis = fig.add_subplot(111)
-        
+
+    iteration = 0 # Count number of iterations
     # Start main loop
     while True:
         if show:
@@ -92,8 +95,6 @@ def solve(eq, profiles, constrain=None, rtol=1e-3, atol=1e-10, blend=0.0,
         psi_maxchange = amax(abs(psi_change))
         psi_relchange = psi_maxchange/(amax(psi) - amin(psi))
         
-        #print("Maximum change in psi: %e. Relative: %e" % (psi_maxchange, psi_relchange))
-        
         # Check if the relative change in psi is small enough
         if (psi_maxchange < atol) or (psi_relchange < rtol):
             break
@@ -103,5 +104,8 @@ def solve(eq, profiles, constrain=None, rtol=1e-3, atol=1e-10, blend=0.0,
             constrain(eq)
         
         psi = (1. - blend)*eq.psi() + blend*psi_last
-        
+
+        iteration += 1
+        if iteration > maxits:
+            raise RuntimeError("Picard iteration failed to converge (too many iterations)")
         
