@@ -3,6 +3,13 @@ FreeGS library
 
 Tests and examples using components of the library
 
+Testing
+-------
+
+To run the unit tests, install [pytest](https://docs.pytest.org/en/latest/) and then run:
+
+    $ pytest
+
 Multigrid solver
 ----------------
 
