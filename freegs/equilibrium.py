@@ -41,7 +41,9 @@ class Equilibrium:
 
     _applyBoundary()
     _solver - Grad-Shafranov elliptic solver
-
+    _profiles     An object which calculates the toroidal current
+    _constraints  Control system which adjusts coil currents to meet constraints
+                  e.g. X-point location and flux values
     """
 
     def __init__(self, tokamak=machine.EmptyTokamak(),

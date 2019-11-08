@@ -49,7 +49,7 @@ def pickUnique(N, m, e):
     return others
 
 def optimise(obj, controls, measure, maxgen=10, N=10, CR=0.3, F=1.0, monitor=None):
-    """Use Differential Evolution to optimise an equilibrium
+    """Use Differential Evolution to optimise an object
     https://en.wikipedia.org/wiki/Differential_evolution
     
     obj  is an object to be used as starting solution

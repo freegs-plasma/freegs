@@ -121,6 +121,9 @@ class constrain(object):
         #print("Current changes: " + str(current_change))
         tokamak.controlAdjust(current_change)
 
+        # Ensure that the last constraint used is set in the Equilibrium
+        eq._constraints = self
+        
     def plot(self, axis=None, show=True):
         """
         Plots constraints used for coil current control
@@ -205,6 +208,9 @@ class ConstrainPsi2D(object):
         end_currents, _ = optimize.leastsq(self.psi_difference, start_currents, args=(eq,))
         
         tokamak.setControlCurrents(end_currents)
+
+        # Ensure that the last constraint used is set in the Equilibrium
+        eq._constraints = self
         
     def psi_difference(self, currents, eq):
         """
@@ -247,6 +253,9 @@ class ConstrainPsiNorm2D(object):
         end_currents, _ = optimize.leastsq(self.psinorm_difference, start_currents, args=(eq,))
         
         tokamak.setControlCurrents(end_currents)
+        
+        # Ensure that the last constraint used is set in the Equilibrium
+        eq._constraints = self
         
     def psinorm_difference(self, currents, eq):
         """

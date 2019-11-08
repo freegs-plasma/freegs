@@ -1,7 +1,7 @@
 """
 Routines for solving the nonlinear part of the Grad-Shafranov equation
 
-Copyright 2016 Ben Dudson, University of York. Email: benjamin.dudson@york.ac.uk
+Copyright 2016-2019 Ben Dudson, University of York. Email: benjamin.dudson@york.ac.uk
 
 This file is part of FreeGS.
 
@@ -38,7 +38,7 @@ def solve(eq, profiles, constrain=None, rtol=1e-3, atol=1e-10, blend=0.0,
     axis     - Specify a figure to plot onto. Default (None) creates a new figure
     pause    - Delay between output plots. If negative, waits for window to be closed
     
-    maxits   - Maximum number of iterations. 
+    maxits   - Maximum number of iterations. Set to None for no limit.
                If this limit is exceeded then a RuntimeError is raised.
     """
     
@@ -105,7 +105,8 @@ def solve(eq, profiles, constrain=None, rtol=1e-3, atol=1e-10, blend=0.0,
         
         psi = (1. - blend)*eq.psi() + blend*psi_last
 
+        # Check if the maximum iterations has been exceeded
         iteration += 1
-        if iteration > maxits:
+        if maxits and iteration > maxits:
             raise RuntimeError("Picard iteration failed to converge (too many iterations)")
         
