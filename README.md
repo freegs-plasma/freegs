@@ -114,6 +114,14 @@ References
 Versions
 --------
 
+0.4.0  10th November 2019
+  - Add optimisation with Differential Evolution
+  - More unit testing, documentation
+
+0.3.0  28th July 2019
+  - Add 4th-order solver for potential
+  - Add convergence test
+
 0.2.0  12th March 2019
   - Add field line tracer, `freegs.fieldtracer`
   - Add Equilibrium.Btor toroidal field calculation
