@@ -1,4 +1,4 @@
-import optimiser
+from . import optimiser
 
 # Tests and example of solving optimisation problem
 #
