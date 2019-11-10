@@ -108,6 +108,10 @@ from freegs.plotting import plotEquilibrium
 
 # Plot and save the best equilibrium each generation
 class PlotMonitor:
+    """
+    Plot the best solution at the end of each generation,
+    saves the plot to a PNG file. 
+    """
     def __init__(self):
         self.fig = plt.figure()
         self.axis = self.fig.add_subplot(111)

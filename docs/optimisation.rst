@@ -50,4 +50,53 @@ then around the solution as the agents converge to the minimum.
 .. image:: optimiser.gif
    :alt: Optimisation of a quadratic. The minimum is at (1,2), and starting point is at (0.1,0.1). Points mark the solutions tested at all generations.
 
-         
+Optimising tokamak equilibria
+-----------------------------
+
+The code specific to FreeGS optimisation is in
+``freegs.optimise``. This includes controls which modify aspects of
+the tokamak or equilibrium, and measures which can be combined to
+specify the quantities which should be optimised.
+
++-------------------------------+----------------------------------------------------+
+|   Control                     |    Description                                     |
++===============================+====================================================+
+| CoilRadius(name [, min, max]) | Modify coil radius, given name and optional limits |
++-------------------------------+----------------------------------------------------+
+| CoilHeight(name [, min, max]) | Modify coil height                                 |
++-------------------------------+----------------------------------------------------+
+
+
++-------------------------------+----------------------------------------------------+
+|   Measure function            |   Description                                      |
++===============================+====================================================+
+| max_abs_coil_current          | Maximum current in any coil circuit                |
++-------------------------------+----------------------------------------------------+
+| max_coil_force                | Modify coil height                                 |
++-------------------------------+----------------------------------------------------+
+| no_wall_intersection          | Prevent intersections of wall and LCFS             |
++-------------------------------+----------------------------------------------------+
+
+Each measure function takes an Equilibrium as input, and returns a
+value. These can be combined in a weighted sum using
+``optimise.weighted_sum``, or by passing your own function to
+``optimise``.
+
+The example ``11-optimise-coils.py`` uses the following code to reduce
+the maximum force on the coils, while avoiding wall intersections::
+
+  from freegs import optimise as opt
+
+  best_eq = opt.optimise(eq,  # Starting equilibrium
+                         # List of controls
+                         [opt.CoilRadius("P2U"),
+                         opt.CoilRadius("P2L"), opt.CoilHeight("P2L")],
+                         # The function to minimise
+                         opt.weighted_sum(opt.max_coil_force, opt.no_wall_intersection),
+                         N=10,  # Number of solutions in each generation
+                         maxgen=20, # How many generations
+                         monitor=opt.PlotMonitor())  # Plot the best in each generation
+
+The monitor should be a callable (here it is an object of class ``PlotMonitor``), which
+is called after each generation. This is used to update a plot showing
+the best solution in each generation, and save the figure to file.
