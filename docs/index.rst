@@ -14,6 +14,7 @@ Welcome to FreeGS's documentation!
    input_and_output
    diagnostics
    tests
+   optimisation
              
 .. automodule:: freegs
              
