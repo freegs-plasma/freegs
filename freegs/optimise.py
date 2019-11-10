@@ -59,15 +59,48 @@ def weighted_sum(*args):
 
 class CoilRadius:
     """A control to modify the radius of a specified coil"""
-    def __init__(self, label):
+    def __init__(self, label, minimum=0.0, maximum=None):
+        """
+        label  : string   The label of a coil to be modified
+        minimum : number, optional   The minimum allowed radius
+        maximum : number, optional   The maximum allowed radius
+        """
         self.label = label
+        self.minimum = minimum
+        self.maximum = maximum
     
     def set(self, eq, R):
+        if self.minimum and (R < self.minimum):
+            R = self.minimum
+        if self.maximum and (R > self.maximum):
+            R = self.maximum
         eq.tokamak[self.label].R = R
         
     def get(self, eq):
         return eq.tokamak[self.label].R
 
+class CoilHeight:
+    """A control to modify the height of a specified coil"""
+    def __init__(self, label, minimum=None, maximum=None):
+        """
+        label  : string   The label of a coil to be modified
+        minimum : number, optional   The minimum allowed height
+        maximum : number, optional   The maximum allowed height
+        """
+        self.label = label
+        self.minimum = minimum
+        self.maximum = maximum
+    
+    def set(self, eq, Z):
+        if self.minimum and (Z < self.minimum):
+            Z = self.minimum
+        if self.maximum and (Z > self.maximum):
+            Z = self.maximum
+        eq.tokamak[self.label].Z = Z
+        
+    def get(self, eq):
+        return eq.tokamak[self.label].Z
+    
 import matplotlib.pyplot as plt
 from freegs.plotting import plotEquilibrium
 

@@ -61,7 +61,7 @@ from freegs import optimise as opt
 best_eq = opt.optimise(eq,  # Starting equilibrium
                        # List of controls
                        [opt.CoilRadius("P2U"),
-                        opt.CoilRadius("P2L")],
+                        opt.CoilRadius("P2L"), opt.CoilHeight("P2L")],
                        # The function to minimise
                        opt.weighted_sum(opt.max_coil_force, opt.no_wall_intersection),
                        N=10,  # Number of solutions in each generation
