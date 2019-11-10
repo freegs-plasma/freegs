@@ -43,7 +43,6 @@ class GSElliptic:
     d^2/dR^2 + d^2/dZ^2 - (1/R)*d/dR
     
     """
-
     def __init__(self, Rmin):
         """
         Specify minimum radius
