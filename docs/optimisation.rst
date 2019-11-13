@@ -25,12 +25,13 @@ Differential Evolution
 of stochastic search, similar to Genetic Algorithms, generally well suited to problems
 involving continuously varying parameters.
 
-The implementation of the algorithm is in ``freegs.optimiser``. It is generic,
-in that it operates on objects but does not need to know any details of what
-those objects are. To modify objects a list of ``controls`` are passed to the
-optimiser, each of which can set and get a value.  To score each object a
-``measure`` function is needed, which takes an object as input and returns a
-value. The optimiser works to minimise this value.
+The implementation of the algorithm is in `freegs.optimiser <https://github.com/bendudson/freegs/blob/master/freegs/optimiser.py>`_.
+It is generic, in that it operates on objects but does not need to know
+any details of what those objects are. To modify objects a list of
+``controls`` are passed to the optimiser, each of which can set and
+get a value.  To score each object a ``measure`` function is needed,
+which takes an object as input and returns a value. The optimiser
+works to minimise this value.
 
 An example which uses the optimisation method is in the ``freegs`` directory.
 This optimises a quadratic in 2D rather than tokamak equilibria. 100 generations
@@ -53,10 +54,8 @@ then around the solution as the agents converge to the minimum.
 Optimising tokamak equilibria
 -----------------------------
 
-The code specific to FreeGS optimisation is in
-``freegs.optimise``. This includes controls which modify aspects of
-the tokamak or equilibrium, and measures which can be combined to
-specify the quantities which should be optimised.
+The code specific to FreeGS optimisation is in `freegs.optimise <https://github.com/bendudson/freegs/blob/master/freegs/optimise.py>`_.
+This includes controls which modify aspects of the tokamak or equilibrium:
 
 +-------------------------------+----------------------------------------------------+
 |   Control                     |    Description                                     |
@@ -66,13 +65,15 @@ specify the quantities which should be optimised.
 | CoilHeight(name [, min, max]) | Modify coil height                                 |
 +-------------------------------+----------------------------------------------------+
 
+Measures which can be used by themselves or combined to specify the
+quantities which should be optimised:
 
 +-------------------------------+----------------------------------------------------+
 |   Measure function            |   Description                                      |
 +===============================+====================================================+
 | max_abs_coil_current          | Maximum current in any coil circuit                |
 +-------------------------------+----------------------------------------------------+
-| max_coil_force                | Modify coil height                                 |
+| max_coil_force                | Maximum force on any coil                          |
 +-------------------------------+----------------------------------------------------+
 | no_wall_intersection          | Prevent intersections of wall and LCFS             |
 +-------------------------------+----------------------------------------------------+
@@ -82,8 +83,9 @@ value. These can be combined in a weighted sum using
 ``optimise.weighted_sum``, or by passing your own function to
 ``optimise``.
 
-The example ``11-optimise-coils.py`` uses the following code to reduce
-the maximum force on the coils, while avoiding wall intersections::
+The example `11-optimise-coils.py <https://github.com/bendudson/freegs/blob/master/11-optimise-coils.py>`_
+uses the following code to reduce the maximum force on the coils,
+while avoiding wall intersections::
 
   from freegs import optimise as opt
 
