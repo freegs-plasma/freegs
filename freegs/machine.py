@@ -744,6 +744,18 @@ class Circuit:
                        current=value[0][1]["current"] / value[0]["multiplier"],
                        control=value[0][1]["control"])
 
+def MirroredCoil(R, Z, current=0.0, turns=1, control=True, area=AreaCurrentLimit(), symmetric=True):
+    """
+    Create a pair of coils, at +/- Z
+    If symmetric = True then current is in the same direction (in series);
+    if symmetric = False then current is in the opposite direction
+    """
+    return Circuit([("U", Coil(R, Z, current=current, turns=turns, control=control,
+                               area=area), 1.0),
+                    ("L", Coil(R, Z, current=current, turns=turns, control=control,
+                               area=area), 1.0 if symmetric else -1.0)])
+
+
 
 class Solenoid:
     """
