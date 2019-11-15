@@ -49,5 +49,40 @@ def intersect(r1, z1, r2, z2):
     # Tested all combinations, none intersect
     return False
 
-            
+
+
+def clockwise(polygon):
+    """
+    Detect whether a polygon is clockwise or anti-clockwise
+    True -> clockwise
+    False -> anticlockwise
+
+    Input
+    
+    polygon   [ (r1, z1), (r2, z2), ... ]
+    """
+    nvert = len(polygon) # Number of vertices
+    
+    # Work out the winding direction by calculating the area
+    area = 0.0
+    for i in range(nvert):
+        r1,z1 = polygon[i]
+        r2,z2 = polygon[(i+1) % nvert]
+        area += (r2 - r1) * (z1 + z2)
+    return area > 0
+    
+
+def triangulate(polygon):
+    """
+    Use the ear clipping method to turn an arbitrary polygon into triangles
+    
+    Input
+    
+    polygon   [ (r1, z1), (r2, z2), ... ]
+    """
+
+    if not clockwise(polygon):
+        polygon = list(reversed(polygon))
+    # Now polygon should be clockwise
+    
     

@@ -14,3 +14,10 @@ def test_squareintersect():
                               [-0.5, 0.5, 0.5, -0.5], [0.5, 0.5, 1.5, 1.5]) == True
     
                             
+###### clockwise
+
+def test_clockwise():
+    assert not polygons.clockwise([(0,0),(1,0),(1,1),(0,1)])
+    assert  polygons.clockwise([(0,0),(0,1),(1,1),(1,0)])
+
+
