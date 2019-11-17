@@ -73,3 +73,9 @@ def polygon_quad(polygon, n = 6):
         quadrature += [(r, z, w * weight) for r, z, w in points] # Modify the weights
 
     return quadrature
+
+def average(func, quad):
+    """
+    Average func(r,z) using given quadrature 
+    """
+    return sum(func(r,z) * w for r,z,w in quad)
