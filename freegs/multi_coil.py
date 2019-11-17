@@ -120,9 +120,7 @@ class MultiCoil(Coil):
             if self.detailed: # If coil filaments specified
 
                 result = 0.0
-                for fil_id in range(len(self.R)):
-                    R_fil = self.R[fil_id]
-                    Z_fil = self.Z[fil_id]
+                for R_fil, Z_fil in zip(self.R, self.Z):
                     result += Greens(R_fil, Z_fil, R, Z)*self.polarity[0]
                     result += Greens(R_fil, -Z_fil, R, Z)*self.polarity[1]
                 return result
@@ -141,9 +139,7 @@ class MultiCoil(Coil):
             if self.detailed: # If coil filaments specified
 
                 result = 0.0
-                for fil_id in range(len(self.R)):
-                    R_fil = self.R[fil_id]
-                    Z_fil = self.Z[fil_id]
+                for R_fil, Z_fil in zip(self.R, self.Z):
                     result += Greens(R_fil, Z_fil, R, Z)
                 return result
 
@@ -164,9 +160,7 @@ class MultiCoil(Coil):
             if self.detailed: # If coil filaments specified
 
                 result = 0.0
-                for fil_id in range(len(self.R)):
-                    R_fil = self.R[fil_id]
-                    Z_fil = self.Z[fil_id]
+                for R_fil, Z_fil in zip(self.R, self.Z):
                     result += GreensBr(R_fil, Z_fil, R, Z)*self.polarity[0]
                     result += GreensBr(R_fil, -Z_fil, R, -Z)*self.polarity[1]
                 return result
@@ -185,9 +179,7 @@ class MultiCoil(Coil):
             if self.detailed: # If coil filaments specified
 
                 result = 0.0
-                for fil_id in range(len(self.R)):
-                    R_fil = self.R[fil_id]
-                    Z_fil = self.Z[fil_id]
+                for R_fil, Z_fil in zip(self.R, self.Z):
                     result += GreensBr(R_fil, Z_fil, R, Z)
                 return result
 
@@ -208,9 +200,7 @@ class MultiCoil(Coil):
             if self.detailed: # If coil filaments specified
 
                 result = 0.0
-                for fil_id in range(len(self.R)):
-                    R_fil = self.R[fil_id]
-                    Z_fil = self.Z[fil_id]
+                for R_fil, Z_fil in zip(self.R, self.Z):
                     result += GreensBz(R_fil, Z_fil, R, Z)*self.polarity[0]
                     result += GreensBz(R_fil, Z_fil, R, -Z)*self.polarity[1]
                 return result
@@ -229,9 +219,7 @@ class MultiCoil(Coil):
             if self.detailed: # If coil filaments specified
 
                 result = 0.0
-                for fil_id in range(len(self.R)):
-                    R_fil = self.R[fil_id]
-                    Z_fil = self.Z[fil_id]
+                for R_fil, Z_fil in zip(self.R, self.Z):
                     result += GreensBz(R_fil, Z_fil, R, Z)
                 return result
 
