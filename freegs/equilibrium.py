@@ -482,12 +482,9 @@ class Equilibrium:
         using this to find corresponding column for in/outboard
         midplane in psi @ which psi ~ psi_boundary.
         Extract this column index and use it to find corresponding row in R"""
-
-        for i in range(size_Z):
-            if Z[0][i] == 0.0:
-                index = i
-                break
-
+        
+        i = np.argmin(abs(Z[0,:]))
+            
         """
         Separatrix R at inboard midplane taken as weighted av.
         depending on how close to psi boundary the two consecuvtive
@@ -531,14 +528,14 @@ class Equilibrium:
         opt, xpt = critical.find_critical(self.R, self.Z, psi)
         return opt[0][0]
 
-    def R_geo(self, eq, R_wall_inner, R_wall_outer, npoints=300):
+    def R_geo(self, R_wall_inner, R_wall_outer, npoints=300):
         """
         Locates R coordinate of geometric major radius, calculated
         as the centre of a large number of points on the separatrix
         """
         psi = self.psi()
         opt, xpt = critical.find_critical(self.R, self.Z, psi)
-        sep_coords = critical.find_separatrix(eq, opt, xpt, npoints, psi) # points
+        sep_coords = critical.find_separatrix(self, opt, xpt, npoints, psi) # points
         R_sep_points = [i[0] for i in sep_coords] # Extract R coordinates
 
         # Remove outlying points outside the separatrix
@@ -548,17 +545,17 @@ class Equilibrium:
         R_major_geo = np.mean(R_sep_points)
         return R_major_geo
 
-    def r_minor(self, eq, R_wall_inner, R_wall_outer, npoints=300):
+    def r_minor(self, R_wall_inner, R_wall_outer, npoints=300):
         """
         Calculates minor radius of plasma as the average distance from the
         geometric major radius to a large number of points along the separatrix
         """
         
-        R_major_geo = self.R_geo(eq, R_wall_inner, R_wall_outer, npoints)
+        R_major_geo = self.R_geo(R_wall_inner, R_wall_outer, npoints)
 
         psi = self.psi()
         opt, xpt = critical.find_critical(self.R, self.Z, psi)
-        sep_coords = critical.find_separatrix(eq, opt, xpt, npoints, psi) # points
+        sep_coords = critical.find_separatrix(self, opt, xpt, npoints, psi) # points
         R_sep_points = [i[0] for i in sep_coords] # Extract R coordinates
         Z_sep_points = [i[1] for i in sep_coords] # Extract Z coordinates
 
@@ -593,26 +590,26 @@ class Equilibrium:
 
         return elon
 
-    def aspect_ratio(self, eq, R_wall_inner, R_wall_outer, npoints=300):
+    def aspect_ratio(self, R_wall_inner, R_wall_outer, npoints=300):
         """
         Calculates the plasma aspect ratio
         """
-        ratio = self.R_geo(eq, R_wall_inner, R_wall_outer, npoints)/ \
-        self.r_minor(eq, R_wall_inner, R_wall_outer, npoints)
+        ratio = self.R_geo(R_wall_inner, R_wall_outer, npoints)/ \
+        self.r_minor(R_wall_inner, R_wall_outer, npoints)
         
         return ratio
 
-    def effective_elongation(self, eq, R_wall_inner, R_wall_outer, npoints=300):
+    def effective_elongation(self, R_wall_inner, R_wall_outer, npoints=300):
         """
         Calculates plasma effective elongation
         """
         effective_elon = self.plasmaVolume()/(2.*np.pi*\
-        self.R_geo(eq, R_wall_inner, R_wall_outer, npoints)*\
-        (self.r_minor(eq, R_wall_inner, R_wall_outer, npoints)**2))
+        self.R_geo(R_wall_inner, R_wall_outer, npoints)*\
+        (self.r_minor(R_wall_inner, R_wall_outer, npoints)**2))
 
         return effective_elon
 
-    def li1_internal_inductance(self, eq, R_wall_inner, R_wall_outer, npoints=300):
+    def li1_internal_inductance(self, R_wall_inner, R_wall_outer, npoints=300):
         """
         Calculates li1 plasma internal inductance
         """
@@ -636,10 +633,9 @@ class Equilibrium:
             dV *= self.mask
 
         Ip = self.plasmaCurrent()
-        R_geo = self.R_geo(eq, R_wall_inner, R_wall_outer, npoints)
+        R_geo = self.R_geo(R_wall_inner, R_wall_outer, npoints)
         elon = self.elongation(R_wall_inner, R_wall_outer)
-        effective_elon = self.effective_elongation(eq, R_wall_inner, R_wall_outer, npoints)
-        mu0 = 4.0*np.pi*(1.0e-07) # Vacuum permeability
+        effective_elon = self.effective_elongation(R_wall_inner, R_wall_outer, npoints)
     
         integral = romb(romb(B_polvals_2*dV))
         li_1 = ((2*integral) / (mu0*mu0*Ip*Ip*R_geo))*( (1+elon*elon)/(2.*effective_elon) )
@@ -669,13 +665,12 @@ class Equilibrium:
 
         Ip = self.plasmaCurrent()
         R_mag = self.R_magnetic()
-        mu0 = 4.0*np.pi*(1.0e-07) # Vacuum permeability
     
         integral = romb(romb(B_polvals_2*dV))
         li_2 = ((2*integral) / (mu0*mu0*Ip*Ip*R_mag))
         return li_2
 
-    def li3_internal_inductance(self, eq, R_wall_inner, R_wall_outer, npoints=300):
+    def li3_internal_inductance(self, R_wall_inner, R_wall_outer, npoints=300):
         """
         Calculates li3 plasma internal inductance
         """
@@ -699,8 +694,7 @@ class Equilibrium:
             dV *= self.mask
 
         Ip = self.plasmaCurrent()
-        R_geo = self.R_geo(eq, R_wall_inner, R_wall_outer, npoints)
-        mu0 = 4.0*np.pi*(1.0e-07) # Vacuum permeability
+        R_geo = self.R_geo(R_wall_inner, R_wall_outer, npoints)
     
         integral = romb(romb(B_polvals_2*dV))
         li_3 = ((2*integral) / (mu0*mu0*Ip*Ip*R_geo))
@@ -733,7 +727,6 @@ class Equilibrium:
 
         pressure_integral = romb(romb(pressure*dV))
 
-        mu0 = 4.0*np.pi*(1.0e-07) # Vacuum permeability
         field_integral_pol = romb(romb(B_polvals_2*dV))
         poloidal_beta = 2*mu0*pressure_integral/field_integral_pol
         
@@ -762,13 +755,9 @@ class Equilibrium:
             dV *= self.mask
 
         pressure_integral = romb(romb(pressure*dV))
-        mu0 = 4.0*np.pi*(1.0e-07) # Vacuum permeability
         
         # Correct for errors in Btor and core masking
-        for i in range(np.shape(B_torvals_2)[0]):
-            for j in range(np.shape(B_torvals_2)[1]):
-                if isnan(B_torvals_2[i][j]):
-                    B_torvals_2[i][j] = 0.0
+        np.nan_to_num(B_torvals_2, copy=False)
 
         field_integral_tor = romb(romb(B_torvals_2*dV))
         toroidal_beta = 2*mu0*pressure_integral/field_integral_tor
