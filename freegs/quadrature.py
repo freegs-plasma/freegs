@@ -76,7 +76,10 @@ def polygon_quad(polygon, n = 6):
     Given a polygon in the form [(r1,z1), (r2,z2), (r3,z3), ...]
     calculates a set of quadrature points and weights, by splitting
     the polygon into triangles. 
+    
     returns a list of evaluation points and weights [(r,z,weight),...]
+    These are normalised to calculate the average value of a function
+    over the polygon; multiply by the area to get the integral.
 
     n   number of quadrature points in each triangle
         currently: 1, 3 or 6
@@ -88,12 +91,11 @@ def polygon_quad(polygon, n = 6):
     # Calculate the area of each triangle, to get a relative weighting
     areas = [polygons.area(triangle) for triangle in triangles]
     total_area = sum(areas)
-    weights = [area / total_area for area in areas]
 
     quadrature = [] # List of all points
-    for triangle, weight in zip(triangles, weights):
+    for triangle, area in zip(triangles, areas):
         points = triangle_quad(triangle, n = n) # Quadrature points for this triangle
-        quadrature += [(r, z, w * weight) for r, z, w in points] # Modify the weights
+        quadrature += [(r, z, w * area / total_area) for r, z, w in points] # Modify the weights
 
     return quadrature
 

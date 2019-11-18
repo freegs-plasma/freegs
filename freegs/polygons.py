@@ -79,11 +79,12 @@ def area(polygon):
     """
     nvert = len(polygon) # Number of vertices
     
-    # Work out the winding direction by calculating the area
+    # Integrate using trapezium rule. The sign of (r2-r1) ensures that
+    # positive and negative areas leave only the area of the polygon.
     area = 0.0
     for i in range(nvert):
         r1,z1 = polygon[i]
-        r2,z2 = polygon[(i+1) % nvert]
+        r2,z2 = polygon[(i+1) % nvert]  # Next vertex in periodic list
         area += (r2 - r1) * (z1 + z2) # 2*area
     return 0.5 * area
 
