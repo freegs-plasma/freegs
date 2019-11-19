@@ -67,7 +67,8 @@ class MultiCoil(Coil):
 
     def __init__(self, R, Z, current=0.0, turns=1, control=True, mirror=False, polarity = [1.0,1.0], area=AreaCurrentLimit()):
         """
-        R, Z - Location of the point coil/Locations of coil filaments
+        R, Z       - Location of the coil centre. If modified moves all filaments
+        Rfil, Zfil - Locations of coil filaments (lists)
 
         current - current in each turn of the coil in Amps
         turns   - Number of turns in point coil(s) block. Total block current is current * turns
@@ -88,8 +89,15 @@ class MultiCoil(Coil):
         The most important effect of the area is on the coil self-force:
         The smaller the area the larger the hoop force for a given current.
         """
-        self.R = R
-        self.Z = Z
+        # Store locations as an internal list
+        if hasattr(R, "__len__"):
+            assert len(R) == len(Z)
+            self.Rfil = R
+            self.Zfil = Z
+        else:
+            # Assume a single R, Z. Turn into a list
+            self.Rfil = [R]
+            self.Zfil = [Z]
 
         self.current = current
         self.control = control
@@ -97,142 +105,53 @@ class MultiCoil(Coil):
         self.polarity = polarity
         self.area = area
 
-        # Check if R,Z input is for point or detailed coils
-        # Determine (R,Z) centre of coil block
-        if isinstance(self.R,(np.ndarray,np.generic,list)):
-            self.detailed = True
-            self.turns = len(self.R)
-            self.coil_centre_R = np.mean(self.R)
-            self.coil_centre_Z = np.mean(self.Z)
-        else:
-            self.detailed = False
-            self.turns = turns
-            self.coil_centre_R = self.R
-            self.coil_centre_Z = self.Z
+        # Internal (R,Z) value, should not be modified directly
+        self._R_centre = np.mean(self.Rfil)
+        self._Z_centre = np.mean(self.Zfil)
 
     def controlPsi(self, R, Z):
         """
         Calculate poloidal flux at (R,Z) due to a unit current
         """
 
-        if self.mirror: # Mirror coil(s) in Z, creating circuit
-        
-            if self.detailed: # If coil filaments specified
-
-                result = 0.0
-                for R_fil, Z_fil in zip(self.R, self.Z):
-                    result += Greens(R_fil, Z_fil, R, Z)*self.polarity[0]
-                    result += Greens(R_fil, -Z_fil, R, Z)*self.polarity[1]
-                return result
-
-            else: # If point coil
-
-                R_pos = self.R
-                Z_pos = self.Z
-                result = 0.0
-                result += Greens(R_pos, Z_pos, R, Z)*self.polarity[0]*self.turns
-                result += Greens(R_pos, -Z_pos, R, Z)*self.polarity[1]*self.turns
-                return result
-
-        else: # If not mirrored into circuit
-
-            if self.detailed: # If coil filaments specified
-
-                result = 0.0
-                for R_fil, Z_fil in zip(self.R, self.Z):
-                    result += Greens(R_fil, Z_fil, R, Z)
-                return result
-
-            else: # If point coil
-
-                R_pos = self.R
-                Z_pos = self.Z
-                result = Greens(R_pos, Z_pos, R, Z)*self.turns
-                return result
+        result = 0.0
+        for R_fil, Z_fil in zip(self.Rfil, self.Zfil):
+            result += Greens(R_fil, Z_fil, R, Z)*self.polarity[0]
+                
+        if self.mirror:
+            for R_fil, Z_fil in zip(self.Rfil, self.Zfil):
+                result += Greens(R_fil, -Z_fil, R, Z)*self.polarity[1]
+        return result
 
     def controlBr(self, R, Z):
         """
         Calculate radial magnetic field Br at (R,Z) due to a unit current
         """
+        result = 0.0
+        for R_fil, Z_fil in zip(self.Rfil, self.Zfil):
+            result += GreensBr(R_fil, Z_fil, R, Z)*self.polarity[0]
 
         if self.mirror: # Mirror coil(s) in Z, creating circuit
-        
-            if self.detailed: # If coil filaments specified
-
-                result = 0.0
-                for R_fil, Z_fil in zip(self.R, self.Z):
-                    result += GreensBr(R_fil, Z_fil, R, Z)*self.polarity[0]
-                    result += GreensBr(R_fil, -Z_fil, R, -Z)*self.polarity[1]
-                return result
-
-            else: # If point coil
-
-                R_pos = self.R
-                Z_pos = self.Z
-                result = 0.0
-                result += GreensBr(R_pos, Z_pos, R, Z)*self.polarity[0]*self.turns
-                result += GreensBr(R_pos, -Z_pos, R, Z)*self.polarity[1]*self.turns
-                return result
-
-        else: # If not mirrored into circuit
-
-            if self.detailed: # If coil filaments specified
-
-                result = 0.0
-                for R_fil, Z_fil in zip(self.R, self.Z):
-                    result += GreensBr(R_fil, Z_fil, R, Z)
-                return result
-
-            else: # If point coil
-
-                R_pos = self.R
-                Z_pos = self.Z
-                result = GreensBr(R_pos, Z_pos, R, Z)*self.turns
-                return result
+            for R_fil, Z_fil in zip(self.Rfil, self.Zfil):
+                result += GreensBr(R_fil, -Z_fil, R, Z)*self.polarity[1]
+        return result
 
     def controlBz(self, R, Z):
         """
         Calculate vertical magnetic field Bz at (R,Z) due to a unit current
         """
-        
-        if self.mirror: # Mirror coil(s) in Z, creating circuit
-        
-            if self.detailed: # If coil filaments specified
-
-                result = 0.0
-                for R_fil, Z_fil in zip(self.R, self.Z):
-                    result += GreensBz(R_fil, Z_fil, R, Z)*self.polarity[0]
-                    result += GreensBz(R_fil, Z_fil, R, -Z)*self.polarity[1]
-                return result
-
-            else: # If point coil
-
-                R_pos = self.R
-                Z_pos = self.Z
-                result = 0.0
-                result += GreensBz(R_pos, Z_pos, R, Z)*self.polarity[0]*self.turns
-                result += GreensBz(R_pos, -Z_pos, R, Z)*self.polarity[1]*self.turns
-                return result
-
-        else: # If not mirrored into circuit
-
-            if self.detailed: # If coil filaments specified
-
-                result = 0.0
-                for R_fil, Z_fil in zip(self.R, self.Z):
-                    result += GreensBz(R_fil, Z_fil, R, Z)
-                return result
-
-            else: # If point coil
-
-                R_pos = self.R
-                Z_pos = self.Z
-                result = GreensBz(R_pos, Z_pos, R, Z)*self.turns
-                return result
+        result = 0.0
+        for R_fil, Z_fil in zip(self.Rfil, self.Zfil):
+            result += GreensBz(R_fil, Z_fil, R, Z)*self.polarity[0]
             
+        if self.mirror: # Mirror coil(s) in Z, creating circuit
+            for R_fil, Z_fil in zip(self.Rfil, self.Zfil):
+                result += GreensBz(R_fil, -Z_fil, R, Z)*self.polarity[1]
+        return result
+
     def __repr__(self):
         return ("MultiCoil(R={0}, Z={1}, current={2:.1f}, turns={3}, control={4})"
-                .format(self.coil_centre_R, self.coil_centre_Z, self.current, self.turns, self.control))
+                .format(self.R, self.Z, self.current, self.turns, self.control))
 
     def __eq__(self, other):
         return (self.R == other.R
@@ -268,10 +187,36 @@ class MultiCoil(Coil):
             fig = plt.figure()
             axis = fig.add_subplot(111)
 
-        if self.detailed:
-            plt.plot(self.R, self.Z, 'bo')
-        else:
-            plt.plot([self.R], [self.Z], 'bo')
+        plt.plot(self.Rfil, self.Zfil, 'bo')
         
         return axis
         
+    @property
+    def R(self):
+        """
+        Major radius of the coil in m
+        """
+        return self._R_centre
+
+    @R.setter
+    def R(self, Rnew):
+        # Need to shift all points
+        Rshift = Rnew - self._R_centre
+        for i in range(len(self.Rfil)):
+            self.Rfil[i] += Rshift
+        self._R_centre = Rnew
+
+    @property
+    def Z(self):
+        """
+        Height of the coil in m
+        """
+        return self._Z_centre
+
+    @Z.setter
+    def Z(self, Znew):
+        # Need to shift all points
+        Zshift = Znew - self._Z_centre
+        for i in range(len(self.Zfil)):
+            self.Zfil[i] += Zshift
+        self._Z_centre = Znew
