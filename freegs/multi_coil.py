@@ -72,6 +72,7 @@ class MultiCoil(Coil):
 
         current - current in each turn of the coil in Amps
         turns   - Number of turns in point coil(s) block. Total block current is current * turns
+                  This is only used if R,Z are a single point
         control - enable or disable control system
         mirror - mirror the point/detailed coil block in Z=0, creating a circuit
         polarity - Wiring of the circuit: same or opposite direction, [Block 1, Block 2]
@@ -94,10 +95,12 @@ class MultiCoil(Coil):
             assert len(R) == len(Z)
             self.Rfil = R
             self.Zfil = Z
+            self.turns = len(R)
         else:
             # Assume a single R, Z. Turn into a list
             self.Rfil = [R]
             self.Zfil = [Z]
+            self.turns = turns
 
         self.current = current
         self.control = control
@@ -150,8 +153,8 @@ class MultiCoil(Coil):
         return result
 
     def __repr__(self):
-        return ("MultiCoil(R={0}, Z={1}, current={2:.1f}, turns={3}, control={4})"
-                .format(self.R, self.Z, self.current, self.turns, self.control))
+        return ("MultiCoil(R={0}, Z={1}, current={2:.1f}, turns={3}, control={4}, mirror={5}, polarity={6})"
+                .format(self.Rfil, self.Zfil, self.current, self.turns, self.control, self.mirror, self.polarity))
 
     def __eq__(self, other):
         return (self.R == other.R
