@@ -258,3 +258,20 @@ class MultiCoil(Coil):
                              .format(this=type(cls), got=value.dtype, dtype=cls.dtype))
         return Coil(*value[()])
         
+    def plot(self, axis=None, show=False):
+        """
+        Plot the coil including turn locations
+        """
+        import matplotlib.pyplot as plt
+        
+        if axis is None:
+            fig = plt.figure()
+            axis = fig.add_subplot(111)
+
+        if self.detailed:
+            plt.plot(self.R, self.Z, 'bo')
+        else:
+            plt.plot([self.R], [self.Z], 'bo')
+        
+        return axis
+        
