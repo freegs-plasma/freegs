@@ -127,8 +127,7 @@ class ShapedCoil(Coil):
     def R(self, Rnew):
         # Need to shift all points
         Rshift = Rnew - self._R_centre
-        for p in self._points:
-            p[0] += Rshift
+        self._points = [(r + Rshift, z, w) for r,z,w in self._points]
         self._R_centre = Rnew
 
     @property
@@ -142,8 +141,7 @@ class ShapedCoil(Coil):
     def Z(self, Znew):
         # Need to shift all points
         Zshift = Znew - self._Z_centre
-        for p in self._points:
-            p[1] += Zshift
+        self._points = [(r, z + Zshift, w) for r,z,w in self._points]
         self._Z_centre = Znew
 
     @property
