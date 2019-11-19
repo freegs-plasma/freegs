@@ -72,6 +72,49 @@ to fix the current in some of the coils. This can be done by turning off control
 where the current is in Amps, and is for a coil with a single turn. Setting ``control=False``
 removes the coil from feedback control.
 
+
+Shaped coils
+~~~~~~~~~~~~
+
+The ``ShapedCoil`` class models a coil with uniform current density
+across a specified shape (a polygon). This is done by splitting the
+polygon into triangles (using the `ear clipping method
+<https://en.wikipedia.org/wiki/Polygon_triangulation#Ear_clipping_method>`_)
+and then using Gaussian quadrature to integrate over each triangle (by
+default using 6 points per triangle).  The shape of the coil should be
+specified as a list of ``(R,Z)`` points::
+
+  from freegs.machine import ShapedCoil
+  
+  coils = [("P1L", ShapedCoil([(0.95, -1.15), (0.95, -1.05), (1.05, -1.05), (1.05, -1.15)])),
+           ...]
+
+The above would create a square coil. The number of turns and the
+current in the circuit can be specified::
+
+  coils = [("P1L", ShapedCoil([(0.95, -1.15), (0.95, -1.05), (1.05, -1.05), (1.05, -1.15)],
+                              current = 1e3, turns=20)),
+           ...]
+
+The number of turns doesn't affect the integration, but the total
+current in the coil block is set to ``current * turns``.
+
+Multi strand coils
+~~~~~~~~~~~~~~~~~~
+
+The ``MultiCoil`` class provides a way to model a coil block with turns in specified locations.
+For large numbers of turns this is usually more convenient than creating multiple ``Coil`` objects.
+A ``MultiCoil`` can be used anywhere a ``Coil`` object would be::
+  
+  from freegs.machine import MultiCoil
+  
+  coils = [ ("P2", MultiCoil([0.95, 0.95, 1.05, 1.05], [1.15, 1.05, 1.05, 1.15])) ]
+
+For coils which are wired together as pairs, mirrored in Z, the
+``mirror=True`` keyword can be given.  The ``polarity`` keyword then
+sets the relative sign of the current in the original and mirrored
+coil.
+
 Coil circuits
 ~~~~~~~~~~~~~
 
