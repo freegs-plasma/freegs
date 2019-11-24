@@ -507,7 +507,7 @@ class Equilibrium:
         wall = self.tokamak.wall # Wall object with R and Z members (lists)
         
         return polygons.intersect(separatrix[:,0], separatrix[:,1],
-                                  wall.R, wall.Z):
+                                  wall.R, wall.Z)
         
     def magneticAxis(self):
         """Returns the location of the magnetic axis [R,Z]
