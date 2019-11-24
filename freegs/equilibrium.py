@@ -464,47 +464,39 @@ class Equilibrium:
 
         print_forces(self.getForces())
 
-    def innerOuterSeparatrix(self):
+    def innerOuterSeparatrix(self, Z = 0.0):
         """
         Locate R co ordinates of separatrix at both
-        inboard and outboard poloidal midplane
+        inboard and outboard poloidal midplane (Z = 0) 
         """
+        # Find the closest index to requested Z
+        index = np.argmin(abs(self.Z[0,:] - Z))
 
-        psi = self.psi()
-        R = self.R
-        Z = self.Z
-        size_R = np.shape(R)[0]
-        size_Z = np.shape(Z)[0]
-        opt, xpt = critical.find_critical(R, Z, psi)
-        psi_bndry = xpt[0][2] #separatrix poloidal flux
-
-        """scan through rows of Z until Z=0 & note index,
-        using this to find corresponding column for in/outboard
-        midplane in psi @ which psi ~ psi_boundary.
-        Extract this column index and use it to find corresponding row in R"""
+        # Normalise psi at this Z index
+        psinorm = (self.psi()[:,index] - self.psi_axis)  / (self.psi_bndry - self.psi_axis)
         
-        index = np.argmin(abs(Z[0,:]))
+        # Separatrix R at inboard midplane taken as weighted av.
+        # depending on how close to psi boundary the two consecuvtive
+        # psi vals were
+        
+        R_sep_in = None
+        outer_start = 0
+        for i in range(len(psinorm)-1):
+            # normalised psi decreasing at inner separatrix
+            if psinorm[i+1][index] <= 1.0 and psi[i][index] >= 1.0:
+                R_sep_in = ( R[i][index]*( (1.0 - psi[i+1][index]) / (psi[i][index] - psi[i+1][index]) ) ) + \
+                    ( R[i+1][0]*( (psi[i][index] - 1.0) / (psi[i][index] - psi[i+1][index]) ) )
+                outer_start = i # Start looking for the outer index from here
+                break
+
+        R_sep_out = None
+        for i in range(outer_start, len(psinorm)-1):
+            # normalised psi increases at outer separatrix
+            if psi[i+1][index] >= 1.0 and psi[i][index] <= 1.0 and R[i][index] < R_wall_outer:
+                R_sep_out = ( R[i][0]*( (1.0 - psi[i+1][index]) / (psi[i][index] - psi[i+1][index]) ) ) + \
+                    ( R[i+1][0]*( (psi[i][index] - 1.0) / (psi[i][index] - psi[i+1][index]) ) )
+                break
             
-        """
-        Separatrix R at inboard midplane taken as weighted av.
-        depending on how close to psi boundary the two consecuvtive
-        psi vals were
-        """
-
-        R_sep_in = 0.0
-        for i in range(size_R-1):
-            if psi[i+1][index] >= psi_bndry and psi[i][index] <= psi_bndry:
-                R_sep_in = ( R[i][0]*( (psi_bndry - psi[i+1][index]) / (psi[i][index] - psi[i+1][index]) ) ) + \
-                ( R[i+1][0]*( (psi[i][index] - psi_bndry) / (psi[i][index] - psi[i+1][index]) ) )
-                break
-
-        R_sep_out = 1000.0
-        for i in range(size_R-1):
-            if psi[i+1][index] <= psi_bndry and psi[i][index] >= psi_bndry and R[i][index] < R_wall_outer:
-                R_sep_out = ( R[i][0]*( (psi_bndry - psi[i+1][index]) / (psi[i][index] - psi[i+1][index]) ) ) + \
-                ( R[i+1][0]*( (psi[i][index] - psi_bndry) / (psi[i][index] - psi[i+1][index]) ) )
-                break
-
         return R_sep_in, R_sep_out
 
     def intersectsWall(self):
@@ -622,7 +614,7 @@ class Equilibrium:
         R_mag = self.Rmagnetic()
     
         integral = romb(romb(B_polvals_2*dV))
-        return ((2*integral) / ((mu0*Ip)**2 * R_mag))
+        return 2 * integral / ((mu0*Ip)**2 * R_mag)
 
     def internalInductance3(self, R_wall_inner, R_wall_outer, npoints=300):
         """Calculates li3 plasma internal inductance
@@ -647,10 +639,11 @@ class Equilibrium:
         R_geo = self.Rgeometric(npoints=npoints)
     
         integral = romb(romb(B_polvals_2*dV))
-        return ((2*integral) / ((mu0*Ip)**2 * R_geo))
+        return 2 * integral / ((mu0*Ip)**2 * R_geo)
 
     def poloidalBeta2(self):
-        """Calculate plasma poloidal beta
+        """Calculate plasma poloidal beta by integrating the thermal pressure
+        and poloidal magnetic field pressure over the plasma volume.
 
         """
 
@@ -680,7 +673,8 @@ class Equilibrium:
         return poloidal_beta
 
     def toroidalBeta(self):
-        """Calculate plasma toroidal beta
+        """Calculate plasma toroidal beta by integrating the thermal pressure
+        and toroidal magnetic field pressure over the plasma volume.
 
         """
 
@@ -709,7 +703,7 @@ class Equilibrium:
         np.nan_to_num(B_torvals_2, copy=False)
 
         field_integral_tor = romb(romb(B_torvals_2 * dV))
-        return 2*mu0 * pressure_integral / field_integral_tor
+        return 2 * mu0 * pressure_integral / field_integral_tor
 
     def totalBeta(self):
         """Calculate plasma total beta
