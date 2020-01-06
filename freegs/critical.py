@@ -105,44 +105,18 @@ def find_critical(R, Z, psi,discard_xpoints=False):
                         # Found a minimum. Classify as either
                         # O-point or X-point
 
-                        # Evaluate D = fxx * fyy - (fxy)^2
-                        if False:
-                            D = f(R1, Z1, dx=2)[0][0] * f(R1, Z1, dy=2)[0][0] - (f(R1, Z1, dx=1, dy=1)[0][0])**2
-                        
-                            #print("D0 = %e" % D)
-                        
-                        if False: #abs(D) < 1:
-                            # D small, so need to use another method
-                            #print("Small discriminant D (%e)" % (D,))
-                            
-                            # Try second derivative in index space
-                            
-                            dR = R[1,0] - R[0,0]
-                            dZ = Z[0,1] - Z[0,0]
-                            d2dr2 = (psi[i+1,j] - 2.*psi[i,j] + psi[i-1,j])/dR**2
-                            d2dz2 = (psi[i,j+1] - 2.*psi[i,j] + psi[i,j-1])/dZ**2
-                            d2drdz = ((psi[i+1,j+1] - psi[i+1,j-1])/(2.*dZ) - (psi[i-1,j+1] - psi[i-1,j-1])/(2.*dZ) ) / (2.*dR)
-                            D = d2dr2 * d2dz2 - d2drdz**2
-                            
-                            #print("D1 = %e" % D)
-                        
-                        if True:
-                            dR = R[1,0] - R[0,0]
-                            dZ = Z[0,1] - Z[0,0]
-                            d2dr2 = (psi[i+2,j] - 2.*psi[i,j] + psi[i-2,j])/(2.*dR)**2
-                            d2dz2 = (psi[i,j+2] - 2.*psi[i,j] + psi[i,j-2])/(2.*dZ)**2
-                            d2drdz = ((psi[i+2,j+2] - psi[i+2,j-2])/(4.*dZ) - (psi[i-2,j+2] - psi[i-2,j-2])/(4.*dZ) ) / (4.*dR)
-                            D = d2dr2 * d2dz2 - d2drdz**2
-                            
-                            #print("D2 = %e" % D)
+                        dR = R[1,0] - R[0,0]
+                        dZ = Z[0,1] - Z[0,0]
+                        d2dr2 = (psi[i+2,j] - 2.*psi[i,j] + psi[i-2,j])/(2.*dR)**2
+                        d2dz2 = (psi[i,j+2] - 2.*psi[i,j] + psi[i,j-2])/(2.*dZ)**2
+                        d2drdz = ((psi[i+2,j+2] - psi[i+2,j-2])/(4.*dZ) - (psi[i-2,j+2] - psi[i-2,j-2])/(4.*dZ) ) / (4.*dR)
+                        D = d2dr2 * d2dz2 - d2drdz**2
                             
                         if D < 0.0:
                             # Found X-point
-                            #print("Found X-point at %e, %e (f=%e, D=%e)" % (R1,Z1, f(R1,Z1)[0][0], D) )
                             xpoint.append( (R1,Z1, f(R1,Z1)[0][0]) )
                         else:
                             # Found O-point
-                            #print("Found O-point at %e, %e (f=%e, D=%e)" % (R1,Z1, f(R1,Z1)[0][0], D) )
                             opoint.append( (R1,Z1, f(R1,Z1)[0][0]) )
                         break
                         
