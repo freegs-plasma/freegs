@@ -191,7 +191,7 @@ class ConstrainBetapIp(Profile):
         psi_norm = (psi - psi_axis)  / (psi_bndry - psi_axis)
         
         # Current profile shape
-        jtorshape = (1. - psi_norm**self.alpha_m)**self.alpha_n
+        jtorshape = (1. - np.clip(psi_norm, 0.0, 1.0)**self.alpha_m)**self.alpha_n
         
         if mask is not None:
             # If there is a masking function (X-points, limiters)
@@ -256,16 +256,18 @@ class ConstrainBetapIp(Profile):
     # Profile functions
     def pprime(self, pn):
         """
-        dp/dpsi as a function of normalised psi
+        dp/dpsi as a function of normalised psi. 0 outside core
+        Calculate pprimeshape inside the core only
         """
-        shape = (1. - pn**self.alpha_m)**self.alpha_n
+        shape = (1. - np.clip(pn, 0.0, 1.0)**self.alpha_m)**self.alpha_n
         return self.L * self.Beta0/self.Raxis * shape
         
     def ffprime(self, pn):
         """
-        f * df/dpsi as a function of normalised psi
+        f * df/dpsi as a function of normalised psi. 0 outside core.
+        Calculate ffprimeshape inside the core only.
         """
-        shape = (1. - pn**self.alpha_m)**self.alpha_n
+        shape = (1. - np.clip(pn, 0.0, 1.0)**self.alpha_m)**self.alpha_n
         return mu0 * self.L * (1-self.Beta0)*self.Raxis * shape
         
         return Jtor, pprime, ffprime
@@ -339,7 +341,7 @@ class ConstrainPaxisIp(Profile):
         psi_norm = (psi - psi_axis)  / (psi_bndry - psi_axis)
         
         # Current profile shape
-        jtorshape = (1. - psi_norm**self.alpha_m)**self.alpha_n
+        jtorshape = (1. - np.clip(psi_norm, 0.0, 1.0)**self.alpha_m)**self.alpha_n
         
         if mask is not None:
             # If there is a masking function (X-points, limiters)
@@ -387,16 +389,18 @@ class ConstrainPaxisIp(Profile):
     # Profile functions
     def pprime(self, pn):
         """
-        dp/dpsi as a function of normalised psi
+        dp/dpsi as a function of normalised psi. 0 outside core
+        Calculate pprimeshape inside the core only
         """
-        shape = (1. - pn**self.alpha_m)**self.alpha_n
+        shape = (1. - np.clip(pn, 0.0, 1.0)**self.alpha_m)**self.alpha_n
         return self.L * self.Beta0/self.Raxis * shape
         
     def ffprime(self, pn):
         """
-        f * df/dpsi as a function of normalised psi
+        f * df/dpsi as a function of normalised psi. 0 outside core.
+        Calculate ffprimeshape inside the core only.
         """
-        shape = (1. - pn**self.alpha_m)**self.alpha_n
+        shape = (1. - np.clip(pn, 0.0, 1.0)**self.alpha_m)**self.alpha_n
         return mu0 * self.L * (1-self.Beta0)*self.Raxis * shape
         
         return Jtor, pprime, ffprime
