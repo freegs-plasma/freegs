@@ -467,36 +467,46 @@ class Equilibrium:
     def innerOuterSeparatrix(self, Z = 0.0):
         """
         Locate R co ordinates of separatrix at both
-        inboard and outboard poloidal midplane (Z = 0) 
+        inboard and outboard poloidal midplane (Z = 0)
         """
         # Find the closest index to requested Z
-        index = np.argmin(abs(self.Z[0,:] - Z))
+        Zindex = np.argmin(abs(self.Z[0,:] - Z))
 
         # Normalise psi at this Z index
-        psinorm = (self.psi()[:,index] - self.psi_axis)  / (self.psi_bndry - self.psi_axis)
+        psinorm = (self.psi()[:,Zindex] - self.psi_axis)  / (self.psi_bndry - self.psi_axis)
         
-        # Separatrix R at inboard midplane taken as weighted av.
-        # depending on how close to psi boundary the two consecuvtive
-        # psi vals were
-        
-        R_sep_in = None
-        outer_start = 0
-        for i in range(len(psinorm)-1):
-            # normalised psi decreasing at inner separatrix
-            if psinorm[i+1][index] <= 1.0 and psi[i][index] >= 1.0:
-                R_sep_in = ( R[i][index]*( (1.0 - psi[i+1][index]) / (psi[i][index] - psi[i+1][index]) ) ) + \
-                    ( R[i+1][0]*( (psi[i][index] - 1.0) / (psi[i][index] - psi[i+1][index]) ) )
-                outer_start = i # Start looking for the outer index from here
-                break
+        # Start from the magnetic axis
+        Rindex_axis = np.argmin(abs(self.R[:,0] - self.Rmagnetic()))
 
-        R_sep_out = None
-        for i in range(outer_start, len(psinorm)-1):
-            # normalised psi increases at outer separatrix
-            if psi[i+1][index] >= 1.0 and psi[i][index] <= 1.0 and R[i][index] < R_wall_outer:
-                R_sep_out = ( R[i][0]*( (1.0 - psi[i+1][index]) / (psi[i][index] - psi[i+1][index]) ) ) + \
-                    ( R[i+1][0]*( (psi[i][index] - 1.0) / (psi[i][index] - psi[i+1][index]) ) )
-                break
-            
+        # Inner separatrix
+        # Get the maximum index where psi > 1 in the R index range from 0 to Rindex_axis
+        outside_inds = np.argwhere(psinorm[:Rindex_axis] > 1.0)
+
+        if outside_inds.size == 0:
+            R_sep_in = self.Rmin
+        else:
+            Rindex_inner = np.amax(outside_inds)
+
+            # Separatrix should now be between Rindex_inner and Rindex_inner+1
+            # Linear interpolation
+            R_sep_in = ((self.R[Rindex_inner, Zindex] * (1.0 - psinorm[Rindex_inner+1]) + 
+                         self.R[Rindex_inner+1, Zindex] * (psinorm[Rindex_inner] - 1.0)) /
+                        (psinorm[Rindex_inner] - psinorm[Rindex_inner+1]))
+
+        # Outer separatrix
+        # Find the minimum index where psi > 1
+        outside_inds = np.argwhere(psinorm[Rindex_axis:] > 1.0)
+
+        if outside_inds.size == 0:
+            R_sep_out = self.Rmax
+        else:
+            Rindex_outer = np.amin(outside_inds) + Rindex_axis
+
+            # Separatrix should now be between Rindex_outer-1 and Rindex_outer
+            R_sep_out = ((self.R[Rindex_outer, Zindex] * (1.0 - psinorm[Rindex_outer-1]) + 
+                          self.R[Rindex_outer-1, Zindex] * (psinorm[Rindex_outer] - 1.0)) /
+                         (psinorm[Rindex_outer] - psinorm[Rindex_outer-1]))
+        
         return R_sep_in, R_sep_out
 
     def intersectsWall(self):
@@ -510,7 +520,7 @@ class Equilibrium:
                                   wall.R, wall.Z)
         
     def magneticAxis(self):
-        """Returns the location of the magnetic axis [R,Z]
+        """Returns the location of the magnetic axis as a list [R,Z,psi]
         """
         opt, xpt = critical.find_critical(self.R, self.Z, self.psi())
         return opt[0]
