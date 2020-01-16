@@ -33,13 +33,25 @@ class ChunkOutput:
     def write(self, value):
         """"
         Write a value to the output, adding a newline if needed
+        
+        Distinguishes between:
+        - list  : Iterates over the list and writes each element
+        - int   : Converts using str
+        - float : Converts using f2s to Fortran-formatted string
+        
         """
+        if isinstance(value, list):
+            for elt in value:
+                self.write(elt)
+            return
         
         self.fh.write(" "*self.extraspaces)
+        
         if isinstance(value, int):
-            self.fh.write(str(value))
+            self.fh.write("   " + str(value))
         else:
             self.fh.write(f2s(value))
+            
         self.counter += 1
         if self.counter == self.chunk:
             self.fh.write("\n")

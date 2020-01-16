@@ -6,6 +6,7 @@ fields - Lists the variables stored in the file, a default value, and a descript
 
 from . import _fileutils as fu
 
+import warnings
 
 # List of file data variables, default values, and documentation
 # This is used in both reader and writer
@@ -37,21 +38,27 @@ fields = [("tsaisq", 0.0, "total chi2 from magnetic probes, flux loops, Rogowski
           ("otop", 10., "plasma top gap in cm"),
           ("obott", 10., "plasma bottom gap in cm"),
           ("qpsib", 5., "q at 95% of poloidal flux"),
-          ("vertn", 1, "vacuum field index at current centroid"),
+          ("vertn", 1.0, "vacuum field (index? -- seems to be float) at current centroid"),
     
           #fmt_1040 = r '^\s*' + 4 * r '([\s\-]\d+\.\d+[Ee][\+\-]\d\d)'
 
           #read(neqdsk, 1040)(rco2v(k, jj), k = 1, mco2v)
+          (None, None, None),  # New line
           ("rco2v", lambda data: [0.0] * data["mco2v"], "1D array : path length in cm of vertical CO2 density chord"),
           
           #read(neqdsk, 1040)(dco2v(jj, k), k = 1, mco2v)
+          (None, None, None),  # New line
           ("dco2v", lambda data: [0.0] * data["mco2v"], "line average electron density in cm3 from vertical CO2 chord"),
           
           #read(neqdsk, 1040)(rco2r(k, jj), k = 1, mco2r)
+          (None, None, None),  # New line
           ("rco2r", lambda data: [0.0] * data["mco2r"], "path length in cm of radial CO2 density chord"),
           
           #read(neqdsk, 1040)(dco2r(jj, k), k = 1, mco2r)
+          (None, None, None),  # New line
           ("dco2r", lambda data: [0.0] * data["mco2r"], "line average electron density in cm3 from radial CO2 chord"),
+          
+          (None, None, None),  # New line
           
           ("shearb", 0.0, ""), 
           ("bpolav", 1.0, "average poloidal magnetic field in Tesla defined through Ampere's law"),
@@ -109,9 +116,11 @@ fields = [("tsaisq", 0.0, "total chi2 from magnetic probes, flux loops, Rogowski
           ("tavem", 0.0, "average time in ms for magnetic and MSE data"),
 
           # ishot > 91000
+          # The next section is dependent on the EFIT version
+          # New version of EFIT on 05/24/97 writes aeqdsk that includes
+          # data values for parameters nsilop,magpri,nfcoil and nesum.
+          (None, True, None),  # New line
           
-          (None, None, None),  # New line
-
           ("nsilop", lambda data: len(data.get("csilop", [])), "Number of flux loop signals, len(csilop)"),
           ("magpri", lambda data: len(data.get("cmpr2", [])), "Number of flux loop signals, len(cmpr2) (added to nsilop)"),
           ("nfcoil", lambda data: len(data.get("ccbrsp", [])), "Number of calculated external coil currents, len(ccbrsp)"),
@@ -164,7 +173,7 @@ fields = [("tsaisq", 0.0, "total chi2 from magnetic probes, flux loops, Rogowski
           ("rmidin", 0.0, "inner major radius in m at Z=0.0"),
           ("rmidout", 0.0, "outer major radius in m at Z=0.0")]
 
-def write(data, fh, label="FREEGS", time=0.0):
+def write(data, fh):
     """
     data  [dict] - keys are given with documentation in the `fields` list.
         Also includes
@@ -173,15 +182,16 @@ def write(data, fh, label="FREEGS", time=0.0):
     
     """
     # First line identification string
-    fh.write("{0:11s}\n".format(label))
+    # Default to date > 1997 since that format includes nsilop etc.
+    fh.write("{0:11s}\n".format(data.get("header", " 26-OCT-98 09/07/98  ")))
 
     # Second line shot number
-    fh.write(" {:d}               1\n".format(shot))
+    fh.write(" {:d}               1\n".format(data.get("shot", 0)))
 
     # Third line time
-    fh.write(" " + _fu.f2s(time)+"\n")
+    fh.write(" " + fu.f2s(data.get("time", 0.0))+"\n")
 
-    # Fourth line has (up to?) 9 entries
+    # Fourth line 
     # time(jj),jflag(jj),lflag,limloc(jj), mco2v,mco2r,qmflag
     #   jflag = 0 if error  (? Seems to contradict example)
     #   lflag > 0 if error  (? Seems to contradict example)
@@ -189,20 +199,24 @@ def write(data, fh, label="FREEGS", time=0.0):
     #   mco2v   number of vertical CO2 density chords
     #   mco2r   number of radial CO2 density chords
     #   qmflag  axial q(0) flag, FIX if constrained and CLC for float
-    fh.write("*{:s}             1                0 {:s}  0   0 {:s}".format(_fu.f2s(time),
-                                                                            data.get("limloc", "DN"),
-                                                                            data.get("qmflag", "CLC")))
+    fh.write("*{:s}             {:d}                {:d} {:s}  {:d}   {:d} {:s}\n".format(fu.f2s(data.get("time", 0.0)).strip(),
+                                                                                          data.get("jflag", 1),
+                                                                                          data.get("lflag", 0),
+                                                                                          data.get("limloc", "DN"),
+                                                                                          data.get("mco2v", 0),
+                                                                                          data.get("mco2r", 0),
+                                                                                          data.get("qmflag", "CLC")))
     # Output data in lines of 4 values each
-    with _fu.ChunkOutput(fh, chunksize=4) as output:
-          for name, default, description in fields:
+    with fu.ChunkOutput(fh, chunksize=4) as output:
+          for key, default, description in fields:
             if callable(default):
                 # Replace the default function with the value, which may depend on previously read data
                 default = default(data)
                 
-            if Name is None:
+            if key is None:
                 output.newline() # Ensure on a new line
             else:
-                output.write(data.get(name, default))
+                output.write(data.get(key, default))
         
 
 def read(fh):
@@ -223,7 +237,8 @@ def read(fh):
     words = fh.readline().split()
     
     # Dictionary to hold result
-    data = {"shot": shot,
+    data = {"header": header,
+            "shot": shot,
             "time": time,
             "jflag": int(words[1]),
             "lflag": int(words[2]),
@@ -232,4 +247,24 @@ def read(fh):
             "mco2r": int(words[5]),
             "qmflag": words[6]} # e.g. "CLC"
 
+    # Read each value from the file, and put into variables
+    values = fu.next_value(fh)
+    for key, default, doc in fields:
+        if key is None:
+            continue  # skip
+        
+        if callable(default):
+            default = default(data)
+            
+        if isinstance(default, list):
+            # Read a list the same length as the default
+            data[key] = [next(values) for elt in default]
+        else:
+            value = next(values)
+            if isinstance(default, int) and not isinstance(value, int):
+                # Expecting an integer, but didn't get one
+                warnings.warn("Expecting an integer for '" + key + "' in aeqdsk file")
+                break
+            data[key] = value
+    
     return data

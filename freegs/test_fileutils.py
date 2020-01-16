@@ -23,5 +23,5 @@ def test_ChunkOutput():
         co.write(val)
     
     assert output.getvalue() == """ 1.000000000E+00-3.200000000E+00 6.200000000E+05 8.765400000E-12 4.200000000E+01
--76"""
+   -76"""
     
