@@ -34,8 +34,12 @@ class ChunkOutput:
         """"
         Write a value to the output, adding a newline if needed
         """
+        
         self.fh.write(" "*self.extraspaces)
-        self.fh.write(f2s(value))
+        if isinstance(value, int):
+            self.fh.write(str(value))
+        else:
+            self.fh.write(f2s(value))
         self.counter += 1
         if self.counter == self.chunk:
             self.fh.write("\n")
@@ -55,6 +59,16 @@ class ChunkOutput:
         """
         self.fh.write("\n")
         self.counter=0
+    
+    def __enter__(self):
+        return self
+        
+    def __exit__(self, type, value, traceback):
+        """Ensure that the chunk finishes with a new line
+        """
+        if self.counter != 0:
+            self.counter = 0
+            self.fh.write("\n")
         
 def write_1d(val, out):
     """
