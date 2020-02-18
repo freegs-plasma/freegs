@@ -82,7 +82,9 @@ class OutputFile(object):
     """
 
     # Names of the groups in the file
-    EQUILIBRIUM_GROUP_NAME = "equilbrium"
+    EQUILIBRIUM_GROUP_NAME = "equilibrium"
+    # Oops, typo in original name!
+    OLD_EQUILIBRIUM_GROUP_NAME = "equilbrium"
     MACHINE_GROUP_NAME = "tokamak"
     COILS_GROUP_NAME = "coils"
 
@@ -179,7 +181,11 @@ class OutputFile(object):
             A new `Equilibrium` object
         """
 
-        equilibrium_group = self.handle[self.EQUILIBRIUM_GROUP_NAME]
+        # Workaround for typo in previous versions
+        if self.OLD_EQUILIBRIUM_GROUP_NAME in self.handle:
+            equilibrium_group = self.handle[self.OLD_EQUILIBRIUM_GROUP_NAME]
+        else:
+            equilibrium_group = self.handle[self.EQUILIBRIUM_GROUP_NAME]
         tokamak_group = equilibrium_group[self.MACHINE_GROUP_NAME]
         coil_group = tokamak_group[self.COILS_GROUP_NAME]
 
