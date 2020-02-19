@@ -29,6 +29,7 @@ from __future__ import unicode_literals
 
 try:
     import h5py
+
     has_hdf5 = True
 except ImportError:
     has_hdf5 = False
@@ -39,6 +40,7 @@ from .equilibrium import Equilibrium
 from .machine import Coil, Circuit, Solenoid, Wall, Machine
 from . import boundary
 from . import machine
+from . import __version__
 
 
 class OutputFormatNotAvailableError(Exception):
@@ -46,6 +48,7 @@ class OutputFormatNotAvailableError(Exception):
     required for this OutputFile format
 
     """
+
     def __init__(self, file_format="HDF5"):
         self.message = "Sorry, {} is not available!".format(file_format)
 
@@ -106,20 +109,21 @@ class OutputFile(object):
     def __exit__(self, type, value, traceback):
         self.close()
 
-    def write_equilibrium(self, equilibrium):
+    def write_equilibrium(self, equilibrium, legacy=False):
         """
         Write `equilbrium` to file
         """
 
-        self.handle["coil_dtype"] = Coil.dtype
-        self.handle["circuit_dtype"] = Circuit.dtype
-        self.handle["solenoid_dtype"] = Solenoid.dtype
+        # Open Plasma Equilibrium version
+        if not legacy:
+            self.handle["opeqs_version"] = "0.1.0"
 
-        type_to_dtype = {
-            Coil.dtype: self.handle["coil_dtype"],
-            Circuit.dtype: self.handle["circuit_dtype"],
-            Solenoid.dtype: self.handle["solenoid_dtype"],
-        }
+        # FreeGS metadata
+        self.handle["creation_software"] = "FreeGS"
+        self.handle["creation_version"] = __version__
+
+        # Symmetry type
+        self.handle["symmetry"] = "tokamak"
 
         equilibrium_group = self.handle.require_group(self.EQUILIBRIUM_GROUP_NAME)
 
@@ -134,7 +138,7 @@ class OutputFile(object):
         equilibrium_group.create_dataset("Z", data=equilibrium.Z)
 
         equilibrium_group.create_dataset("current", data=equilibrium.plasmaCurrent())
-        equilibrium_group["current"].attrs["title"] = u"Plasma current [Amps]"
+        equilibrium_group["current"].attrs["title"] = "Plasma current [Amps]"
 
         psi_id = equilibrium_group.create_dataset("psi", data=equilibrium.psi())
         psi_id.dims[0].label = "R"
@@ -144,32 +148,81 @@ class OutputFile(object):
         psi_id.dims[0].attach_scale(equilibrium_group["R_1D"])
         psi_id.dims[1].attach_scale(equilibrium_group["Z_1D"])
 
-        plasma_psi_id = equilibrium_group.create_dataset("plasma_psi",
-                                                         data=equilibrium.plasma_psi)
+        plasma_psi_id = equilibrium_group.create_dataset(
+            "plasma_psi", data=equilibrium.plasma_psi
+        )
         plasma_psi_id.dims[0].label = "R"
         plasma_psi_id.dims[1].label = "Z"
         plasma_psi_id.dims[0].attach_scale(equilibrium_group["R_1D"])
         plasma_psi_id.dims[1].attach_scale(equilibrium_group["Z_1D"])
 
-        equilibrium_group.create_dataset("boundary_function",
-                                         data=equilibrium._applyBoundary.__name__)
+        equilibrium_group.create_dataset(
+            "boundary_function", data=equilibrium._applyBoundary.__name__
+        )
 
         tokamak_group = equilibrium_group.create_group(self.MACHINE_GROUP_NAME)
 
         if equilibrium.tokamak.wall is not None:
-            tokamak_group.create_dataset(
-                "wall_R", data=equilibrium.tokamak.wall.R)
-            tokamak_group.create_dataset(
-                "wall_Z", data=equilibrium.tokamak.wall.Z)
+            tokamak_group.create_dataset("wall_R", data=equilibrium.tokamak.wall.R)
+            tokamak_group.create_dataset("wall_Z", data=equilibrium.tokamak.wall.Z)
 
         coils_group = tokamak_group.create_group(self.COILS_GROUP_NAME)
+        if legacy:
+            self._write_legacy_coils(equilibrium, coils_group)
+        else:
+            self._write_opeqs_coils(equilibrium, coils_group)
+
+    def _write_legacy_coils(self, equilibrium, coils_group):
+        self.handle["coil_dtype"] = Coil.dtype
+        self.handle["circuit_dtype"] = Circuit.dtype
+        self.handle["solenoid_dtype"] = Solenoid.dtype
+
+        type_to_dtype = {
+            Coil.dtype: self.handle["coil_dtype"],
+            Circuit.dtype: self.handle["circuit_dtype"],
+            Solenoid.dtype: self.handle["solenoid_dtype"],
+        }
         for label, coil in equilibrium.tokamak.coils:
             dtype = type_to_dtype[coil.dtype]
-            coils_group.create_dataset(label, dtype=dtype,
-                                       data=np.array(coil.to_numpy_array()))
+            coils_group.create_dataset(
+                label, dtype=dtype, data=np.array(coil.to_numpy_array())
+            )
             # A bit gross, but store the class name so we know what
             # type to restore it to later
             coils_group[label].attrs["freegs type"] = coil.__class__.__name__
+
+    def _write_opeqs_coils(self, equilibrium, coils_group):
+        def write_coil(coil_group, coil):
+            coil_group.create_dataset("R", data=coil.R)
+            coil_group.create_dataset("Z", data=coil.Z)
+            coil_group.create_dataset("current", data=coil.current)
+            coil_group.create_dataset("turns", data=coil.turns)
+            coil_group.create_dataset("control", data=coil.control)
+            coil_group.create_dataset("area", data=coil.area)
+
+        def write_circuit(circuit_group, circuit):
+            for label, coil, multiplier in circuit.coils:
+                coil_group = circuit_group.create_group(label)
+                write_coil(coil_group, coil)
+                coil_group.create_dataset("multiplier", data=multiplier)
+
+        def write_solenoid(solenoid_group, solenoid):
+            solenoid_group.create_dataset("R", data=solenoid.Rs)
+            solenoid_group.create_dataset("Zmin", data=solenoid.Zsmin)
+            solenoid_group.create_dataset("Zmax", data=solenoid.Zsmax)
+            solenoid_group.create_dataset("turns", data=solenoid.Ns)
+            solenoid_group.create_dataset("current", data=solenoid.current)
+            solenoid_group.create_dataset("control", data=solenoid.control)
+
+        write_type = {
+            Coil: write_coil,
+            Circuit: write_circuit,
+            Solenoid: write_solenoid,
+        }
+        for label, coil in equilibrium.tokamak.coils:
+            coil_group = coils_group.create_group(label)
+            write_function = write_type[type(coil)]
+            write_function(coil_group, coil)
 
     def read_equilibrium(self):
         """
@@ -179,6 +232,108 @@ class OutputFile(object):
         -------
         Equilibrium
             A new `Equilibrium` object
+        """
+
+        if "opeqs_version" not in self.handle:
+            return self._read_freegs_legacy_equilibrium()
+
+        return self._read_opeqs_equilibrium()
+
+    def _read_opeqs_equilibrium(self):
+
+        equilibrium_group = self.handle[self.EQUILIBRIUM_GROUP_NAME]
+        tokamak_group = equilibrium_group[self.MACHINE_GROUP_NAME]
+        coil_group = tokamak_group[self.COILS_GROUP_NAME]
+
+        def read_coil(coil_group):
+            return Coil(
+                R=coil_group["R"][()],
+                Z=coil_group["Z"][()],
+                current=coil_group["current"][()],
+                turns=coil_group["turns"][()],
+                control=coil_group["control"][()],
+                area=coil_group["area"][()],
+            )
+
+        def read_circuit(circuit_group):
+            coils = []
+            for label, coil_group in circuit_group.items():
+                if not isinstance(coil_group, h5py.Group):
+                    continue
+                coil = read_coil(coil_group)
+                multiplier = coil_group["multiplier"][()]
+                coils.append((label, coil, multiplier))
+
+            if not coils:
+                raise ValueError(
+                    "No Coils found in Circuit group {}".format(circuit_group.name)
+                )
+
+            def coil_list_to_string(coils):
+                return "\n".join(["{}".format(coil) for coil in coils])
+
+            currents = [coil[1].current / coil[2] for coil in coils]
+            if not np.allclose(currents, currents[0]):
+                raise ValueError(
+                    "Inconsistent currents/multiplers in Circuit. Coils are:\n{}".format(
+                        coil_list_to_string(coils)
+                    )
+                )
+            controls = [coil[1].control for coil in coils]
+            if not (all(controls) or all([not control for control in controls])):
+                raise ValueError(
+                    "Inconsistent values for control in Circuit. Coils are:\n{}".format(
+                        coil_list_to_string(coils)
+                    )
+                )
+
+            return Circuit(coils=coils, current=currents[0], control=controls[0])
+
+        def read_solenoid(solenoid_group):
+            return Solenoid(
+                Rs=solenoid_group["R"][()],
+                Zsmin=solenoid_group["Zmin"][()],
+                Zsmax=solenoid_group["Zmax"][()],
+                Ns=solenoid_group["turns"][()],
+                current=solenoid_group["current"][()],
+                control=solenoid_group["control"][()],
+            )
+
+        def is_coil(group):
+            expected_keys = ["R", "Z", "current", "turns", "control", "area"]
+            return all([key in group for key in expected_keys])
+
+        def is_circuit(group):
+            coils = []
+            for g in group.values():
+                if isinstance(g, h5py.Group):
+                    coils.append(is_coil(g))
+            return coils and all(coils)
+
+        def is_solenoid(group):
+            expected_keys = ["R", "Zmin", "Zmax", "current", "turns", "control"]
+            return all([key in group for key in expected_keys])
+
+        read_type = {
+            is_coil: read_coil,
+            is_circuit: read_circuit,
+            is_solenoid: read_solenoid,
+        }
+
+        coils = []
+        for label, coil in coil_group.items():
+            if isinstance(coil, h5py.Group):
+                for coil_type, make_coil in read_type.items():
+                    if coil_type(coil):
+                        coils.append((label, make_coil(coil)))
+
+        return self._construct_equilibrium(equilibrium_group, tokamak_group, coils)
+
+    def _read_freegs_legacy_equilibrium(self):
+        """
+        Read a legacy FreeGS equilbrium file
+
+        Does not conform to OPEQS file format
         """
 
         # Workaround for typo in previous versions
@@ -199,6 +354,9 @@ class OutputFile(object):
         # by label, losing the origin
         coils = [(label, make_coil_set(coil)) for label, coil in coil_group.items()]
 
+        return self._construct_equilibrium(equilibrium_group, tokamak_group, coils)
+
+    def _construct_equilibrium(self, equilibrium_group, tokamak_group, coils):
         if "wall_R" in tokamak_group:
             wall_R = tokamak_group["wall_R"][:]
             wall_Z = tokamak_group["wall_Z"][:]
@@ -207,7 +365,6 @@ class OutputFile(object):
             wall = None
 
         tokamak = Machine(coils, wall)
-
         Rmin = equilibrium_group["Rmin"][()]
         Rmax = equilibrium_group["Rmax"][()]
         Zmin = equilibrium_group["Zmin"][()]
@@ -223,9 +380,17 @@ class OutputFile(object):
         eq_boundary_name = equilibrium_group["boundary_function"][()]
         eq_boundary_func = boundary.__dict__[eq_boundary_name]
 
-        equilibrium = Equilibrium(tokamak=tokamak, Rmin=Rmin, Rmax=Rmax,
-                                  Zmin=Zmin, Zmax=Zmax, nx=nx, ny=ny,
-                                  psi=plasma_psi, current=current,
-                                  boundary=eq_boundary_func)
+        equilibrium = Equilibrium(
+            tokamak=tokamak,
+            Rmin=Rmin,
+            Rmax=Rmax,
+            Zmin=Zmin,
+            Zmax=Zmax,
+            nx=nx,
+            ny=ny,
+            psi=plasma_psi,
+            current=current,
+            boundary=eq_boundary_func,
+        )
 
         return equilibrium

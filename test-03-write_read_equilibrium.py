@@ -47,20 +47,40 @@ freegs.solve(eq,          # The equilibrium to adjust
              profiles,    # The toroidal current profile function
              constrain)   # Constraint function to set coil currents
 
-with freegs.OutputFile("test_readwrite.h5", 'w') as f:
-    f.write_equilibrium(eq)
 
-with freegs.OutputFile("test_readwrite.h5", 'r') as f:
-    read_eq = f.read_equilibrium()
+def check_read_writes_match(expected, actual):
+    tokamaks_match = expected.tokamak == actual.tokamak
+    print("tokamaks match? ", tokamaks_match)
+    psis_match = allclose(expected.psi(), actual.psi())
+    print("psi() matches? ", psis_match)
+    print("l2-norm of difference: ", norm(expected.psi() - actual.psi(), ord=2))
+    return tokamaks_match and psis_match
+
+
+# Legacy read/write
+print("\n---------------------------------------------")
+print("Check legacy read/write")
+
+with freegs.OutputFile("test_legacy_readwrite.h5", 'w') as f:
+    f.write_equilibrium(eq, legacy=True)
+
+with freegs.OutputFile("test_legacy_readwrite.h5", 'r') as f:
+    legacy_read_eq = f.read_equilibrium()
+
+legacy_success = check_read_writes_match(eq, legacy_read_eq)
 
 print("\n---------------------------------------------")
-tokamaks_match = tokamak == read_eq.tokamak
-print("tokamaks match? ", tokamaks_match)
-psis_match = allclose(eq.psi(), read_eq.psi())
-print("psi() matches? ", psis_match)
-print("l2-norm of difference: ", norm(eq.psi() - read_eq.psi(), ord=2))
+print("Check OPEQS read/write")
 
-if tokamaks_match and psis_match:
+with freegs.OutputFile("test_opeqs_readwrite.h5", 'w') as f:
+    f.write_equilibrium(eq)
+
+with freegs.OutputFile("test_opeqs_readwrite.h5", 'r') as f:
+    read_eq = f.read_equilibrium()
+
+opeqs_success = check_read_writes_match(eq, read_eq)
+
+if legacy_success and opeqs_success:
     exit(0)
 else:
     exit(1)
