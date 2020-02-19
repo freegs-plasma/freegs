@@ -177,7 +177,7 @@ class Circuit:
         return result + "], current={0}, control={1})".format(self.current, self.control)
 
     def __eq__(self, other):
-        return (self.coils == other.coils
+        return (sorted(self.coils) == sorted(other.coils)
                 and self.current == other.current
                 and self.control == other.control)
 
