@@ -16,7 +16,7 @@ tokamak = freegs.machine.MAST_sym()
 eq = freegs.Equilibrium(tokamak=tokamak,
                         Rmin=0.1, Rmax=2.0,    # Radial domain
                         Zmin=-1.0, Zmax=1.0,   # Height range
-                        nx=65, ny=65,          # Number of grid points
+                        nx=17, ny=17,          # Number of grid points
                         boundary=freegs.boundary.freeBoundaryHagenow)  # Boundary condition
 
 
@@ -45,7 +45,10 @@ constrain = freegs.control.constrain(xpoints=xpoints, isoflux=isoflux)
 
 freegs.solve(eq,          # The equilibrium to adjust
              profiles,    # The toroidal current profile function
-             constrain)   # Constraint function to set coil currents
+             constrain,   # Constraint function to set coil currents
+             maxits=25,
+             atol=1e-3,
+             rtol=1e-1)
 
 with freegs.OutputFile("test_readwrite.h5", 'w') as f:
     f.write_equilibrium(eq)
