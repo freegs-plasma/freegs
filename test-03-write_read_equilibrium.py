@@ -2,6 +2,7 @@
 
 import freegs
 
+import io
 from numpy import allclose
 from numpy.linalg import norm
 
@@ -50,10 +51,12 @@ freegs.solve(eq,          # The equilibrium to adjust
              atol=1e-3,
              rtol=1e-1)
 
-with freegs.OutputFile("test_readwrite.h5", 'w') as f:
+memory_file = io.BytesIO()
+
+with freegs.OutputFile(memory_file, 'w') as f:
     f.write_equilibrium(eq)
 
-with freegs.OutputFile("test_readwrite.h5", 'r') as f:
+with freegs.OutputFile(memory_file, 'r') as f:
     read_eq = f.read_equilibrium()
 
 print("\n---------------------------------------------")
