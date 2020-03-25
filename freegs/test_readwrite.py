@@ -19,9 +19,14 @@ def test_readwrite():
         boundary=freegs.boundary.freeBoundaryHagenow,
     )
     profiles = freegs.jtor.ConstrainPaxisIp(1e4, 1e6, 2.0)
+
+    # Note here the X-point locations and isoflux locations are not the same.
+    # The result will be an unbalanced double null configuration, where the
+    # X-points are on different flux surfaces.
     xpoints = [(1.1, -0.6), (1.1, 0.8)]
     isoflux = [(1.1, -0.6, 1.1, 0.6)]
     constrain = freegs.control.constrain(xpoints=xpoints, isoflux=isoflux)
+
     freegs.solve(eq, profiles, constrain, maxits=25, atol=1e-3, rtol=1e-1)
 
     memory_file = io.BytesIO()
