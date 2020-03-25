@@ -89,7 +89,7 @@ The "freegs" module consists of the following files:
 License
 -------
 
-    Copyright 2016-2018 Ben Dudson, University of York. Email: benjamin.dudson@york.ac.uk
+    Copyright 2016-2020 Ben Dudson, University of York. Email: benjamin.dudson@york.ac.uk
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Lesser General Public License as published by
@@ -113,6 +113,14 @@ References
 
 Versions
 --------
+
+0.5.0  25th March 2020
+  - More tests, thanks to @ZedThree.
+  - Added more flexible coil types, thanks to Chris Marsden.
+    Includes support for shaped coils, multi-strand coils,
+    and up-down mirrored coils.
+  - Basic support for reading and writing AEQDSK files
+  - Added h5py to requirements, fixes for latest NumPy
 
 0.4.0  10th November 2019
   - Add optimisation with Differential Evolution
