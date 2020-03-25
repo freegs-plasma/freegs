@@ -261,7 +261,7 @@ class Solenoid:
         self.Rs = Rs
         self.Zsmin = Zsmin
         self.Zsmax = Zsmax
-        self.Ns = Ns
+        self.Ns = int(Ns)
         
         self.current = current
         self.control = control
@@ -513,7 +513,7 @@ class Machine:
         
         for coil, dI in zip(controlcoils, current_change):
             # Ensure that dI is a scalar
-            coil.current += np.asscalar(dI)
+            coil.current += dI.item()
 
     def controlCurrents(self):
         """
