@@ -31,6 +31,19 @@ Documentation
 
 The manual is in the `docs` subdirectory, and [hosted here on readthedocs](http://freegs.readthedocs.io/en/latest/).
 
+Testing
+-------
+
+Unit tests use [pytest](https://docs.pytest.org/en/latest/) so after installing, run with:
+
+    $ pytest
+
+The tests are in the `src/` subdirectory.
+
+A convergence test is [described in the manual](The convergence test). To run:
+
+    $ python test-convergence.py
+
 Examples
 --------
 
