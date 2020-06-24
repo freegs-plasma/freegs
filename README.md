@@ -40,7 +40,7 @@ Unit tests use [pytest](https://docs.pytest.org/en/latest/) so after installing,
 
 The tests are in the `src/` subdirectory.
 
-A convergence test is [described in the manual](The convergence test). To run:
+A convergence test is [described in the manual](https://freegs.readthedocs.io/en/latest/tests.html#convergence-test). To run:
 
     $ python test-convergence.py
 
