@@ -32,10 +32,10 @@ class FieldTracer(object):
         
         eps = 1e-2
         
-        evolving[(R < self._eq.Rmin + eps) or
-                 (R > self._eq.Rmax - eps) or
-                 (Z < self._eq.Zmin + eps) or
-                 (Z > self._eq.Zmax - eps)] = 0.0
+        evolving[np.logical_or(np.logical_or((R < self._eq.Rmin + eps),
+                                             (R > self._eq.Rmax - eps)),
+                               np.logical_or((Z < self._eq.Zmin + eps),
+                                             (Z > self._eq.Zmax - eps)))] = 0.0
         return evolving
 
     def wallDomain(self, R, Z, evolving):
