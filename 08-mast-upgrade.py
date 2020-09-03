@@ -18,9 +18,11 @@ eq = freegs.Equilibrium(tokamak=tokamak,
 #########################################
 # Plasma profiles
 
-profiles = freegs.jtor.ConstrainPaxisIp(2e4, # Plasma pressure on axis [Pascals]
-                                        6e5, # Plasma current [Amps]
-                                        1.0) # vacuum f = R*Bt
+profiles = freegs.jtor.ConstrainPaxisIp(6e4, # Plasma pressure on axis [Pascals]
+                                        1e6, # Plasma current [Amps]
+                                        0.65, # vacuum f = R*Bt
+                                        alpha_m = 1.0,
+                                        alpha_n = 2.0)
 
 #########################################
 # Coil current constraints
@@ -48,7 +50,7 @@ isoflux = [(Rx,-Zx, Rmid, 0.0)   # Outboard midplane, lower X-point
            ,(Rx, Zx, 0.95,  1.77)
            ]
 
-constrain = freegs.control.constrain(xpoints=xpoints, gamma=1e-5, isoflux=isoflux)
+constrain = freegs.control.constrain(xpoints=xpoints, gamma=8e-6, isoflux=isoflux)
 
 constrain(eq)
 
@@ -58,7 +60,7 @@ constrain(eq)
 freegs.solve(eq,          # The equilibrium to adjust
              profiles,    # The plasma profiles
              constrain,   # Plasma control constraints
-             show=False)   # Shows results at each nonlinear iteration
+             show=True)   # Shows results at each nonlinear iteration
 
 #########################################
 # Now adjust the equilibrium manually
@@ -87,16 +89,17 @@ for label, coil in tokamak.coils:
     coil.control = False
 
 # Centre column coil
-tokamak["Pc"].current = -3e4
+tokamak["Pc"].current = -4e4
     
 # Turn on vertical feedback control
-tokamak["P61"].control = True
+tokamak["P6"].control = True
 
 # Coil in the "nose" of the divertor
 tokamak["Dp"].current = -1000.0
 
 # At top of divertor chamber
-tokamak["D6"].current = -500.0
+tokamak["D6"].current = 500.0
+tokamak["D7"].current = 500.0
 
 # X-point location
 tokamak["Px"].current = 2000.0
@@ -126,6 +129,7 @@ print("Plasma volume: %e m^3" % (eq.plasmaVolume()))
 eq.tokamak.printCurrents()
 
 axis = eq.plot(show=False)
+eq.tokamak.plot(axis=axis)
 constrain.plot(axis=axis)
 
 ##############################################
