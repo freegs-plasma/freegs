@@ -265,7 +265,7 @@ def core_mask(R, Z, psi, opoint, xpoint=[], psi_bndry=None):
 
     # Start and end points
     Ro, Zo, psi_axis = opoint[0]
-    if not psi_bndry:
+    if psi_bndry is None:
         _, _, psi_bndry = xpoint[0]
 
     # Normalise psi
