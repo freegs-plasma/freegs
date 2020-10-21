@@ -420,6 +420,10 @@ class Equilibrium:
                 
                 # Use interpolation to find if a point is in the core.
                 self.mask_func = interpolate.RectBivariateSpline(self.R[:,0], self.Z[0,:], self.mask)
+            elif self._applyBoundary is fixedBoundary:
+                # No X-points, but using fixed boundary
+                self.psi_bndry = psi[0,0] # Value of psi on the boundary
+                self.mask = None  # All points are in the core region
             else:
                 self.psi_bndry = None
                 self.mask = None        

@@ -19,9 +19,9 @@ def test_ChunkOutput():
     output = StringIO()
     co = _fileutils.ChunkOutput(output)
 
-    for val in [1.0, -3.2, 6.2e5, 8.7654e-12, 42, -76]:
+    for val in [1.0, -3.2, 6.2e5, 8.7654e-12, 42., -76]:
         co.write(val)
     
     assert output.getvalue() == """ 1.000000000E+00-3.200000000E+00 6.200000000E+05 8.765400000E-12 4.200000000E+01
--7.600000000E+01"""
+   -76"""
     

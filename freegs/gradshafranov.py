@@ -275,7 +275,7 @@ def Greens(Rc, Zc, R, Z):
 
 def GreensBz(Rc, Zc, R, Z, eps=1e-3):
     """
-    Calculate radial magnetic field at (R,Z)
+    Calculate vertical magnetic field at (R,Z)
     due to unit current at (Rc, Zc)
     
     Bz = (1/R) d psi/dR
@@ -285,7 +285,7 @@ def GreensBz(Rc, Zc, R, Z, eps=1e-3):
 
 def GreensBr(Rc, Zc, R, Z, eps=1e-3):
     """
-    Calculate vertical magnetic field at (R,Z)
+    Calculate radial magnetic field at (R,Z)
     due to unit current at (Rc, Zc)
     
     Br = -(1/R) d psi/dZ
