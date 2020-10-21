@@ -468,6 +468,263 @@ class Equilibrium:
 
         print_forces(self.getForces())
 
+    def innerOuterSeparatrix(self, Z = 0.0):
+        """
+        Locate R co ordinates of separatrix at both
+        inboard and outboard poloidal midplane (Z = 0)
+        """
+        # Find the closest index to requested Z
+        Zindex = np.argmin(abs(self.Z[0,:] - Z))
+
+        # Normalise psi at this Z index
+        psinorm = (self.psi()[:,Zindex] - self.psi_axis)  / (self.psi_bndry - self.psi_axis)
+        
+        # Start from the magnetic axis
+        Rindex_axis = np.argmin(abs(self.R[:,0] - self.Rmagnetic()))
+
+        # Inner separatrix
+        # Get the maximum index where psi > 1 in the R index range from 0 to Rindex_axis
+        outside_inds = np.argwhere(psinorm[:Rindex_axis] > 1.0)
+
+        if outside_inds.size == 0:
+            R_sep_in = self.Rmin
+        else:
+            Rindex_inner = np.amax(outside_inds)
+
+            # Separatrix should now be between Rindex_inner and Rindex_inner+1
+            # Linear interpolation
+            R_sep_in = ((self.R[Rindex_inner, Zindex] * (1.0 - psinorm[Rindex_inner+1]) + 
+                         self.R[Rindex_inner+1, Zindex] * (psinorm[Rindex_inner] - 1.0)) /
+                        (psinorm[Rindex_inner] - psinorm[Rindex_inner+1]))
+
+        # Outer separatrix
+        # Find the minimum index where psi > 1
+        outside_inds = np.argwhere(psinorm[Rindex_axis:] > 1.0)
+
+        if outside_inds.size == 0:
+            R_sep_out = self.Rmax
+        else:
+            Rindex_outer = np.amin(outside_inds) + Rindex_axis
+
+            # Separatrix should now be between Rindex_outer-1 and Rindex_outer
+            R_sep_out = ((self.R[Rindex_outer, Zindex] * (1.0 - psinorm[Rindex_outer-1]) + 
+                          self.R[Rindex_outer-1, Zindex] * (psinorm[Rindex_outer] - 1.0)) /
+                         (psinorm[Rindex_outer] - psinorm[Rindex_outer-1]))
+        
+        return R_sep_in, R_sep_out
+
+    def intersectsWall(self):
+        """Assess whether or not the core plasma touches the vessel
+        walls. Returns True if it does intersect.
+        """
+        separatrix = self.separatrix() # Array [:,2]
+        wall = self.tokamak.wall # Wall object with R and Z members (lists)
+        
+        return polygons.intersect(separatrix[:,0], separatrix[:,1],
+                                  wall.R, wall.Z)
+        
+    def magneticAxis(self):
+        """Returns the location of the magnetic axis as a list [R,Z,psi]
+        """
+        opt, xpt = critical.find_critical(self.R, self.Z, self.psi())
+        return opt[0]
+
+    def Rmagnetic(self):
+        """The major radius R of magnetic major radius
+        """
+        return self.magneticAxis()[0]
+
+    def geometricAxis(self, npoints=20):
+        """Locates geometric axis, returning [R,Z]. Calculated as the centre
+        of a large number of points on the separatrix equally
+        distributed in angle from the magnetic axis.
+        """
+        separatrix = self.separatrix(ntheta=npoints) # Array [:,2]
+        return np.mean(separatrix, axis=0)
+
+    def Rgeometric(self, npoints=20):
+        """Locates major radius R of the geometric major radius. Calculated
+        as the centre of a large number of points on the separatrix
+        equally distributed in angle from the magnetic axis.
+        """
+        return self.geometricAxis(npoints=npoints)[0]
+    
+    def minorRadius(self, npoints=20):
+        """Calculates minor radius of plasma as the average distance from the
+        geometric major radius to a number of points along the
+        separatrix
+        """
+        separatrix = self.separatrix(ntheta=npoints)  # [:,2] 
+        axis = np.mean(separatrix, axis=0) # Geometric axis [R,Z]
+
+        # Calculate average distance from the geometric axis
+        return np.mean( np.sqrt( (separatrix[:,0] - axis[0])**2 +   # dR^2
+                                 (separatrix[:,1] - axis[1])**2 ))  # dZ^2
+
+    def geometricElongation(self, npoints=20):
+        """Calculates the elongation of a plasma using the range of R and Z of
+        the separatrix
+
+        """
+        separatrix = self.separatrix(ntheta=npoints)  # [:,2]
+        # Range in Z / range in R
+        return (max(separatrix[:,1]) - min(separatrix[:,1])) / (max(separatrix[:,0]) - min(separatrix[:,0]))
+
+    def aspectRatio(self, npoints=20):
+        """Calculates the plasma aspect ratio
+
+        """
+        return self.Rgeometric(npoints=npoints)/ self.minorRadius(npoints=npoints)
+
+    def effectiveElongation(self, R_wall_inner, R_wall_outer, npoints=300):
+        """Calculates plasma effective elongation using the plasma volume
+
+        """
+        return self.plasmaVolume()/(2.*np.pi * self.Rgeometric(npoints=npoints) * self.minorRadius(npoints=npoints)**2)
+    
+    def internalInductance1(self, npoints=300):
+        """Calculates li1 plasma internal inductance
+
+        """
+        # Produce array of Bpol^2 in (R,Z)
+        B_polvals_2 = self.Bz(self.R,self.Z)**2 + self.Br(R,Z)**2
+
+        R = self.R
+        Z = self.Z
+        dR = R[1,0] - R[0,0]
+        dZ = Z[0,1] - Z[0,0]
+        dV = 2. * np.pi * R * dR * dZ
+
+        if self.mask is not None:   # Only include points in the core
+            dV *= self.mask
+
+        Ip = self.plasmaCurrent()
+        R_geo = self.Rgeometric(npoints=npoints)
+        elon = self.geometricElongation(npoints=npoints)
+        effective_elon = self.effectiveElongation(npoints=npoints)
+    
+        integral = romb(romb(B_polvals_2*dV))
+        return ((2 * integral) / ((mu0*Ip)**2 * R_geo))*( (1+elon*elon)/(2.*effective_elon) )
+
+    def internalInductance2(self):
+        """Calculates li2 plasma internal inductance
+
+        """
+
+        R = self.R
+        Z = self.Z
+        psi = self.psi()
+
+        # Produce array of Bpol in (R,Z)
+        B_polvals_2 = self.Br(R,Z)**2 + self.Bz(R,Z)**2
+
+        dR = R[1,0] - R[0,0]
+        dZ = Z[0,1] - Z[0,0]
+        dV = 2.*np.pi*R * dR * dZ
+        if self.mask is not None:   # Only include points in the core
+            dV *= self.mask
+
+        Ip = self.plasmaCurrent()
+        R_mag = self.Rmagnetic()
+    
+        integral = romb(romb(B_polvals_2*dV))
+        return 2 * integral / ((mu0*Ip)**2 * R_mag)
+
+    def internalInductance3(self, R_wall_inner, R_wall_outer, npoints=300):
+        """Calculates li3 plasma internal inductance
+
+        """
+
+        R = self.R
+        Z = self.Z
+        psi = self.psi()
+
+        # Produce array of Bpol in (R,Z)
+        B_polvals_2 = self.Br(R,Z)**2 + self.Bz(R,Z)**2
+
+        dR = R[1,0] - R[0,0]
+        dZ = Z[0,1] - Z[0,0]
+        dV = 2.*np.pi*R * dR * dZ
+
+        if self.mask is not None:   # Only include points in the core
+            dV *= self.mask
+
+        Ip = self.plasmaCurrent()
+        R_geo = self.Rgeometric(npoints=npoints)
+    
+        integral = romb(romb(B_polvals_2*dV))
+        return 2 * integral / ((mu0*Ip)**2 * R_geo)
+
+    def poloidalBeta2(self):
+        """Calculate plasma poloidal beta by integrating the thermal pressure
+        and poloidal magnetic field pressure over the plasma volume.
+
+        """
+
+        R = self.R
+        Z = self.Z
+
+        # Produce array of Bpol in (R,Z)
+        B_polvals_2 = self.Br(R,Z)**2 + self.Bz(R,Z)**2
+
+        dR = R[1,0] - R[0,0]
+        dZ = Z[0,1] - Z[0,0]
+        dV = 2.*np.pi * R * dR * dZ
+
+        # Normalised psi
+        psi_norm = (self.psi() - self.psi_axis)  / (self.psi_bndry - self.psi_axis)
+        
+        # Plasma pressure
+        pressure = self.pressure(psi_norm)
+
+        if self.mask is not None: # Only include points in the core
+            dV *= self.mask
+
+        pressure_integral = romb(romb(pressure * dV))
+        field_integral_pol = romb(romb(B_polvals_2 * dV))
+        return 2 * mu0 * pressure_integral / field_integral_pol
+        
+        return poloidal_beta
+
+    def toroidalBeta(self):
+        """Calculate plasma toroidal beta by integrating the thermal pressure
+        and toroidal magnetic field pressure over the plasma volume.
+
+        """
+
+        R = self.R
+        Z = self.Z
+
+        # Produce array of Btor in (R,Z)
+        B_torvals_2 = self.Btor(R, Z)**2
+
+        dR = R[1,0] - R[0,0]
+        dZ = Z[0,1] - Z[0,0]
+        dV = 2.*np.pi * R * dR * dZ
+        
+        # Normalised psi
+        psi_norm = (self.psi() - self.psi_axis)  / (self.psi_bndry - self.psi_axis)
+        
+        # Plasma pressure
+        pressure = self.pressure(psi_norm)
+
+        if self.mask is not None: # Only include points in the core
+            dV *= self.mask
+
+        pressure_integral = romb(romb(pressure * dV))
+        
+        # Correct for errors in Btor and core masking
+        np.nan_to_num(B_torvals_2, copy=False)
+
+        field_integral_tor = romb(romb(B_torvals_2 * dV))
+        return 2 * mu0 * pressure_integral / field_integral_tor
+
+    def totalBeta(self):
+        """Calculate plasma total beta
+
+        """
+        return 1./((1./self.poloidalBeta2()) + (1./self.toroidalBeta()))
+
 def refine(eq, nx=None, ny=None):
     """
     Double grid resolution, returning a new equilibrium

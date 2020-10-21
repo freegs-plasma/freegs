@@ -42,11 +42,7 @@ def max_coil_force(eq):
 
 def no_wall_intersection(eq):
     """Prevent intersection of LCFS with walls by returning inf if intersections are found"""
-    separatrix = eq.separatrix() # Array [:,2]
-    wall = eq.tokamak.wall # Wall object with R and Z members (lists)
-
-    if polygons.intersect(separatrix[:,0], separatrix[:,1],
-                          wall.R, wall.Z):
+    if eq.intersectsWall():
         return float("inf")
     return 0.0 # No intersection
 

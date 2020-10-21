@@ -1,4 +1,3 @@
-
 import numpy as np
 
 from . import critical
@@ -100,3 +99,4 @@ def test_mask_zero_psi_bndry():
     # Some of the mask must equal 1, some 0
     assert np.any(np.equal(mask, 1))
     assert np.any(np.equal(mask, 0))
+
