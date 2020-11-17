@@ -36,12 +36,17 @@ November 2020
 * AverageTemperature() calculates the average particle temperature, by using the ideal gas law considering all particles.
 
 * The function PowerL() calculates the loss power of the plasma.
-*The function tauE() calculates the confinement time.
-*The function tauE_Coeffs is required for PowerL() and tauE() to run.
-*By default, AverageElDensity() uses 300 npoints (i.e, 300 points on the plasma's outer edge) when it calls on the minorRadius function, but this can be changed as appropriate. As a guide, with npoints = 20 the results were observed to diverge at the second significant figure.
+
+* The function tauE() calculates the confinement time.
+
+* The function tauE_Coeffs is required for PowerL() and tauE() to run.
+
+* By default, AverageElDensity() uses 300 npoints (i.e, 300 points on the plasma's outer edge) when it calls on the minorRadius function, but this can be changed as appropriate. As a guide, with npoints = 20 the results were observed to diverge at the second significant figure.
 
 3. Additional Changes to the Code
 =================================
-*Some bugs in the last update to equilibrium.py have been patched, and a couple of functions have been rationalised.
-*In this endeavour, changes have been made to the following functions: the three internalInductance functions, poloidalBeta2(), intersectsWall(), and effectiveElongation().
-*effectiveElongation(), which calculates the elongation of the plasma using its volume, does not require inner and outer wall positions as input arguments anymore.
+* Some bugs in the last update to equilibrium.py have been patched, and a couple of functions have been rationalised.
+
+* In this endeavour, changes have been made to the following functions: the three internalInductance functions, poloidalBeta2(), intersectsWall(), and effectiveElongation().
+
+* effectiveElongation(), which calculates the elongation of the plasma using its volume, does not require inner and outer wall positions as input arguments anymore.
