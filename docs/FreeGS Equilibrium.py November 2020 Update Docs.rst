@@ -2,8 +2,8 @@
 FreeGS November 2020 Update Documentation
 =========================================
 
-Chris Winnard
-November 2020
+
+Chris Winnard, November 2020
 
 1. General New Features
 =======================
