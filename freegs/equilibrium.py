@@ -580,7 +580,7 @@ class Equilibrium:
         """Calculates plasma effective elongation using the plasma volume
 
         """
-        return self.plasmaVolume()/(2.*np.pi * self.Rgeometric(npoints=npoints) * self.minorRadius(npoints=npoints)**2)
+        return self.plasmaVolume()/(2.*np.pi * self.Rgeometric(npoints=npoints) * np.pi * self.minorRadius(npoints=npoints)**2)
     
     def internalInductance1(self, npoints=300):
         """Calculates li1 plasma internal inductance
