@@ -394,7 +394,8 @@ def find_separatrix(eq, opoint=None, xpoint=None, ntheta=20, psi=None, axis=None
                                r0, z0,
                                r0 + 10.*sin(theta), z0 + 10.*cos(theta),
                                psival=psival,
-                               axis=axis)
+                               axis=axis,
+                               n=1000)
         isoflux.append((r, z, xpoint[0][0], xpoint[0][1]))
 
     return isoflux
