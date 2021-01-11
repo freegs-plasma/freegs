@@ -382,6 +382,7 @@ def find_separatrix(eq, opoint=None, xpoint=None, ntheta=20, psi=None, axis=None
 
     # Avoid putting theta grid points exactly on the X-points
     xpoint_theta = arctan2(xpoint[0][0] - r0, xpoint[0][1] - z0)
+    xpoint_theta = xpoint_theta * (xpoint_theta >= 0) + (xpoint_theta + 2 * pi) * (xpoint_theta < 0)
     # How close in theta to allow theta grid points to the X-point
     TOLERANCE = 1.e-3
     if any(abs(theta_grid - xpoint_theta) < TOLERANCE):
