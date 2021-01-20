@@ -11,6 +11,8 @@ from scipy.integrate import romb, quad # Romberg integration
 from .boundary import fixedBoundary, freeBoundary
 from . import critical
 
+from . import polygons
+
 # Operators which define the G-S equation
 from .gradshafranov import mu0, GSsparse, GSsparse4thOrder
 
