@@ -58,6 +58,8 @@ eq.printForces()
 
 from freegs import optimise as opt
 
+print("Starting optimisation")
+
 best_eq = opt.optimise(eq,  # Starting equilibrium
                        # List of controls
                        [opt.CoilRadius("P2U"),
@@ -68,6 +70,9 @@ best_eq = opt.optimise(eq,  # Starting equilibrium
                        maxgen=20, # How many generations
                        monitor=opt.PlotMonitor())  # Plot the best in each generation
 
+print("Finished optimisation")
+
 # Forces on the coils
 best_eq.printForces()
 best_eq.plot()
+
