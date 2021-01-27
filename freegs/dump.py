@@ -29,6 +29,7 @@ from __future__ import unicode_literals
 
 try:
     import h5py
+
     has_hdf5 = True
 except ImportError:
     has_hdf5 = False
@@ -46,6 +47,7 @@ class OutputFormatNotAvailableError(Exception):
     required for this OutputFile format
 
     """
+
     def __init__(self, file_format="HDF5"):
         self.message = "Sorry, {} is not available!".format(file_format)
 
@@ -132,7 +134,7 @@ class OutputFile(object):
         equilibrium_group.create_dataset("Z", data=equilibrium.Z)
 
         equilibrium_group.create_dataset("current", data=equilibrium.plasmaCurrent())
-        equilibrium_group["current"].attrs["title"] = u"Plasma current [Amps]"
+        equilibrium_group["current"].attrs["title"] = "Plasma current [Amps]"
 
         psi_id = equilibrium_group.create_dataset("psi", data=equilibrium.psi())
         psi_id.dims[0].label = "R"
@@ -142,29 +144,30 @@ class OutputFile(object):
         psi_id.dims[0].attach_scale(equilibrium_group["R_1D"])
         psi_id.dims[1].attach_scale(equilibrium_group["Z_1D"])
 
-        plasma_psi_id = equilibrium_group.create_dataset("plasma_psi",
-                                                         data=equilibrium.plasma_psi)
+        plasma_psi_id = equilibrium_group.create_dataset(
+            "plasma_psi", data=equilibrium.plasma_psi
+        )
         plasma_psi_id.dims[0].label = "R"
         plasma_psi_id.dims[1].label = "Z"
         plasma_psi_id.dims[0].attach_scale(equilibrium_group["R_1D"])
         plasma_psi_id.dims[1].attach_scale(equilibrium_group["Z_1D"])
 
-        equilibrium_group.create_dataset("boundary_function",
-                                         data=equilibrium._applyBoundary.__name__)
+        equilibrium_group.create_dataset(
+            "boundary_function", data=equilibrium._applyBoundary.__name__
+        )
 
         tokamak_group = equilibrium_group.create_group(self.MACHINE_GROUP_NAME)
 
         if equilibrium.tokamak.wall is not None:
-            tokamak_group.create_dataset(
-                "wall_R", data=equilibrium.tokamak.wall.R)
-            tokamak_group.create_dataset(
-                "wall_Z", data=equilibrium.tokamak.wall.Z)
+            tokamak_group.create_dataset("wall_R", data=equilibrium.tokamak.wall.R)
+            tokamak_group.create_dataset("wall_Z", data=equilibrium.tokamak.wall.Z)
 
         coils_group = tokamak_group.create_group(self.COILS_GROUP_NAME)
         for label, coil in equilibrium.tokamak.coils:
             dtype = type_to_dtype[coil.dtype]
-            coils_group.create_dataset(label, dtype=dtype,
-                                       data=np.array(coil.to_numpy_array()))
+            coils_group.create_dataset(
+                label, dtype=dtype, data=np.array(coil.to_numpy_array())
+            )
             # A bit gross, but store the class name so we know what
             # type to restore it to later
             coils_group[label].attrs["freegs type"] = coil.__class__.__name__
@@ -217,9 +220,17 @@ class OutputFile(object):
         eq_boundary_name = equilibrium_group["boundary_function"][()]
         eq_boundary_func = boundary.__dict__[eq_boundary_name]
 
-        equilibrium = Equilibrium(tokamak=tokamak, Rmin=Rmin, Rmax=Rmax,
-                                  Zmin=Zmin, Zmax=Zmax, nx=nx, ny=ny,
-                                  psi=plasma_psi, current=current,
-                                  boundary=eq_boundary_func)
+        equilibrium = Equilibrium(
+            tokamak=tokamak,
+            Rmin=Rmin,
+            Rmax=Rmax,
+            Zmin=Zmin,
+            Zmax=Zmax,
+            nx=nx,
+            ny=ny,
+            psi=plasma_psi,
+            current=current,
+            boundary=eq_boundary_func,
+        )
 
         return equilibrium

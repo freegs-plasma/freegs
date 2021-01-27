@@ -26,6 +26,7 @@ import numpy as np
 from .coil import Coil, AreaCurrentLimit
 from .gradshafranov import Greens, GreensBr, GreensBz
 
+
 class MultiCoil(Coil):
     """
     This class is multifunctional and can model several coil arrangements:
@@ -56,16 +57,28 @@ class MultiCoil(Coil):
     """
 
     # A dtype for converting to Numpy array and storing in HDF5 files
-    dtype = np.dtype([
-        (str("R"), np.float64),
-        (str("Z"), np.float64),
-        (str("current"), np.float64),
-        (str("turns"), np.int),
-        (str("control"), np.bool),
-        (str("mirror"), np.bool)
-    ])
+    dtype = np.dtype(
+        [
+            (str("R"), np.float64),
+            (str("Z"), np.float64),
+            (str("current"), np.float64),
+            (str("turns"), np.int),
+            (str("control"), np.bool),
+            (str("mirror"), np.bool),
+        ]
+    )
 
-    def __init__(self, R, Z, current=0.0, turns=1, control=True, mirror=False, polarity = [1.0,1.0], area=AreaCurrentLimit()):
+    def __init__(
+        self,
+        R,
+        Z,
+        current=0.0,
+        turns=1,
+        control=True,
+        mirror=False,
+        polarity=[1.0, 1.0],
+        area=AreaCurrentLimit(),
+    ):
         """
         R, Z       - Location of the coil centre. If modified moves all filaments
         Rfil, Zfil - Locations of coil filaments (lists)
@@ -119,11 +132,11 @@ class MultiCoil(Coil):
 
         result = 0.0
         for R_fil, Z_fil in zip(self.Rfil, self.Zfil):
-            result += Greens(R_fil, Z_fil, R, Z)*self.polarity[0]
-                
+            result += Greens(R_fil, Z_fil, R, Z) * self.polarity[0]
+
         if self.mirror:
             for R_fil, Z_fil in zip(self.Rfil, self.Zfil):
-                result += Greens(R_fil, -Z_fil, R, Z)*self.polarity[1]
+                result += Greens(R_fil, -Z_fil, R, Z) * self.polarity[1]
         return result
 
     def controlBr(self, R, Z):
@@ -132,11 +145,11 @@ class MultiCoil(Coil):
         """
         result = 0.0
         for R_fil, Z_fil in zip(self.Rfil, self.Zfil):
-            result += GreensBr(R_fil, Z_fil, R, Z)*self.polarity[0]
+            result += GreensBr(R_fil, Z_fil, R, Z) * self.polarity[0]
 
-        if self.mirror: # Mirror coil(s) in Z, creating circuit
+        if self.mirror:  # Mirror coil(s) in Z, creating circuit
             for R_fil, Z_fil in zip(self.Rfil, self.Zfil):
-                result += GreensBr(R_fil, -Z_fil, R, Z)*self.polarity[1]
+                result += GreensBr(R_fil, -Z_fil, R, Z) * self.polarity[1]
         return result
 
     def controlBz(self, R, Z):
@@ -145,23 +158,32 @@ class MultiCoil(Coil):
         """
         result = 0.0
         for R_fil, Z_fil in zip(self.Rfil, self.Zfil):
-            result += GreensBz(R_fil, Z_fil, R, Z)*self.polarity[0]
-            
-        if self.mirror: # Mirror coil(s) in Z, creating circuit
+            result += GreensBz(R_fil, Z_fil, R, Z) * self.polarity[0]
+
+        if self.mirror:  # Mirror coil(s) in Z, creating circuit
             for R_fil, Z_fil in zip(self.Rfil, self.Zfil):
-                result += GreensBz(R_fil, -Z_fil, R, Z)*self.polarity[1]
+                result += GreensBz(R_fil, -Z_fil, R, Z) * self.polarity[1]
         return result
 
     def __repr__(self):
-        return ("MultiCoil(R={0}, Z={1}, current={2:.1f}, turns={3}, control={4}, mirror={5}, polarity={6})"
-                .format(self.Rfil, self.Zfil, self.current, self.turns, self.control, self.mirror, self.polarity))
+        return "MultiCoil(R={0}, Z={1}, current={2:.1f}, turns={3}, control={4}, mirror={5}, polarity={6})".format(
+            self.Rfil,
+            self.Zfil,
+            self.current,
+            self.turns,
+            self.control,
+            self.mirror,
+            self.polarity,
+        )
 
     def __eq__(self, other):
-        return (self.R == other.R
-                and self.Z == other.Z
-                and self.current == other.current
-                and self.turns == other.turns
-                and self.control == other.control)
+        return (
+            self.R == other.R
+            and self.Z == other.Z
+            and self.current == other.current
+            and self.turns == other.turns
+            and self.control == other.control
+        )
 
     def __ne__(self, other):
         return not self == other
@@ -170,30 +192,34 @@ class MultiCoil(Coil):
         """
         Helper method for writing output
         """
-        return np.array((self.R, self.Z, self.current, self.turns, self.control),
-                        dtype=self.dtype)
+        return np.array(
+            (self.R, self.Z, self.current, self.turns, self.control), dtype=self.dtype
+        )
 
     @classmethod
     def from_numpy_array(cls, value):
         if value.dtype != cls.dtype:
-            raise ValueError("Can't create {this} from dtype: {got} (expected: {dtype})"
-                             .format(this=type(cls), got=value.dtype, dtype=cls.dtype))
+            raise ValueError(
+                "Can't create {this} from dtype: {got} (expected: {dtype})".format(
+                    this=type(cls), got=value.dtype, dtype=cls.dtype
+                )
+            )
         return Coil(*value[()])
-        
+
     def plot(self, axis=None, show=False):
         """
         Plot the coil including turn locations
         """
         import matplotlib.pyplot as plt
-        
+
         if axis is None:
             fig = plt.figure()
             axis = fig.add_subplot(111)
 
-        plt.plot(self.Rfil, self.Zfil, 'bo')
-        
+        plt.plot(self.Rfil, self.Zfil, "bo")
+
         return axis
-        
+
     @property
     def R(self):
         """
