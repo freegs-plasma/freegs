@@ -5,8 +5,7 @@ from numpy import allclose
 
 
 def test_readwrite():
-    """Test reading/writing to a file round-trip
-    """
+    """Test reading/writing to a file round-trip"""
     tokamak = freegs.machine.MAST_sym()
     eq = freegs.Equilibrium(
         tokamak=tokamak,

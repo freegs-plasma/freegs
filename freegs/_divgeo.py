@@ -23,6 +23,7 @@ import numpy as np
 
 from ._fileutils import f2s, ChunkOutput, write_1d, write_2d, next_value
 
+
 def write(data, fh, label=None):
     """
     Write a DivGeo file, given a dictionary of data
@@ -48,7 +49,8 @@ def write(data, fh, label=None):
     """
 
     # Write header
-    fh.write("""    jm   :=  no. of grid points in radial direction;
+    fh.write(
+        """    jm   :=  no. of grid points in radial direction;
     km   :=  no. of grid points in vertical direction;
     r    :=  radial   coordinates of grid points  [m];
     z    :=  vertical coordinates of grid points  [m];
@@ -64,33 +66,36 @@ def write(data, fh, label=None):
     btf   =   {bcentr:1.14f}       t;
     rtf   =   {rcentr:1.14f}       m;
  
-""".format(**data))
-    
+""".format(
+            **data
+        )
+    )
+
     try:
         r = data["r"]
     except KeyError:
         # No "r" in the dictionary
         # use rdim, rleft and nx (from eqdsk)
-        
+
         Rmin = data["rleft"]
         Rmax = data["rleft"] + data["rdim"]
         nx = data["nx"]
 
-        dR = (Rmax - Rmin)/(nx - 1)
-        r = np.arange(nx)*dR + Rmin
+        dR = (Rmax - Rmin) / (nx - 1)
+        r = np.arange(nx) * dR + Rmin
 
     try:
         z = data["z"]
     except KeyError:
         # No "z" in the dictionary
         # use zdim, zmid and ny (from eqdsk)
-        
-        Zmin = data["zmid"] - 0.5*data["zdim"]
-        Zmax = data["zmid"] + 0.5*data["zdim"]
+
+        Zmin = data["zmid"] - 0.5 * data["zdim"]
+        Zmax = data["zmid"] + 0.5 * data["zdim"]
         ny = data["ny"]
 
-        dZ = (Zmax - Zmin)/(ny - 1)
-        z = np.arange(ny)*dZ + Zmin
+        dZ = (Zmax - Zmin) / (ny - 1)
+        z = np.arange(ny) * dZ + Zmin
 
     # Now write r and z
     fh.write("    r(1:jm);\n")
@@ -101,9 +106,8 @@ def write(data, fh, label=None):
     fh.write(" \n    z(1:km);\n")
     write_1d(z, co)
     co.newline()
-    
+
     fh.write(" \n      ((psi(j,k)-psib,j=1,jm),k=1,km)\n")
-    
-    write_2d( data["psi"] - data["sibdry"], co )
+
+    write_2d(data["psi"] - data["sibdry"], co)
     co.newline()
-    
