@@ -110,7 +110,7 @@ def next_value(fh):
     the correct type depending on if '.' is in the string
     
     """
-    pattern = re.compile(r'[ +\-]?\d+(?:\.\d+[Ee][\+\-]\d\d)?')
+    pattern = re.compile(r"[ +\-]?\d+(?:\.\d+(?:[Ee][\+\-]\d\d)?)?")
 
     # Go through each line, extract values, then yield them one by one
     for line in fh:
