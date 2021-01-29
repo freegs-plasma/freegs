@@ -102,7 +102,8 @@ The "freegs" module consists of the following files:
 License
 -------
 
-    Copyright 2016-2020 Ben Dudson, University of York. Email: benjamin.dudson@york.ac.uk
+    Copyright 2016-2021 Ben Dudson, University of York, and other contributors.
+    Email: benjamin.dudson@york.ac.uk
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Lesser General Public License as published by
@@ -126,6 +127,18 @@ References
 
 Versions
 --------
+
+0.6.0  29th January 2021
+  - Improve separatrix finding (Pablo Rodriguez-Fernandez)
+  - Update MAST-U machine description (James Harrison)
+  - Updated documentation
+  - Add tests for critical point finding
+  - Black format all library code
+  - Fix wall intersection calculation in optimisation
+  - Fix factor of pi in effectiveElongation (Chris Winnard)
+  - Miscellaneous fixes and tidying (Chris Winnard)
+  - Fix psi_bndry test in critical.core_mask
+  - Fix comments in Greens functions (James Morris)
 
 0.5.0  25th March 2020
   - More tests, thanks to @ZedThree.
