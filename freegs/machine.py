@@ -416,6 +416,7 @@ class Wall:
     """
 
     def __init__(self, R, Z):
+        assert len(R) == len(Z)
         self.R = R
         self.Z = Z
 
