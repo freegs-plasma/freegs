@@ -128,7 +128,7 @@ class Equilibrium:
             nx, ny, generator, nlevels=1, ncycle=1, niter=2, direct=True
         )
 
-    def setSolverVcycle(nlevels=1, ncycle=1, niter=1, direct=True):
+    def setSolverVcycle(self, nlevels=1, ncycle=1, niter=1, direct=True):
         """
         Creates a new linear solver, based on the multigrid code
 
@@ -138,7 +138,7 @@ class Equilibrium:
         direct   - Use a direct solver at the coarsest level?
 
         """
-        generator = GSsparse(Rmin, Rmax, Zmin, Zmax)
+        generator = GSsparse(self.Rmin, self.Rmax, self.Zmin, self.Zmax)
         nx, ny = self.R.shape
 
         self._solver = multigrid.createVcycle(
@@ -151,7 +151,7 @@ class Equilibrium:
             direct=direct,
         )
 
-    def setSolver(solver):
+    def setSolver(self, solver):
         """
         Sets the linear solver to use. The given object/function must have a __call__ method
         which takes two inputs
@@ -626,11 +626,12 @@ class Equilibrium:
 
     def internalInductance1(self, npoints=300):
         """Calculates li1 plasma internal inductance"""
-        # Produce array of Bpol^2 in (R,Z)
-        B_polvals_2 = self.Bz(self.R, self.Z) ** 2 + self.Br(R, Z) ** 2
 
         R = self.R
         Z = self.Z
+        # Produce array of Bpol^2 in (R,Z)
+        B_polvals_2 = self.Bz(R, Z) ** 2 + self.Br(R, Z) ** 2
+
         dR = R[1, 0] - R[0, 0]
         dZ = Z[0, 1] - Z[0, 0]
         dV = 2.0 * np.pi * R * dR * dZ
@@ -653,8 +654,6 @@ class Equilibrium:
 
         R = self.R
         Z = self.Z
-        psi = self.psi()
-
         # Produce array of Bpol in (R,Z)
         B_polvals_2 = self.Br(R, Z) ** 2 + self.Bz(R, Z) ** 2
 
@@ -675,8 +674,6 @@ class Equilibrium:
 
         R = self.R
         Z = self.Z
-        psi = self.psi()
-
         # Produce array of Bpol in (R,Z)
         B_polvals_2 = self.Br(R, Z) ** 2 + self.Bz(R, Z) ** 2
 
@@ -721,8 +718,6 @@ class Equilibrium:
         pressure_integral = romb(romb(pressure * dV))
         field_integral_pol = romb(romb(B_polvals_2 * dV))
         return 2 * mu0 * pressure_integral / field_integral_pol
-
-        return poloidal_beta
 
     def toroidalBeta(self):
         """Calculate plasma toroidal beta by integrating the thermal pressure

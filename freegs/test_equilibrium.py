@@ -48,3 +48,11 @@ def test_fixed_boundary_psi():
 
     assert eq.psi_bndry == 0.0
     assert eq.poloidalBeta() > 0.0
+
+
+def test_setSolverVcycle():
+    eq = equilibrium.Equilibrium(Rmin=0.1, Rmax=2.0, Zmin=-1.0, Zmax=1.0, nx=65, ny=65)
+
+    oldsolver = eq._solver
+    eq.setSolverVcycle(nlevels=2, ncycle=1, niter=5)
+    assert eq._solver != oldsolver

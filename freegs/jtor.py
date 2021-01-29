@@ -273,8 +273,6 @@ class ConstrainBetapIp(Profile):
         shape = (1.0 - np.clip(pn, 0.0, 1.0) ** self.alpha_m) ** self.alpha_n
         return mu0 * self.L * (1 - self.Beta0) * self.Raxis * shape
 
-        return Jtor, pprime, ffprime
-
     def fvac(self):
         return self._fvac
 
@@ -405,8 +403,6 @@ class ConstrainPaxisIp(Profile):
         """
         shape = (1.0 - np.clip(pn, 0.0, 1.0) ** self.alpha_m) ** self.alpha_n
         return mu0 * self.L * (1 - self.Beta0) * self.Raxis * shape
-
-        return Jtor, pprime, ffprime
 
     def fvac(self):
         return self._fvac
