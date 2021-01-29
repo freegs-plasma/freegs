@@ -230,7 +230,7 @@ class Circuit:
         for label, coil, multiplier in self.coils:
             axis = coil.plot(axis=axis, show=False)
         if show:
-            import matplotlib.pyplot
+            import matplotlib.pyplot as plt
 
             plt.show()
         return axis
