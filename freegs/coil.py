@@ -74,8 +74,8 @@ class Coil:
             (str("R"), np.float64),
             (str("Z"), np.float64),
             (str("current"), np.float64),
-            (str("turns"), np.int),
-            (str("control"), np.bool),
+            (str("turns"), int),
+            (str("control"), bool),
         ]
     )
 
