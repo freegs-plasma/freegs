@@ -71,7 +71,10 @@ def weighted_sum(*args):
         else:
             args_with_weights.append(arg)
 
-    return lambda eq: sum(func(eq) * weight for func, weight in args_with_weights)
+    def combined_measure(eq):
+        return sum(func(eq) * weight for func, weight in args_with_weights)
+
+    return combined_measure
 
 
 #### Controls for Equilibrium objects
@@ -193,11 +196,11 @@ def optimise(eq, controls, measure, maxgen=10, N=10, CR=0.3, F=1.0, monitor=None
         try:
             # Re-solve
             picard.solve(eq, eq._profiles, eq._constraints)
+            # Call user-supplied evaluation function
+            return measure(eq)
         except:
             # Solve failed.
             return float("inf")
-        # Call user-supplied evaluation function
-        return measure(eq)
 
     # Call the generic optimiser,
     return optimiser.optimise(
