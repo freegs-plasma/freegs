@@ -3,10 +3,10 @@ Defines class to represent the equilibrium
 state, including plasma and coil currents
 """
 
-from numpy import pi, meshgrid, linspace, exp, zeros, nditer, array
+from numpy import pi, meshgrid, linspace, exp, array
 import numpy as np
 from scipy import interpolate
-from scipy.integrate import romb, quad  # Romberg integration
+from scipy.integrate import romb  # Romberg integration
 
 from .boundary import fixedBoundary, freeBoundary
 from . import critical

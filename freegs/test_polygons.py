@@ -3,22 +3,19 @@ import numpy as np
 
 
 def test_nointersect():
-    assert polygons.intersect([0, 1], [0, 0], [0, 1], [1, 1]) == False
-    assert polygons.intersect([0, 1], [0, 0], [2, 2], [1, -1]) == False
+    assert not polygons.intersect([0, 1], [0, 0], [0, 1], [1, 1])
+    assert not polygons.intersect([0, 1], [0, 0], [2, 2], [1, -1])
 
 
 # Two line segments
 def test_lineintersect():
-    assert polygons.intersect([0, 1], [0, 0], [0.5, 0.5], [1, -1]) == True
+    assert polygons.intersect([0, 1], [0, 0], [0.5, 0.5], [1, -1])
 
 
 # Two squares
 def test_squareintersect():
-    assert (
-        polygons.intersect(
-            [0, 1, 1, 0], [0, 0, 1, 1], [-0.5, 0.5, 0.5, -0.5], [0.5, 0.5, 1.5, 1.5]
-        )
-        == True
+    assert polygons.intersect(
+        [0, 1, 1, 0], [0, 0, 1, 1], [-0.5, 0.5, 0.5, -0.5], [0.5, 0.5, 1.5, 1.5]
     )
 
 
@@ -27,7 +24,7 @@ def test_area():
     assert np.isclose(polygons.area([(0, 0), (0, 1), (1, 0)]), 0.5)
 
 
-###### clockwise
+# clockwise
 
 
 def test_clockwise():
@@ -35,7 +32,7 @@ def test_clockwise():
     assert polygons.clockwise([(0, 0), (0, 1), (1, 1), (1, 0)])
 
 
-###### triangulate
+# triangulate
 
 
 def test_triangulate_three():

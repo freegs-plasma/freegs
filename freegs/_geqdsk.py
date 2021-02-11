@@ -21,7 +21,7 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 from datetime import date
-from numpy import zeros, linspace, pi
+from numpy import zeros, pi
 
 from ._fileutils import f2s, ChunkOutput, write_1d, write_2d, next_value
 
@@ -207,7 +207,6 @@ def read(fh, cocos=1):
     if len(words) < 3:
         raise ValueError("Expecting at least 3 numbers on first line")
 
-    idum = int(words[-3])
     nx = int(words[-2])
     ny = int(words[-1])
 

@@ -64,7 +64,6 @@ def solve(
     if show:
         import matplotlib.pyplot as plt
         from .plotting import plotEquilibrium
-        from . import critical
 
         if pause > 0.0 and axis is None:
             # No axis specified, so create a new figure

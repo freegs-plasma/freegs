@@ -22,7 +22,7 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 
 
 from scipy import interpolate
-from numpy import zeros, shape
+from numpy import zeros
 from numpy.linalg import inv
 from numpy import (
     dot,

@@ -22,11 +22,10 @@ You should have received a copy of the GNU Lesser General Public License
 along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-from .gradshafranov import Greens, GreensBr, GreensBz, mu0
+from .gradshafranov import Greens, GreensBr, GreensBz
 
 from numpy import linspace
 import numpy as np
-import numbers
 
 from .coil import Coil, AreaCurrentLimit
 from .shaped_coil import ShapedCoil

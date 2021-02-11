@@ -22,12 +22,14 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 from . import optimiser
-from . import polygons
 from . import picard
+
+import matplotlib.pyplot as plt
+from freegs.plotting import plotEquilibrium
 
 from math import sqrt
 
-### Measures which operate on Equilibrium objects
+# Measures which operate on Equilibrium objects
 
 
 def max_abs_coil_current(eq):
@@ -50,7 +52,7 @@ def no_wall_intersection(eq):
     return 0.0  # No intersection
 
 
-### Combine measures
+# Combine measures
 
 
 def weighted_sum(*args):
@@ -77,7 +79,7 @@ def weighted_sum(*args):
     return combined_measure
 
 
-#### Controls for Equilibrium objects
+# Controls for Equilibrium objects
 
 
 class CoilRadius:
@@ -128,10 +130,7 @@ class CoilHeight:
         return eq.tokamak[self.label].Z
 
 
-import matplotlib.pyplot as plt
-from freegs.plotting import plotEquilibrium
-
-#### Monitor optimisation solutions
+# Monitor optimisation solutions
 
 # Plot and save the best equilibrium each generation
 class PlotMonitor:

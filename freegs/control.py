@@ -139,49 +139,6 @@ class constrain(object):
         return plotConstraints(self, axis=axis, show=show)
 
 
-def flux_surface(R0, Z0, a, elongation=0.0, triangularity=0.0, indentation=0.0, n=20):
-    """
-    Generate a set of up-down symmetric isoflux points for a flux
-    surface of given shape. Uses the parametrisation given in
-
-    J. Manickam, Nucl. Fusion 24 595 (1984)
-
-    R0 - Major radius of axis
-    Z0 - Height of axis
-    a  - Minor radius
-
-    elongation - ellipticity-1 = 0 for a circle
-    triangularity - 'D' shape
-    indentation - Produces a bean shape
-
-    n - Number of points
-
-    """
-
-    def pos(theta):
-        """
-        Returns R,Z at given theta
-        """
-        R = (
-            R0
-            - indentation
-            + (a + indentation * cos(theta)) * cos(theta + triangularity * sin(theta))
-        )
-        Z = Z0 + (1.0 + elongation) * a * sin(theta)
-        return R, Z
-
-    # Poloidal angle values
-    thetavals = linspace(0.0, 2 * pi, n, endpoint=False)
-
-    # Generate the first point, used as a reference for all others
-    p0 = pos(0.0)
-
-    # All other points are the same flux as p0
-    isoflux = [p0 + pos(theta) for theta in thetavals[1:]]
-
-    return isoflux
-
-
 class ConstrainPsi2D(object):
     """
     Adjusts coil currents to minimise the square differences

@@ -3,7 +3,7 @@
 
  These must have the following methods:
 
-   Jtor(R, Z, psi, psi_bndry=None) 
+   Jtor(R, Z, psi, psi_bndry=None)
       -> Return a numpy array of toroidal current density [J/m^2]
    pprime(psinorm)
       -> return p' at given normalised psi
@@ -454,9 +454,6 @@ class ProfilesPprimeFfprime:
             psi_bndry = psi[0, 0]
             mask = None
 
-        dR = R[1, 0] - R[0, 0]
-        dZ = Z[0, 1] - Z[0, 0]
-
         # Calculate normalised psi.
         # 0 = magnetic axis
         # 1 = plasma boundary
@@ -495,33 +492,3 @@ class ProfilesPprimeFfprime:
 
     def fvac(self):
         return self._fvac
-
-
-'''    
-class ProfilesSafety:
-    """
-    Specified profile functions safety factor
-    
-    """
-    def __init__(self, q_func=None):
-        """
-        q_func = Returns q profile for a normalised value of psi
-        
-        Optionally, the pres
-        """
-        self.q_func = q_func
-        
-   
-    
-    def q(self, psinorm, out=None):
-        """
-        Return f=R*Bt at given value(s) of
-        normalised psi.
-        """
-        if self.f_func is not None:
-            # If a function exists then use it
-            return self.q_func(psinorm)
-        
-        # If not, use base class to integrate
-        return super(ProfilesSafety, self).q(psinorm, out)
-'''

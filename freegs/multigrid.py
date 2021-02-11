@@ -27,9 +27,9 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 
 """
 
-from numpy import zeros, max, amin, amax, abs, reshape
+from numpy import zeros, max, abs, reshape
 from scipy.sparse.linalg import factorized
-from scipy.sparse import eye, lil_matrix
+from scipy.sparse import eye
 
 
 class MGDirect:
@@ -184,7 +184,7 @@ def restrict(orig, out=None, avg=False):
 
     if (nx - 1) % 2 == 1 or (ny - 1) % 2 == 1:
         # Can't divide any further
-        if out == None:
+        if out is None:
             return orig
         out.resize(orig.shape)
         out[:, :] = orig
@@ -257,28 +257,6 @@ def interpolate(orig, out=None):
     return out
 
 
-def sparseRestrict(nx, ny):
-    """
-    Create a sparse matrix to coarsen a mesh
-
-    input : [nx,ny]
-    output: [(nx-1)/2+1, (ny-1)/2+1]
-
-    """
-
-    if (nx - 1) % 2 == 1 or (ny - 1) % 2 == 1:
-        # Can't divide
-        raise ValueError("Can't divide nx and/or ny")
-
-    nx_new = (nx - 1) // 2 + 1
-    ny_new = (ny - 1) // 2 + 1
-
-    N = nx * ny
-    M = nx_new * ny_new
-
-    A = lil_matrix([M, N])
-
-
 def smoothVcycle(A, x, b, dx, dy, niter=10, sublevels=0, direct=True):
     """
     Perform smoothing using multigrid
@@ -306,8 +284,6 @@ def smoothVcycle(A, x, b, dx, dy, niter=10, sublevels=0, direct=True):
 
         x = x + xupdate
 
-        errup = A(xupdate, dx, dy)
-
     # Smooth
     for i in range(niter):
         x = smoothJacobi(A, x, b, dx, dy)
@@ -331,9 +307,6 @@ def smoothMG(A, x, b, dx, dy, niter=10, sublevels=1, ncycle=2):
             )
         )
     return x
-
-
-########################################
 
 
 class LaplacianOp:
