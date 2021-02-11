@@ -128,6 +128,14 @@ References
 Versions
 --------
 
+0.6.1  11th February 2021
+  - Fixes for HDF5 reading and writing
+  - Fix Numpy deprecations
+  - Catch errors in optimisation measures, making that more robust
+  - Fix core mask in geqdsk file reading
+  - Flake8 fixes
+  - Move to Github actions
+
 0.6.0  29th January 2021
   - Improve separatrix finding (Pablo Rodriguez-Fernandez)
   - Update MAST-U machine description (James Harrison)
