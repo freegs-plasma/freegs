@@ -283,10 +283,15 @@ class ConstrainPsiNorm2D(object):
 
         opt, xpt = critical.find_critical(eq.R, eq.Z, psi)
         if not opt:
+            print("No O-points found!")
+            print(opt, xpt)
+            eq.plot()
             raise ValueError("No O-points found!")
         psi_axis = opt[0][2]
 
         if not xpt:
+            print("No X-points found!")
+            eq.plot()
             raise ValueError("No X-points found")
         psi_bndry = xpt[0][2]
 
