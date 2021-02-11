@@ -165,10 +165,12 @@ def read(
     ntheta=8,
     show=False,
     axis=None,
+    pause=0.0001,
     cocos=1,
     domain=None,
     blend=0.0,
     fit_sol=False,
+    maxits=50,
 ):
     """
     Reads a G-EQDSK format file
@@ -184,6 +186,8 @@ def read(
         Set to true to show solution in a new figure
     axis : Matplotlib Axis object
        Set to an axis for plotting. Implies show=True
+    pause : float
+       Delay between output plots. If negative, waits for window to be closed
     cocos : integer
         COordinate COnventions. Not fully handled yet,
         only whether psi is divided by 2pi or not.
@@ -203,6 +207,9 @@ def read(
         outside the separatrix.
         If True, the whole domain is used in the fitting.
         This is useful if the locations of strike points need to be constrained.
+    maxits : integer
+        Maximum number of iterations. Set to None for no limit.
+        If this limit is exceeded then a RuntimeError is raised.
 
     A nonlinear solve will be performed, using Picard iteration
 
@@ -319,10 +326,6 @@ def read(
     # 1 = plasma boundary
     psi_norm = clip((psi - psi_axis) / (psi_bndry - psi_axis), 0.0, 1.1)
 
-    # Create masking function: 1 inside plasma, 0 outside
-    mask = np.ones(psi.shape)
-    mask[psi_norm > 1.0 - 1e-6] = 0.0  # Ignore areas outside the plasma
-
     # Create an Equilibrium object
     eq = Equilibrium(
         tokamak=machine,
@@ -336,6 +339,10 @@ def read(
     # Grid spacing
     dR = eq.R[1, 0] - eq.R[0, 0]
     dZ = eq.Z[0, 1] - eq.Z[0, 0]
+
+    # Create masking function: 1 inside plasma, 0 outside
+    opoint, xpoint = critical.find_critical(eq.R, eq.Z, psi)
+    mask = critical.core_mask(eq.R, eq.Z, psi, opoint, xpoint, psi_bndry)
 
     # Toroidal current
     Jtor = eq.R * pprime_func(psi_norm) + ffprime_func(psi_norm) / (eq.R * mu0)
@@ -378,8 +385,8 @@ def read(
         psi_norm = clip((psi - psi_axis) / (psi_bndry - psi_axis), 0.0, 1.0)
 
         # Create masking function: 1 inside plasma, 0 outside
-        mask = np.ones(psi.shape)
-        mask[psi_norm > 1.0 - 1e-6] = 0.0  # Ignore areas outside the plasma
+        opoint, xpoint = critical.find_critical(eq.R, eq.Z, psi)
+        mask = critical.core_mask(eq.R, eq.Z, psi, opoint, xpoint, psi_bndry)
 
     # Note: Here we have
     #   eq : Equilibrium object
@@ -454,8 +461,10 @@ def read(
         controlsystem,
         show=show,
         axis=axis,
+        pause=pause,
         rtol=rtol,
-        blend=0.5,
+        blend=blend,
+        maxits=maxits,
     )
 
     print(
