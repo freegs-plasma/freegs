@@ -190,7 +190,7 @@ class ConstrainPsi2D(object):
     Ignores constant offset differences between psi array
     """
 
-    def __init__(self, target_psi, weights=1.0):
+    def __init__(self, target_psi, weights=None):
         """
         target_psi : 2D (R,Z) array
             Must be the same size as the equilibrium psi
@@ -201,6 +201,9 @@ class ConstrainPsi2D(object):
             Set points to zero to ignore them in fitting.
 
         """
+        if weights is None:
+            weights = np.full(target_psi.shape, 1.0)
+
         # Remove the average so constant offsets are ignored
         self.target_psi = target_psi - np.average(target_psi, weights=weights)
 
