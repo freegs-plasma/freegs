@@ -38,6 +38,8 @@ import numpy as np
 
 from .equilibrium import Equilibrium
 from .machine import Coil, Circuit, Solenoid, Wall, Machine
+from .shaped_coil import ShapedCoil
+from .multi_coil import MultiCoil
 from . import boundary
 from . import machine
 
@@ -112,11 +114,15 @@ class OutputFile(object):
         """
 
         self.handle["coil_dtype"] = Coil.dtype
+        self.handle["shapedcoil_dtype"] = ShapedCoil.dtype
+        self.handle["multicoil_dtype"] = MultiCoil.dtype
         self.handle["circuit_dtype"] = Circuit.dtype
         self.handle["solenoid_dtype"] = Solenoid.dtype
 
         type_to_dtype = {
             Coil.dtype: self.handle["coil_dtype"],
+            ShapedCoil.dtype: self.handle["shapedcoil_dtype"],
+            MultiCoil.dtype: self.handle["multicoil_dtype"],
             Circuit.dtype: self.handle["circuit_dtype"],
             Solenoid.dtype: self.handle["solenoid_dtype"],
         }
@@ -164,7 +170,10 @@ class OutputFile(object):
 
         coils_group = tokamak_group.create_group(self.COILS_GROUP_NAME)
         for label, coil in equilibrium.tokamak.coils:
-            dtype = type_to_dtype[coil.dtype]
+            try:
+                dtype = type_to_dtype[coil.dtype]
+            except KeyError:
+                raise ValueError(f"Could not save coil type {type(coil)}")
             coils_group.create_dataset(
                 label, dtype=dtype, data=np.array(coil.to_numpy_array())
             )
@@ -186,6 +195,13 @@ class OutputFile(object):
         tokamak_group = equilibrium_group[self.MACHINE_GROUP_NAME]
         coil_group = tokamak_group[self.COILS_GROUP_NAME]
 
+        # HDF5 reads strings as bytes by default, so convert to string
+        def toString(s):
+            try:
+                return str(s, "utf-8")  # Convert bytes to string, using encoding
+            except TypeError:
+                return s  # Probably already a string
+
         # This is also a bit hacky - find the appropriate class in
         # freegs.machine and then call the `from_numpy_array` class
         # method
@@ -194,7 +210,9 @@ class OutputFile(object):
 
         # Unfortunately this creates the coils in lexographical order
         # by label, losing the origin
-        coils = [(label, make_coil_set(coil)) for label, coil in coil_group.items()]
+        coils = [
+            (toString(label), make_coil_set(coil)) for label, coil in coil_group.items()
+        ]
 
         if "wall_R" in tokamak_group:
             wall_R = tokamak_group["wall_R"][:]
@@ -218,6 +236,11 @@ class OutputFile(object):
         # string of the function __name__, which we then look up in
         # the boundary module dict
         eq_boundary_name = equilibrium_group["boundary_function"][()]
+
+        if hasattr(eq_boundary_name, "decode"):
+            # Convert bytes to string
+            eq_boundary_name = eq_boundary_name.decode()
+
         eq_boundary_func = boundary.__dict__[eq_boundary_name]
 
         equilibrium = Equilibrium(

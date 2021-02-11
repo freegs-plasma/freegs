@@ -59,12 +59,14 @@ class MultiCoil(Coil):
     # A dtype for converting to Numpy array and storing in HDF5 files
     dtype = np.dtype(
         [
-            (str("R"), np.float64),
-            (str("Z"), np.float64),
+            (str("RZlen"), int),  # Length of R and Z arrays
+            (str("R"), "500f8"),  # Up to 100 points
+            (str("Z"), "500f8"),
             (str("current"), np.float64),
-            (str("turns"), np.int),
-            (str("control"), np.bool),
-            (str("mirror"), np.bool),
+            (str("turns"), int),
+            (str("control"), bool),
+            (str("mirror"), bool),
+            (str("polarity"), "2f8"),
         ]
     )
 
@@ -192,8 +194,26 @@ class MultiCoil(Coil):
         """
         Helper method for writing output
         """
+
+        RZlen = len(self.Rfil)
+        assert RZlen <= 500
+        R = np.zeros(500)
+        Z = np.zeros(500)
+        R[:RZlen] = self.Rfil
+        Z[:RZlen] = self.Zfil
+
         return np.array(
-            (self.R, self.Z, self.current, self.turns, self.control), dtype=self.dtype
+            (
+                RZlen,
+                R,
+                Z,
+                self.current,
+                self.turns,
+                self.control,
+                self.mirror,
+                self.polarity,
+            ),
+            dtype=self.dtype,
         )
 
     @classmethod
@@ -204,7 +224,24 @@ class MultiCoil(Coil):
                     this=type(cls), got=value.dtype, dtype=cls.dtype
                 )
             )
-        return Coil(*value[()])
+        RZlen = value["RZlen"]
+        R = value["R"][:RZlen]
+        Z = value["Z"][:RZlen]
+        current = value["current"]
+        turns = value["turns"]
+        control = value["control"]
+        mirror = value["npoints"]
+        polarity = value["polarity"]
+
+        return MultiCoil(
+            R,
+            Z,
+            current=current,
+            turns=turns,
+            control=control,
+            mirror=mirror,
+            polarity=polarity,
+        )
 
     def plot(self, axis=None, show=False):
         """

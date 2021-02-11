@@ -214,10 +214,21 @@ class Circuit:
                     this=type(cls), got=value.dtype, dtype=cls.dtype
                 )
             )
+
+        # HDF5 reads strings as bytes by default, so convert to string
+        def toString(s):
+            try:
+                return str(s, "utf-8")  # Convert bytes to string, using encoding
+            except TypeError:
+                return s  # Probably already a string
+
         # Use the current/control values from the first coil in the circuit
         # Should be consistent!
         return Circuit(
-            [(label, Coil(*coil), multiplier) for label, coil, multiplier in value],
+            [
+                (toString(label), Coil(*coil), multiplier)
+                for label, coil, multiplier in value
+            ],
             current=value[0][1]["current"] / value[0]["multiplier"],
             control=value[0][1]["control"],
         )
@@ -424,7 +435,7 @@ class Wall:
         return "Wall(R={R}, Z={Z})".format(R=self.R, Z=self.Z)
 
     def __eq__(self, other):
-        return self.R == other.R and self.Z == other.Z
+        return np.allclose(self.R, other.R) and np.allclose(self.Z, other.Z)
 
     def __ne__(self, other):
         return not self == other

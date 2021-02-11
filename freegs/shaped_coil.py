@@ -51,12 +51,13 @@ class ShapedCoil(Coil):
     # A dtype for converting to Numpy array and storing in HDF5 files
     dtype = np.dtype(
         [
-            (str("R"), np.float64),
-            (str("Z"), np.float64),
+            (str("RZlen"), int),  # Length of the R and Z arrays
+            (str("R"), "10f8"),  # Note: Up to 10 points
+            (str("Z"), "10f8"),  # Note: Up to 10 points
             (str("current"), np.float64),
-            (str("turns"), np.int),
-            (str("control"), np.bool),
-            (str("mirror"), np.bool),
+            (str("turns"), int),
+            (str("control"), bool),
+            (str("npoints"), int),
         ]
     )
 
@@ -86,6 +87,7 @@ class ShapedCoil(Coil):
         self.shape = shape
 
         # The quadrature points to be used
+        self.npoints_per_triangle = npoints
         self._points = quadrature.polygon_quad(shape, n=npoints)
 
     def controlPsi(self, R, Z):
@@ -176,3 +178,62 @@ class ShapedCoil(Coil):
         # axis.plot(rquad, zquad, 'ro')
 
         return axis
+
+    def to_numpy_array(self):
+        """
+        Helper method for writing output
+        """
+        RZlen = len(self.shape)
+        R = np.zeros(10)
+        Z = np.zeros(10)
+        R[:RZlen] = [R for R, Z in self.shape]
+        Z[:RZlen] = [Z for R, Z in self.shape]
+
+        return np.array(
+            (
+                RZlen,
+                R,
+                Z,
+                self.current,
+                self.turns,
+                self.control,
+                self.npoints_per_triangle,
+            ),
+            dtype=self.dtype,
+        )
+
+    @classmethod
+    def from_numpy_array(cls, value):
+        if value.dtype != cls.dtype:
+            raise ValueError(
+                "Can't create {this} from dtype: {got} (expected: {dtype})".format(
+                    this=type(cls), got=value.dtype, dtype=cls.dtype
+                )
+            )
+        RZlen = value["RZlen"]
+        R = value["R"][:RZlen]
+        Z = value["Z"][:RZlen]
+        current = value["current"]
+        turns = value["turns"]
+        control = value["control"]
+        npoints = value["npoints"]
+
+        return ShapedCoil(
+            list(zip(R, Z)),
+            current=current,
+            turns=turns,
+            control=control,
+            npoints=npoints,
+        )
+
+    def __eq__(self, other):
+        return (
+            np.allclose(self.shape, other.shape)
+            and self.current == other.current
+            and self.turns == other.turns
+            and self.control == other.control
+            and self.npoints_per_triangle == other.npoints_per_triangle
+        )
+
+    def __ne__(self, other):
+        return not self == other
