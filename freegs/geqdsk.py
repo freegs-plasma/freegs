@@ -35,16 +35,10 @@ from .gradshafranov import mu0
 from scipy import interpolate
 from numpy import (
     linspace,
-    amin,
-    amax,
     reshape,
     ravel,
     zeros,
-    argmax,
     clip,
-    sin,
-    cos,
-    pi,
 )
 import math
 import numpy as np
@@ -82,7 +76,6 @@ def write(eq, fh, label=None, oxpoints=None, fileformat=_geqdsk.write):
 
     fvac = eq.fvac()  # Vacuum f = R*Bt
     R0 = 1.0  # Reference location
-    B0 = fvac / R0  # Reference vacuum toroidal magnetic field
 
     data = {
         "nx": nx,
@@ -420,9 +413,7 @@ def read(
 
         # Draw separatrix if there is an X-point
         if len(xpoint) > 0:
-            sep_contour = axis.contour(
-                eq.R, eq.Z, psi, levels=[xpoint[0][2]], colors="r"
-            )
+            axis.contour(eq.R, eq.Z, psi, levels=[xpoint[0][2]], colors="r")
 
     # Find best fit for coil currents
     # First create a control system (see control.py)

@@ -6,7 +6,7 @@ from . import multigrid
 
 import numpy as np
 
-###### Laplacian in 2D
+# Laplacian in 2D
 
 
 def test_direct_laplacian():

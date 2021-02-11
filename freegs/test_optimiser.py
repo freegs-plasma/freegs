@@ -75,7 +75,7 @@ def test_reducing():
     assert result[0] <= best_score
 
 
-### Internal components of optimiser algorithm
+# Internal components of optimiser algorithm
 
 
 def test_pick_all():
@@ -99,7 +99,7 @@ def test_pick_excludes():
         assert 8 not in vals
 
 
-### Example optimiser with animation
+# Example optimiser with animation
 
 if __name__ == "__main__":
     start_values = [0.1, 0.1]  # Starting guess

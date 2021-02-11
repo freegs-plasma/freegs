@@ -37,11 +37,13 @@ class GSElliptic:
     """
     Represents the Grad-Shafranov elliptic operator
 
-    \Delta^* = R^2 \nabla\cdot\frac{1}{R^2}\nabla
+    .. math::
+        \Delta^* = R^2 \nabla\cdot\frac{1}{R^2}\nabla
 
     which is
 
-    d^2/dR^2 + d^2/dZ^2 - (1/R)*d/dR
+    .. math::
+        d^2/dR^2 + d^2/dZ^2 - (1/R)*d/dR
 
     """
 

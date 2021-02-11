@@ -21,7 +21,7 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 """
 import numpy as np
 
-from ._fileutils import f2s, ChunkOutput, write_1d, write_2d, next_value
+from ._fileutils import ChunkOutput, write_1d, write_2d
 
 
 def write(data, fh, label=None):
@@ -58,14 +58,14 @@ def write(data, fh, label=None):
     psib :=  psi at plasma boundary              [Wb/rad];
     btf  :=  toroidal magnetic field                  [t];
     rtf  :=  major radius at which btf is specified   [m];
- 
- 
+
+
     jm    =          {nx:d} ;
     km    =          {ny:d} ;
     psib  =   {sibdry:1.15E}  Wb/rad;
     btf   =   {bcentr:1.14f}       t;
     rtf   =   {rcentr:1.14f}       m;
- 
+
 """.format(
             **data
         )
