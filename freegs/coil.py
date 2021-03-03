@@ -23,7 +23,7 @@ GNU Lesser General Public License for more details.
 You should have received a copy of the GNU Lesser General Public License
 along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 """
-
+from ._forces import getForces
 from .gradshafranov import Greens, GreensBr, GreensBz, mu0
 import numpy as np
 import numbers
@@ -160,6 +160,15 @@ class Coil:
         """
         return GreensBz(self.R, self.Z, R, Z) * self.turns
 
+    def getCentreForces(self, equilibrium):
+        """
+        Calculate forces on the coils in Newtons
+
+        See `getForces` for details.
+        """
+
+        return self.getForces(equilibrium)
+
     def getForces(self, equilibrium):
         """
         Calculate forces on the coils in Newtons
@@ -172,38 +181,7 @@ class Coil:
             Physics of Plasmas 1, 3425 (1998); https://doi.org/10.1063/1.870491
             David A. Garren and James Chen
         """
-        current = self.current  # current per turn
-        total_current = current * self.turns  # Total toroidal current
-
-        # Calculate field at this coil due to all other coils
-        # and plasma. Need to zero this coil's current
-        self.current = 0.0
-        Br = equilibrium.Br(self.R, self.Z)
-        Bz = equilibrium.Bz(self.R, self.Z)
-        self.current = current
-
-        # Assume circular cross-section for hoop (self) force
-        minor_radius = np.sqrt(self.area / np.pi)
-
-        # Self inductance factor, depending on internal current
-        # distribution. 0.5 for uniform current, 0 for surface current
-        self_inductance = 0.5
-
-        # Force per unit length.
-        # In cgs units f = I^2/(c^2 * R) * (ln(8*R/a) - 1 + xi/2)
-        # In SI units f = mu0 * I^2 / (4*pi*R) * (ln(8*R/a) - 1 + xi/2)
-        self_fr = (mu0 * total_current ** 2 / (4.0 * np.pi * self.R)) * (
-            np.log(8.0 * self.R / minor_radius) - 1 + self_inductance / 2.0
-        )
-
-        Ltor = 2 * np.pi * self.R  # Length of coil
-        return np.array(
-            [
-                (total_current * Bz + self_fr)
-                * Ltor,  # Jphi x Bz = Fr, self force always outwards
-                -total_current * Br * Ltor,
-            ]
-        )  # Jphi x Br = - Fz
+        return getForces(self.R, self.Z, self, equilibrium)
 
     def __repr__(self):
         return "Coil(R={0}, Z={1}, current={2:.1f}, turns={3}, control={4})".format(

@@ -25,7 +25,7 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 import numpy as np
 from .coil import Coil, AreaCurrentLimit
 from .gradshafranov import Greens, GreensBr, GreensBz
-
+from freegs._forces import getForces
 
 class MultiCoil(Coil):
     """
@@ -140,6 +140,39 @@ class MultiCoil(Coil):
             for R_fil, Z_fil in zip(self.Rfil, self.Zfil):
                 result += Greens(R_fil, -Z_fil, R, Z) * self.polarity[1]
         return result
+
+    def getCentreForces(self, equilibrium):
+        """
+        Calculate force acting on the coil calculated with respect to its centre.
+
+        Return
+        ------
+        array [ Fr, Fz ] Radial (hoop) and vertical force.
+        """
+        return super(MultiCoil, self).getForces(equilibrium)
+
+    def getForces(self, equilibrium):
+        """
+        Calculate total force acting on the coil.
+
+        Return
+        ------
+        array [ Fr, Fz ] Radial (hoop) and vertical force.
+        """
+        fil_forces = self.getFilamentForces(equilibrium)
+        mean_forces = np.sum(fil_forces, axis=1)
+
+        return mean_forces
+
+    def getFilamentForces(self, equilibrium):
+        """
+        Calculate force acting on each coil filament separately.
+
+        Return
+        ------
+        array [ Fr: array, Fz: array) ] - Arrays of radial (hoop) and vertical forces.
+        """
+        return getForces(self.Rfil, self.Zfil, self, equilibrium)
 
     def controlBr(self, R, Z):
         """

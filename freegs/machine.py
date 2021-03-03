@@ -587,6 +587,24 @@ class Machine:
             print(label + " : " + str(coil))
         print("==========================")
 
+    def getCentreForces(self, equilibrium=None):
+        """
+        Calculate forces on the coils, given the plasma equilibrium.
+        If no plasma equilibrium given then the forces due to
+        the coils alone will be calculated.
+
+        The force calculated with respect to the centre of each coil.
+
+        Returns a dictionary of coil label -> force
+        """
+        if equilibrium is None:
+            equilibrium = self
+
+        forces = {}
+        for label, coil in self.coils:
+            forces[label] = coil.getCentreForces(equilibrium)
+        return forces
+
     def getForces(self, equilibrium=None):
         """
         Calculate forces on the coils, given the plasma equilibrium.
