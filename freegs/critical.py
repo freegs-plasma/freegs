@@ -43,7 +43,7 @@ import numpy as np
 from warnings import warn
 
 
-def find_critical(R, Z, psi, discard_xpoints=False):
+def find_critical(R, Z, psi, discard_xpoints=True):
     """
     Find critical points
 
@@ -193,7 +193,7 @@ def find_critical(R, Z, psi, discard_xpoints=False):
     # Draw a line from the O-point to each X-point. Psi should be
     # monotonic; discard those which are not
 
-    if True:  # discard_xpoints:
+    if discard_xpoints:
         Ro, Zo, Po = opoint[0]  # The primary O-point
         xpt_keep = []
         for xpt in xpoint:
