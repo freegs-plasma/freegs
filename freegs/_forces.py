@@ -1,3 +1,5 @@
+from numbers import Number
+
 from .gradshafranov import mu0
 import numpy as np
 
@@ -19,10 +21,12 @@ def getForces(Rs, Zs, coil, equilibrium):
     current = coil.current  # current per turn
 
     # Calculated coil force or force acting on each element.
-    if len(Rs) > 1:
-        total_current = current
-    else:
+    if isinstance(Rs, Number) or (hasattr(Rs, '__len__') and len(Rs) == 1):
         total_current = current * coil.turns  # Total toroidal current
+    elif not hasattr(Rs, '__len__'):
+        return TypeError("The Rs and Zs should be either arrays or numbers.")
+    else:
+        total_current = current
 
     # Calculate field at this coil due to all other coils
     # and plasma. Need to zero this coil's current
