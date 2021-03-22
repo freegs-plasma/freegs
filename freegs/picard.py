@@ -19,7 +19,7 @@ You should have received a copy of the GNU Lesser General Public License
 along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-from numpy import amin, amax
+from numpy import amin, amax, array
 
 
 def solve(
@@ -34,6 +34,7 @@ def solve(
     pause=0.0001,
     psi_bndry=None,
     maxits=50,
+    convergenceInfo=False,
 ):
     """
     Perform Picard iteration to find solution to the Grad-Shafranov equation
@@ -71,6 +72,7 @@ def solve(
             axis = fig.add_subplot(111)
 
     iteration = 0  # Count number of iterations
+    psi_maxchange_iterations, psi_relchange_iterations = [], []
     # Start main loop
     while True:
         if show:
@@ -106,6 +108,9 @@ def solve(
         psi_maxchange = amax(abs(psi_change))
         psi_relchange = psi_maxchange / (amax(psi) - amin(psi))
 
+        psi_maxchange_iterations.append(psi_maxchange)
+        psi_relchange_iterations.append(psi_relchange)
+
         # Check if the relative change in psi is small enough
         if (psi_maxchange < atol) or (psi_relchange < rtol):
             break
@@ -122,3 +127,7 @@ def solve(
             raise RuntimeError(
                 "Picard iteration failed to converge (too many iterations)"
             )
+    if convergenceInfo: 
+        return array(psi_maxchange_iterations),\
+               array(psi_relchange_iterations)
+
