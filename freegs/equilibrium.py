@@ -614,7 +614,7 @@ class Equilibrium:
         """Calculates the plasma aspect ratio"""
         return self.Rgeometric(npoints=npoints) / self.minorRadius(npoints=npoints)
 
-    def effectiveElongation(self, R_wall_inner, R_wall_outer, npoints=300):
+    def effectiveElongation(self, npoints=300):
         """Calculates plasma effective elongation using the plasma volume"""
         return self.plasmaVolume() / (
             2.0
@@ -669,7 +669,7 @@ class Equilibrium:
         integral = romb(romb(B_polvals_2 * dV))
         return 2 * integral / ((mu0 * Ip) ** 2 * R_mag)
 
-    def internalInductance3(self, R_wall_inner, R_wall_outer, npoints=300):
+    def internalInductance3(self, npoints=300):
         """Calculates li3 plasma internal inductance"""
 
         R = self.R
@@ -718,6 +718,35 @@ class Equilibrium:
         pressure_integral = romb(romb(pressure * dV))
         field_integral_pol = romb(romb(B_polvals_2 * dV))
         return 2 * mu0 * pressure_integral / field_integral_pol
+
+    def pressure_ave(self):
+        """Calculate average pressure
+
+        """
+
+        R = self.R
+        Z = self.Z
+
+        # Produce array of Btor in (R,Z)
+        B_torvals_2 = self.Btor(R, Z) ** 2
+
+        dR = R[1, 0] - R[0, 0]
+        dZ = Z[0, 1] - Z[0, 0]
+        dV = 2.0 * np.pi * R * dR * dZ
+
+        # Normalised psi
+        psi_norm = (self.psi() - self.psi_axis) / (self.psi_bndry - self.psi_axis)
+
+        # Plasma pressure
+        pressure = self.pressure(psi_norm)
+
+        if self.mask is not None:  # Only include points in the core
+            dV *= self.mask
+
+        pressure_integral = romb(romb(pressure * dV))
+        plasmaVolume      = romb(romb(dV))
+
+        return pressure_integral/plasmaVolume
 
     def toroidalBeta(self):
         """Calculate plasma toroidal beta by integrating the thermal pressure
