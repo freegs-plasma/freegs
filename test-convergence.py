@@ -34,7 +34,8 @@ constrain = freegs.control.constrain(xpoints=xpoints, isoflux=isoflux)
 freegs.solve(eq,          # The equilibrium to adjust
              profiles,    # The toroidal current profile function
              constrain,
-             rtol=rtol)
+             rtol=rtol,
+             maxits = 120)
 
 ############################################
 # Now have initial solution
@@ -64,7 +65,8 @@ for i in range(nrefinements):
     freegs.solve(eq,
                  profiles,
                  constrain,
-                 rtol=rtol)
+                 rtol=rtol,
+                 maxits=120)
 
     resolutions.append(eq.R.shape[0])
     
