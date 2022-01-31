@@ -4,16 +4,10 @@ Plasma control system
 Use constraints to adjust coil currents
 """
 
-from ipaddress import summarize_address_range
-from shutil import register_unpack_format
 from numpy import dot, transpose, eye, array, inf
 from numpy.linalg import inv, norm
 import numpy as np
-
 from scipy import optimize
-import scipy
-from sqlalchemy import BLANK_SCHEMA
-
 from . import critical
 
 
