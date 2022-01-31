@@ -33,14 +33,18 @@ xpoints = [(1.1, -0.6),   # (R,Z) locations of X-points
 
 isoflux = [(1.1,-0.6, 1.1,0.6)] # (R1,Z1, R2,Z2) pair of locations
 
-constrain = freegs.control.constrain(xpoints=xpoints, isoflux=isoflux)
+current_lims = [(-150000.0,140000.0),(0.0,65000.0),(-105000.0,0.0),(-60000.0,0.0)]
+total_current = 350000.0
+
+constrain = freegs.control.constrain(xpoints=xpoints, isoflux=isoflux, current_lims=current_lims, max_total_current = total_current)
 
 #########################################
 # Nonlinear solve
 
 freegs.solve(eq,          # The equilibrium to adjust
              profiles,    # The toroidal current profile function
-             constrain)   # Constraint function to set coil currents
+             constrain,
+             show=True)   # Constraint function to set coil currents
 
 # eq now contains the solution
 

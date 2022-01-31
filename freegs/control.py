@@ -4,11 +4,15 @@ Plasma control system
 Use constraints to adjust coil currents
 """
 
-from numpy import dot, transpose, eye, array
-from numpy.linalg import inv
+from ipaddress import summarize_address_range
+from shutil import register_unpack_format
+from numpy import dot, transpose, eye, array, inf
+from numpy.linalg import inv, norm
 import numpy as np
 
 from scipy import optimize
+import scipy
+from sqlalchemy import BLANK_SCHEMA
 
 from . import critical
 
@@ -36,19 +40,28 @@ class constrain(object):
 
     psivals - A list of (R,Z,psi) values
 
-    At least one constraint must be included
+    At least one of the above constraints must be included.
 
     gamma - A scalar, minimises the magnitude of the coil currents
+
+    The following constraitns are entirely optional:
+
+    current_lims - A list of tuples [(l1,u1),(l2,u2)...(lN,uN)] for the upper
+    and lower bounds on the currents in each coil.
+
+    max_total_current - The maximum total current through the coilset.
     """
 
-    def __init__(self, xpoints=[], gamma=1e-12, isoflux=[], psivals=[]):
+    def __init__(self, xpoints=[], gamma=1e-12, isoflux=[], psivals=[], current_lims=None, max_total_current=None):
         """
         Create an instance, specifying the constraints to apply
         """
-        self.xpoints = xpoints
-        self.gamma = gamma
-        self.isoflux = isoflux
-        self.psivals = psivals
+        self.xpoints           = xpoints
+        self.gamma             = gamma
+        self.isoflux           = isoflux
+        self.psivals           = psivals
+        self.current_lims      = current_lims
+        self.max_total_current = max_total_current
 
     def __call__(self, eq):
         """
@@ -107,21 +120,68 @@ class constrain(object):
         A = array(constraint_matrix)
         b = np.reshape(array(constraint_rhs), (-1,))
 
-        # Solve by Tikhonov regularisation
-        # minimise || Ax - b ||^2 + ||gamma x ||^2
-        #
-        # x = (A^T A + gamma^2 I)^{-1}A^T b
-
         # Number of controls (length of x)
         ncontrols = A.shape[1]
+        
+        # First solve analytically by Tikhonov regularisation
+        # minimise || Ax - b ||^2 + ||gamma x ||^2
 
         # Calculate the change in coil current
-        current_change = dot(
+        self.current_change = dot(
             inv(dot(transpose(A), A) + self.gamma ** 2 * eye(ncontrols)),
             dot(transpose(A), b),
         )
-        # print("Current changes: " + str(current_change))
-        tokamak.controlAdjust(current_change)
+
+        # Now use the initial analytical soln to guide constrained solve
+        
+        # Establish constraints on changes in coil currents from the present
+        # and max/min coil current constraints
+
+        current_change_bounds = []
+
+        if self.current_lims is None:
+            for i in range(ncontrols):
+                current_change_bounds.append((-inf,inf))
+        else:
+            for i in range(ncontrols):
+                cur = tokamak.controlCurrents()[i]
+                lower_lim = self.current_lims[i][0]-cur
+                upper_lim = self.current_lims[i][1]-cur
+                current_change_bounds.append((lower_lim,upper_lim))
+
+        current_change_bnds = array(current_change_bounds)
+
+        # Reform the constraint matrices to include Tikhonov regularisation
+        A2 = np.concatenate([A, self.gamma*eye(ncontrols)])
+        b2 = np.concatenate([b, np.zeros(ncontrols)])
+
+        # The objetive function to minimize
+        # || A2x - b2 ||^2
+        def objective(x):
+            return (norm((A2@x)-b2))**2
+        
+        # Additional constraints on the optimisation
+        cons = []
+
+        def max_total_currents(x):
+            sum = 0.0
+            for delta,i in zip(x,tokamak.controlCurrents()):
+                sum+= abs(delta+i)
+            return -(sum-self.max_total_current)
+
+        if self.max_total_current is not None:
+            con1 = {'type': 'ineq', 'fun': max_total_currents}
+            cons.append(con1)
+
+        # Use the analytical current change as the initial guess
+        x0 = self.current_change
+        sol = optimize.minimize(objective,x0,method='SLSQP',bounds=current_change_bnds,constraints=cons)
+
+        self.current_change=sol.x
+        tokamak.controlAdjust(self.current_change)
+
+        # Store info for user
+        self.current_change = self.current_change
 
         # Ensure that the last constraint used is set in the Equilibrium
         eq._constraints = self
