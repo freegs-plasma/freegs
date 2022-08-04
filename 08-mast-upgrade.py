@@ -18,7 +18,8 @@ eq = freegs.Equilibrium(tokamak=tokamak,
 #########################################
 # Plasma profiles
 
-profiles = freegs.jtor.ConstrainPaxisIp(6e4, # Plasma pressure on axis [Pascals]
+profiles = freegs.jtor.ConstrainPaxisIp(eq,
+										6e4, # Plasma pressure on axis [Pascals]
                                         1e6, # Plasma current [Amps]
                                         0.65, # vacuum f = R*Bt
                                         alpha_m = 1.0,

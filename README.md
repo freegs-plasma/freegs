@@ -17,13 +17,13 @@ There is a feature wishlist in issues, suggestions and contributions welcome!
 Installing
 ----------
 
-FreeGS is available on PyPI 
+A public vesion of FreeGS is available on PyPI 
 
     $ pip install --user freegs
 
-or clone/download this repository and run setup:
+or clone/download the internal TE version and run setup:
 
-    $ git clone https://github.com/bendudson/freegs.git
+    $ git clone http://tokamak-devlin/gitlab/physics/freegs.git
     $ cd freegs
     $ python setup.py install --user
 
@@ -45,8 +45,14 @@ A convergence test is [described in the manual](https://freegs.readthedocs.io/en
 
     $ python test-convergence.py
 
+To-do list
+----------
+See the 'issues' board on the left hand toolbar.
+
 Examples
 --------
+(Note: some of these may no longer be working with changes to
+coil classes. Not exactly a priority to fix these at present.)
 
 The Jupyter notebooks contain examples wuth additional notes
 
@@ -100,10 +106,12 @@ The "freegs" module consists of the following files:
 * **picard.py**          - Nonlinear solver, iterating the profiles and constraints
 * **plotting.py**        - Plotting routines using matplotlib
 
+- more files have since been added! Check the repo.
+
 License
 -------
 
-    Copyright 2016-2021 Ben Dudson, University of York, and other contributors.
+    Copyright 2016-2022 Ben Dudson, University of York, and other contributors.
     Email: benjamin.dudson@york.ac.uk
 
     This program is free software: you can redistribute it and/or modify
@@ -125,8 +133,10 @@ References
 * YoungMu Jeon, [Development of a free boundary Tokamak Equlibrium Solver](http://link.springer.com/article/10.3938/jkps.67.843)  [arXiv:1503.03135](https://arxiv.org/abs/1503.03135)
 * S.Jardin "Computational Methods in Plasma Physics" CRC Press
 
+Longer-term the intent is to move FreeGS development back to a public repo and to
+develop bespoke TE scripts in the eqtools python module.
 
-Versions
+Public Versions
 --------
 
 0.6.1  11th February 2021

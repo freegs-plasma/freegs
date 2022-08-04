@@ -18,7 +18,8 @@ eq = freegs.Equilibrium(tokamak=tokamak,
 #########################################
 # Plasma profiles
 
-profiles = freegs.jtor.ConstrainPaxisIp(1e3, # Plasma pressure on axis [Pascals]
+profiles = freegs.jtor.ConstrainPaxisIp(eq,
+										1e3, # Plasma pressure on axis [Pascals]
                                         2e5, # Plasma current [Amps]
                                         2.0) # Vacuum f=R*Bt
 
@@ -33,10 +34,7 @@ xpoints = [(1.1, -0.6),   # (R,Z) locations of X-points
 
 isoflux = [(1.1,-0.6, 1.1,0.6)] # (R1,Z1, R2,Z2) pair of locations
 
-current_lims = [(-150000.0,140000.0),(0.0,65000.0),(-105000.0,0.0),(-60000.0,0.0)]
-total_current = 350000.0
-
-constrain = freegs.control.constrain(xpoints=xpoints, isoflux=isoflux, current_lims=current_lims, max_total_current = total_current)
+constrain = freegs.control.constrain(xpoints=xpoints, isoflux=isoflux)
 
 #########################################
 # Nonlinear solve

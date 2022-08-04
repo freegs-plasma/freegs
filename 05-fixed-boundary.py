@@ -10,18 +10,20 @@ import freegs
 # Boundary conditions
 import freegs.boundary as boundary
 
-profiles = freegs.jtor.ConstrainPaxisIp(1e3, # Plasma pressure on axis [Pascals]
-                                        1e5, # Plasma current [Amps]
-                                        1.0) # fvac = R*Bt
-
 eq = freegs.Equilibrium(Rmin=0.1, Rmax=2.0,
                         Zmin=-1.0, Zmax=1.0,
                         nx=65, ny=65,
                         boundary=boundary.fixedBoundary)
 
+profiles = freegs.jtor.ConstrainPaxisIp(eq,
+										1e3, # Plasma pressure on axis [Pascals]
+                                        1e5, # Plasma current [Amps]
+                                        1.0) # fvac = R*Bt
+
 # Nonlinear solver for Grad-Shafranov equation
 freegs.solve(eq,           # The equilibrium to adjust
-             profiles)     # The toroidal current profile function
+             profiles,	   # The toroidal current profile function
+			 show = True)
 
 print("Done!")
 
