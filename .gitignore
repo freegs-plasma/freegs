@@ -9,4 +9,4 @@
 *.jpg
 FreeGS.egg-info/
 build/
-
+dist/
