@@ -328,14 +328,16 @@ def read(
         Zmax=data["zmid"] + 0.5 * data["zdim"],
         nx=nx,
         ny=ny,  # Number of grid points
+        check_limited = True,
+        psi = psi
     )
     # Grid spacing
     dR = eq.R[1, 0] - eq.R[0, 0]
     dZ = eq.Z[0, 1] - eq.Z[0, 0]
 
-    # Create masking function: 1 inside plasma, 0 outside
-    opoint, xpoint = critical.find_critical(eq.R, eq.Z, psi)
-    mask = critical.core_mask(eq.R, eq.Z, psi, opoint, xpoint, psi_bndry)
+    psi_bndry = eq.psi_bndry
+    psi_axis = eq.psi_axis
+    mask = eq.mask
 
     # Toroidal current
     Jtor = eq.R * pprime_func(psi_norm) + ffprime_func(psi_norm) / (eq.R * mu0)
@@ -366,20 +368,20 @@ def read(
         # Create a new Equilibrium object
         # (replacing previous 'eq')
         eq = Equilibrium(
-            tokamak=machine, Rmin=Rmin, Rmax=Rmax, Zmin=Zmin, Zmax=Zmax, nx=nx, ny=ny
+            tokamak=machine, Rmin=Rmin, Rmax=Rmax, Zmin=Zmin, Zmax=Zmax, nx=nx, ny=ny, check_limited=True
         )
 
         # Interpolate Jtor and psi onto new grid
         Jtor = Jtor_func(eq.R, eq.Z, grid=False)
         psi = psi_func(eq.R, eq.Z, grid=False)
 
+        psi_bndry = eq.psi_bndry
+        psi_axis = eq.psi_axis
+        mask = eq.mask
+
         # Update the mask function by calculating normalised psi
         # on the new grid
         psi_norm = clip((psi - psi_axis) / (psi_bndry - psi_axis), 0.0, 1.0)
-
-        # Create masking function: 1 inside plasma, 0 outside
-        opoint, xpoint = critical.find_critical(eq.R, eq.Z, psi)
-        mask = critical.core_mask(eq.R, eq.Z, psi, opoint, xpoint, psi_bndry)
 
     # Note: Here we have
     #   eq : Equilibrium object
@@ -390,6 +392,7 @@ def read(
 
     # Perform a linear solve to calculate psi
     # using known Jtor
+    eq.check_limited = True
     eq.solve(profiles, Jtor=Jtor)
 
     print(
@@ -456,6 +459,7 @@ def read(
         rtol=rtol,
         blend=blend,
         maxits=maxits,
+        check_limited=True
     )
 
     print(
