@@ -63,7 +63,8 @@ class Equilibrium:
         boundary=freeBoundary,
         psi=None,
         current=0.0,
-        order=4
+        order=4,
+        check_limited = False
     ):
         """Initialises a plasma equilibrium
 
@@ -99,7 +100,7 @@ class Equilibrium:
         self.Z_1D = linspace(Zmin, Zmax, ny)
         self.R, self.Z = meshgrid(self.R_1D, self.Z_1D, indexing="ij")
 
-        self.check_limited = False
+        self.check_limited = check_limited
         self.is_limited = False
         self.Rlim = None
         self.Zlim = None
@@ -511,7 +512,6 @@ class Equilibrium:
                 '''
 
                 if xpt:
-                    #print('Opoint present and checking limited and xpoint present')
                     limit_args = np.ravel(np.argwhere(abs(Zlimit)<abs(0.75*xpt[0][1])))
                     Rlimit = Rlimit[limit_args]
                     Zlimit = Zlimit[limit_args]
