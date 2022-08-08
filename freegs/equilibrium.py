@@ -487,7 +487,6 @@ class Equilibrium:
         if opt:
         # Magnetic axis flux taken as primary o-point flux
             self.psi_axis = opt[0][2]
-
             '''
             Several options depending on if user wishes to check
             if the plasma becomes limited.
@@ -495,7 +494,6 @@ class Equilibrium:
 
             # The user wishes to check if the plasma is limited
             if(self.check_limited and self.tokamak.wall):
-
                 # A wall has actually been provided, proceed with checking
 
                 # Obtain flux on machine limit points
@@ -513,6 +511,7 @@ class Equilibrium:
                 '''
 
                 if xpt:
+                    #print('Opoint present and checking limited and xpoint present')
                     limit_args = np.ravel(np.argwhere(abs(Zlimit)<abs(0.75*xpt[0][1])))
                     Rlimit = Rlimit[limit_args]
                     Zlimit = Zlimit[limit_args]
@@ -541,7 +540,6 @@ class Equilibrium:
 
                 # Check if any xpoints are present
                 if xpt:
-
                     # Get flux from the primary xpoint
                     self.psi_xpt = xpt[0][2]
 
@@ -563,7 +561,6 @@ class Equilibrium:
                     )
 
                 else:
-
                     # No xpoints, therefore psi_bndry = psi_limit
                     self.psi_bndry = self.psi_limit
                     self.is_limited = True
@@ -572,7 +569,6 @@ class Equilibrium:
             else:
                 # Either a wall was not provided or the user did not wish to
                 # check if the plasma was limited
-
                 if xpt:
                     self.psi_xpt = xpt[0][2]
                     self.psi_bndry = self.psi_xpt
