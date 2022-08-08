@@ -189,6 +189,9 @@ def solve(
             # The user wants to wait for a limited plasma. The plasma is not limited.
             ok_to_break = False
 
+        print('psi_relchange: '+str(psi_relchange))
+        print('bndry_relchange: '+str(bndry_relchange))
+
         # Check if the changes in psi are small enough and that it is ok to start checking for convergence
         if(((psi_maxchange < atol) or (psi_relchange < rtol)) and bndry_relchange < rtol and ok_to_break):
             break

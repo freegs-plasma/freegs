@@ -57,7 +57,7 @@ freegs.solve(eq,
              profiles, 
              constrain,
              show=True,
-			 check_limited = True
+			 check_limited = True,
 		     limit_it = 0)
 
 # eq now contains the solution

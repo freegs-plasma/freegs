@@ -7,7 +7,7 @@ from freegs.plotting import plotConstraints
 # Create the machine, which specifies coil locations
 # and equilibrium, specifying the domain to solve over
 
-tokamak = freegs.machine.MASTU()
+tokamak = freegs.machine.MASTU_simple()
 
 
 eq = freegs.Equilibrium(tokamak=tokamak,
