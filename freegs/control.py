@@ -307,3 +307,64 @@ class ConstrainPsiNorm2D(object):
         return (
             (psi_norm - self.target_psinorm) * self.weights
         ).ravel()  # flatten array
+
+
+class ConstrainPsiNorm2DAdvanced(object):
+    """
+    Adjusts coil currents to minimise the square differences
+    between normalised psi[R,Z] and a target normalised psi.
+
+    Attempts to also constrain the coil currents as in the 'constrain' class.
+    """
+
+    def __init__(self, target_psinorm, weights=1.0, current_lims=None, max_total_current=None):
+        """
+        target_psinorm : 2D (R,Z) array
+            Must be the same size as the equilibrium psi
+
+        weights : float or 2D array of same size as target_psinorm
+            Relative importance of each (R,Z) point in the fitting
+            By default every point is equally weighted
+            Set points to zero to ignore them in fitting.
+
+        """
+        self.target_psinorm = target_psinorm
+        self.weights = weights
+
+    def __call__(self, eq):
+        """
+        Apply constraints to Equilibrium eq
+        """
+
+        tokamak = eq.getMachine()
+        start_currents = tokamak.controlCurrents()
+
+        end_currents, _ = optimize.leastsq(
+            self.psinorm_difference, start_currents, args=(eq,)
+        )
+
+        tokamak.setControlCurrents(end_currents)
+
+        # Ensure that the last constraint used is set in the Equilibrium
+        eq._constraints = self
+
+    def psinorm_difference(self, currents, eq):
+        """
+        Difference between normalised psi from equilibrium with the given currents
+        and the target psinorm
+        """
+        eq.getMachine().setControlCurrents(currents)
+        psi = eq.psi()
+
+        eq._updateBoundaryPsi(psi)
+        psi_bndry = eq.psi_bndry
+        psi_axis = eq.psi_axis
+
+        # Calculate normalised psi.
+        # 0 = magnetic axis
+        # 1 = plasma boundary
+        psi_norm = (psi - psi_axis) / (psi_bndry - psi_axis)
+
+        return (
+            (psi_norm - self.target_psinorm) * self.weights
+        ).ravel()  # flatten array
