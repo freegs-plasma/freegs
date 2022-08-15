@@ -308,6 +308,129 @@ class ConstrainPsiNorm2D(object):
             (psi_norm - self.target_psinorm) * self.weights
         ).ravel()  # flatten array
 
+class ConstrainPsi2DAdvanced(object):
+    """
+    Adjusts coil currents to minimise the square differences
+    between normalised psi[R,Z] and a target normalised psi.
+
+    Attempts to also constrain the coil currents as in the 'constrain' class.
+    """
+
+    def __init__(self, target_psi, weights=1.0, current_lims=None, max_total_current=None):
+        """
+        target_psinorm : 2D (R,Z) array
+            Must be the same size as the equilibrium psi
+
+        weights : float or 2D array of same size as target_psinorm
+            Relative importance of each (R,Z) point in the fitting
+            By default every point is equally weighted
+            Set points to zero to ignore them in fitting.
+
+        Create an instance, specifying the constraints to apply
+        """
+
+        self.current_lims = current_lims
+        self.max_total_current = max_total_current
+        self.target_psi = target_psi
+        self.weights = weights
+
+    def __call__(self, eq):
+        """
+        Apply constraints to Equilibrium eq
+        """
+
+        tokamak = eq.getMachine()
+        start_currents = np.asarray(tokamak.controlCurrents())
+        ncontrols = len(start_currents)
+
+        # In order for the optimisation to work, the initial guess must be within the
+        # bounds supplied. Hence, check start_currents and adjust accordingly to be within bounds
+        for i in range(ncontrols):
+            bnd_upper = max(self.current_lims[i])
+            bnd_lower = min(self.current_lims[i])
+            sc = start_currents [i]
+            if not (bnd_lower <= sc <= bnd_upper):
+                if (sc < bnd_lower):
+                    start_currents[i] = bnd_lower
+                else:
+                    start_currents[i] = bnd_upper
+        
+        current_bounds = []
+
+        for i in range(ncontrols):
+            if self.current_lims is None:
+                current_bounds.append((-inf,inf))
+            else:
+                bnd_upper = max(self.current_lims[i])
+                bnd_lower = min(self.current_lims[i])
+                current_bounds.append((bnd_lower,bnd_upper))
+
+        current_bnds = array(current_bounds)
+
+        '''print('length of bounds')
+        print(current_bnds)
+        print(len(current_bnds))'''
+
+        # Additional constraints on the optimisation
+        tokamak = eq.getMachine()
+
+        cons = []
+
+        def max_total_currents(x):
+            sum = 0.0
+            for i in x:
+                sum+= abs(i)
+            return sum
+
+        if self.max_total_current is not None:
+            con1 = {'type': 'ineq', 'fun': max_total_currents}
+            cons.append(con1)
+
+        '''print('x0')
+        print(start_currents)
+        print(len(start_currents))
+        n, = start_currents.ravel().shape
+        print(n)'''
+        # Least squares optimisation of difference in target v achieved psi applied with
+        # bounds on coil currents and a constraint on the sum total of coil currentsL-BFGS-B SLSQP
+        end_currents = optimize.minimize(self.psi_difference,start_currents,method='L-BFGS-B',bounds=current_bnds,constraints=cons,args=(eq,)).x
+        #end_currents = optimize.brute(self.psi_difference,ranges=current_bnds,args=tuple([eq, ]))
+        #print('end currents achieved')
+        #print(end_currents)
+        # Set the latest coil currents
+        tokamak.setControlCurrents(end_currents)
+
+        # Ensure that the last constraint used is set in the Equilibrium
+        eq._constraints = self
+
+    def psi_difference(self, currents, eq):
+        """
+        Difference between normalised psi from equilibrium with the given currents
+        and the target psinorm
+        """
+        eq.getMachine().setControlCurrents(currents)
+        psi = eq.psi()
+
+        eq._updateBoundaryPsi(psi)
+        psi_av = np.average(psi, weights=self.weights)
+
+        '''
+        print('check')
+        print(np.max(abs(
+            (psi - psi_av - self.target_psi) * self.weights
+        ).ravel()))
+        '''
+
+        diff = (psi - psi_av - self.target_psi) * self.weights
+        sum_square_diff = np.sum(diff*diff)
+
+        '''
+        return np.max(abs(
+            (psi - psi_av - self.target_psi) * self.weights
+        ).ravel())  # flatten array
+        '''
+        return sum_square_diff
+
 
 class ConstrainPsiNorm2DAdvanced(object):
     """
@@ -327,9 +450,16 @@ class ConstrainPsiNorm2DAdvanced(object):
             By default every point is equally weighted
             Set points to zero to ignore them in fitting.
 
+        Create an instance, specifying the constraints to apply
         """
+
+        self.current_lims = current_lims
+        self.max_total_current = max_total_current
         self.target_psinorm = target_psinorm
         self.weights = weights
+        '''print('check init')
+        print(self.current_lims)
+        print(len(self.current_lims))'''
 
     def __call__(self, eq):
         """
@@ -337,12 +467,63 @@ class ConstrainPsiNorm2DAdvanced(object):
         """
 
         tokamak = eq.getMachine()
-        start_currents = tokamak.controlCurrents()
+        start_currents = np.asarray(tokamak.controlCurrents())
+        ncontrols = len(start_currents)
 
-        end_currents, _ = optimize.leastsq(
-            self.psinorm_difference, start_currents, args=(eq,)
-        )
+        # In order for the optimisation to work, the initial guess must be within the
+        # bounds supplied. Hence, check start_currents and adjust accordingly to be within bounds
+        for i in range(ncontrols):
+            bnd_upper = max(self.current_lims[i])
+            bnd_lower = min(self.current_lims[i])
+            sc = start_currents [i]
+            if not (bnd_lower <= sc <= bnd_upper):
+                if (sc < bnd_lower):
+                    start_currents[i] = bnd_lower
+                else:
+                    start_currents[i] = bnd_upper
 
+        current_bounds = []
+
+        for i in range(ncontrols):
+            if self.current_lims is None:
+                current_bounds.append((-inf,inf))
+            else:
+                bnd_upper = max(self.current_lims[i])
+                bnd_lower = min(self.current_lims[i])
+                current_bounds.append((bnd_lower,bnd_upper))
+
+        current_bnds = array(current_bounds)
+        '''print('length of bounds')
+        print(current_bnds)
+        print(len(current_bnds))'''
+
+        # Additional constraints on the optimisation
+        tokamak = eq.getMachine()
+
+        cons = []
+
+        def max_total_currents(x):
+            sum = 0.0
+            for i in x:
+                sum+= abs(i)
+            return sum
+
+        if self.max_total_current is not None:
+            con1 = {'type': 'ineq', 'fun': max_total_currents}
+            cons.append(con1)
+
+        '''print('x0')
+        print(start_currents)
+        n, = start_currents.ravel().shape
+        print(n)'''
+        # Least squares optimisation of difference in target v achieved psi applied with
+        # bounds on coil currents and a constraint on the sum total of coil currents L-BFGS-B SLSQP
+        end_currents = optimize.minimize(self.psinorm_difference,start_currents,method='L-BFGS-B',bounds=current_bnds,constraints=cons,args=(eq,)).x
+        #end_currents = optimize.brute(self.psinorm_difference,ranges=current_bnds,args=tuple([eq,]))
+
+        #print('end currents achieved')
+        #print(end_currents)
+        # Set the latest coil currents
         tokamak.setControlCurrents(end_currents)
 
         # Ensure that the last constraint used is set in the Equilibrium
@@ -365,6 +546,19 @@ class ConstrainPsiNorm2DAdvanced(object):
         # 1 = plasma boundary
         psi_norm = (psi - psi_axis) / (psi_bndry - psi_axis)
 
+        '''
+        print('check')
+        print(np.max(abs(
+            (psi_norm - self.target_psinorm) * self.weights
+        ).ravel()))
+        '''
+
+        diff = (psi_norm - self.target_psinorm) * self.weights
+        sum_square_diff = np.sum(diff*diff)
+
+        '''
         return (
             (psi_norm - self.target_psinorm) * self.weights
         ).ravel()  # flatten array
+        '''
+        return sum_square_diff

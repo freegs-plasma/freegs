@@ -164,6 +164,7 @@ def read(
     blend=0.0,
     fit_sol=False,
     maxits=50,
+    coil_constraints=None
 ):
     """
     Reads a G-EQDSK format file
@@ -203,6 +204,13 @@ def read(
     maxits : integer
         Maximum number of iterations. Set to None for no limit.
         If this limit is exceeded then a RuntimeError is raised.
+    coil_constraints: dict
+        Optional dictionary of constraints on coil currents to be used
+        when reconstructing the equilibrium from the geqdsk file.
+        {
+            'current_bounds':[(l1,u1),(l2,u2)...(lN,uN)],
+            'total_current':tot
+        }
 
     A nonlinear solve will be performed, using Picard iteration
 
@@ -215,6 +223,13 @@ def read(
     eq._profiles - The profiles object
 
     """
+
+    current_lims = None
+    max_total_current = None
+
+    if coil_constraints is not None:
+        current_lims = coil_constraints['current_bounds']
+        max_total_current = coil_constraints['total_current']
 
     if show:
         import matplotlib.pyplot as plt
@@ -428,11 +443,25 @@ def read(
     # Find best fit for coil currents
     # First create a control system (see control.py)
     if fit_sol:
-        controlsystem = control.ConstrainPsi2D(psi)  # Fit entire domain
+        # Fit entire domain
+        if coil_constraints is not None:
+            controlsystem = control.ConstrainPsi2DAdvanced(
+                psi, current_lims=current_lims, max_total_current=max_total_current
+                )
+        else:
+            controlsystem = control.ConstrainPsi2D(psi)
     else:
-        controlsystem = control.ConstrainPsi2D(
-            psi, weights=mask
-        )  # Remove SOL from fitting
+        # Remove SOL from fitting
+        if coil_constraints is not None:
+            controlsystem = control.ConstrainPsi2DAdvanced(
+                psi, weights=mask, current_lims=current_lims, 
+                max_total_current=max_total_current
+                )
+        else:
+            controlsystem = control.ConstrainPsi2D(
+                psi, weights=mask
+            )
+
     # Run control system to find coil currents
     controlsystem(eq)
 
@@ -448,7 +477,12 @@ def read(
     # Solve using Picard iteration
     #
 
-    controlsystem = control.ConstrainPsiNorm2D(psi_norm, weights=mask)
+    if coil_constraints is not None:
+        controlsystem = control.ConstrainPsiNorm2DAdvanced(psi_norm, weights=mask,
+            current_lims=current_lims, max_total_current=max_total_current)
+        maxits = 1000
+    else:
+        controlsystem = control.ConstrainPsiNorm2D(psi_norm, weights=mask)
     picard.solve(
         eq,  # The equilibrium to adjust
         profiles,  # The toroidal current profile function
