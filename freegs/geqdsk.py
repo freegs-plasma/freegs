@@ -164,6 +164,7 @@ def read(
     blend=0.0,
     fit_sol=False,
     maxits=50,
+    current_bounds=None
 ):
     """
     Reads a G-EQDSK format file
@@ -203,6 +204,10 @@ def read(
     maxits : integer
         Maximum number of iterations. Set to None for no limit.
         If this limit is exceeded then a RuntimeError is raised.
+    current_bounds: List of tuples
+        Optional list of tuples representing constraints on coil currents to be used
+        when reconstructing the equilibrium from the geqdsk file.
+        [(l1,u1),(l2,u2)...(lN,uN)]
 
     A nonlinear solve will be performed, using Picard iteration
 
@@ -428,11 +433,24 @@ def read(
     # Find best fit for coil currents
     # First create a control system (see control.py)
     if fit_sol:
-        controlsystem = control.ConstrainPsi2D(psi)  # Fit entire domain
+        # Fit entire domain
+        if current_bounds is not None:
+            controlsystem = control.ConstrainPsi2DAdvanced(
+                psi, current_lims=current_bounds
+                )
+        else:
+            controlsystem = control.ConstrainPsi2D(psi)
     else:
-        controlsystem = control.ConstrainPsi2D(
-            psi, weights=mask
-        )  # Remove SOL from fitting
+        # Remove SOL from fitting
+        if current_bounds is not None:
+            controlsystem = control.ConstrainPsi2DAdvanced(
+                psi, weights=mask, current_lims=current_bounds
+            )
+        else:
+            controlsystem = control.ConstrainPsi2D(
+                psi, weights=mask
+            )
+
     # Run control system to find coil currents
     controlsystem(eq)
 
@@ -448,7 +466,12 @@ def read(
     # Solve using Picard iteration
     #
 
-    controlsystem = control.ConstrainPsiNorm2D(psi_norm, weights=mask)
+    if current_bounds is not None:
+        controlsystem = control.ConstrainPsiNorm2DAdvanced(psi_norm, weights=mask,
+            current_lims=current_bounds)
+        maxits = 1000 # Constrained coil currents may require many iterations
+    else:
+        controlsystem = control.ConstrainPsiNorm2D(psi_norm, weights=mask)
     picard.solve(
         eq,  # The equilibrium to adjust
         profiles,  # The toroidal current profile function
