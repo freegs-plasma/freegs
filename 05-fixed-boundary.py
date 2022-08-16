@@ -16,14 +16,14 @@ eq = freegs.Equilibrium(Rmin=0.1, Rmax=2.0,
                         boundary=boundary.fixedBoundary)
 
 profiles = freegs.jtor.ConstrainPaxisIp(eq,
-										1e3, # Plasma pressure on axis [Pascals]
+                                        1e3, # Plasma pressure on axis [Pascals]
                                         1e5, # Plasma current [Amps]
                                         1.0) # fvac = R*Bt
 
 # Nonlinear solver for Grad-Shafranov equation
 freegs.solve(eq,           # The equilibrium to adjust
-             profiles,	   # The toroidal current profile function
-			 show = True)
+            profiles,	   # The toroidal current profile function
+            show = True)
 
 print("Done!")
 

@@ -35,7 +35,7 @@ eq = freegs.Equilibrium(tokamak=tokamak,
 # Plasma profiles
 
 profiles = freegs.jtor.ConstrainBetapIp(eq,
-										0.15, # Plasma poloidal beta
+                                        0.15, # Plasma poloidal beta
                                         2e5, # Plasma current [Amps]
                                         2.0) # Vacuum f=R*Bt
 
@@ -56,11 +56,11 @@ constrain = freegs.control.constrain(xpoints=xpoints, isoflux=isoflux)
 # Nonlinear solve
 
 freegs.solve(eq,
-             profiles, 
-             constrain,
-             show=True,
-			 check_limited = True,
-		     limit_it = 0)
+            profiles, 
+            constrain,
+            show=True,
+            check_limited = True,
+            limit_it = 0)
 
 # eq now contains the solution
 
@@ -126,7 +126,7 @@ eq2 = freegs.Equilibrium(tokamak=tokamak,
 # Plasma profiles
 
 profiles = freegs.jtor.ConstrainBetapIp(eq2,
-										0.15, # Plasma poloidal beta
+                                        0.15, # Plasma poloidal beta
                                         2e5, # Plasma current [Amps]
                                         2.0) # Vacuum f=R*Bt
 
@@ -150,10 +150,10 @@ constrain = freegs.control.constrain(xpoints=xpoints, isoflux=isoflux)#, current
 # Nonlinear solve
 
 freegs.solve(eq2,
-             profiles, 
-             constrain,
-             show=True,
-			 check_limited = True)
+            profiles, 
+            constrain,
+            show=True,
+            check_limited = True)
 
 # eq now contains the solution
 
@@ -235,4 +235,5 @@ tokamak = freegs.machine.TestTokamakLimited()
 with open("limited.geqdsk") as f:
     eq3 = geqdsk.read(f, tokamak, show=True)
 
+# Plot equilibrium
 plotEquilibrium(eq3)

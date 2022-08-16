@@ -17,13 +17,13 @@ There is a feature wishlist in issues, suggestions and contributions welcome!
 Installing
 ----------
 
-A public vesion of FreeGS is available on PyPI 
+FreeGS is available on PyPI 
 
     $ pip install --user freegs
 
-or clone/download the internal TE version and run setup:
+or clone/download this repository and run setup:
 
-    $ git clone http://tokamak-devlin/gitlab/physics/freegs.git
+    $ git clone https://github.com/freegs-plasma/freegs.git
     $ cd freegs
     $ python setup.py install --user
 
@@ -45,14 +45,8 @@ A convergence test is [described in the manual](https://freegs.readthedocs.io/en
 
     $ python test-convergence.py
 
-To-do list
-----------
-See the 'issues' board on the left hand toolbar.
-
 Examples
 --------
-(Note: some of these may no longer be working with changes to
-coil classes. Not exactly a priority to fix these at present.)
 
 The Jupyter notebooks contain examples wuth additional notes
 
@@ -106,8 +100,6 @@ The "freegs" module consists of the following files:
 * **picard.py**          - Nonlinear solver, iterating the profiles and constraints
 * **plotting.py**        - Plotting routines using matplotlib
 
-- more files have since been added! Check the repo.
-
 License
 -------
 
@@ -133,11 +125,17 @@ References
 * YoungMu Jeon, [Development of a free boundary Tokamak Equlibrium Solver](http://link.springer.com/article/10.3938/jkps.67.843)  [arXiv:1503.03135](https://arxiv.org/abs/1503.03135)
 * S.Jardin "Computational Methods in Plasma Physics" CRC Press
 
-Longer-term the intent is to move FreeGS development back to a public repo and to
-develop bespoke TE scripts in the eqtools python module.
 
-Public Versions
+Versions
 --------
+
+0.7.0  16th August 2022
+  - Fixes and additional features for equilibrium measurements
+  - Limited plasma detection and handling throughout code
+  - Optional adittional constraints on coil currents
+  - Constraints on coil currents when reading geqdsks
+  - Replacement of MultiCoil with FilamentCoil
+  - Addition of PreCalcCoil
 
 0.6.1  11th February 2021
   - Fixes for HDF5 reading and writing
@@ -180,4 +178,3 @@ Public Versions
   - Add Equilibrium.Btor toroidal field calculation
   - Add Equilibrium.plasmaVolume
   - Fix rlim, zlim saved into GEQDSK files
-

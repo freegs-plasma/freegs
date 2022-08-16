@@ -30,7 +30,7 @@ from .gradshafranov import Greens, GreensBr, GreensBz
 class PreCalcCoil(Coil):
     """
     This class represents a coil whose Green's functions have
-    already been calculate by some external code. This is useful
+    already been calculated by some external code. This is useful
     in modelling coils whose internal structure may be complex and
     whose current distribution may be highly non-uniform.
 

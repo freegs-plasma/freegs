@@ -455,7 +455,7 @@ class Machine:
 
     """
 
-    def __init__(self, coils, wall=None):
+    def __init__(self, coils, wall=None, nlimit=500):
         """
         coils - A list of coils [(label, Coil|Circuit|Solenoid)]
         """
@@ -466,7 +466,7 @@ class Machine:
         self.limit_points_Z = None
 
         if self.wall is not None:
-            self.limit_points_R, self.limit_points_Z = self.generate_limit_points()
+            self.limit_points_R, self.limit_points_Z = self.generate_limit_points(nlimit)
 
     def __repr__(self):
         return "Machine(coils={coils}, wall={wall})".format(
@@ -487,13 +487,13 @@ class Machine:
                 return coil
         raise KeyError("Machine does not contain coil with label '{0}'".format(name))
 
-    def generate_limit_points(self):
+    def generate_limit_points(self,nlimit):
         '''
         Generate points along the machine wall that may be used to check
         if the plasma is limited or not.
         '''
 
-        # Interpolate wall limit points (get_divcoords typically only return 8 or so points)
+        # Interpolate wall limit points.
         # Make an interpolator for point location as function of normalised distance
         # along the wall
         points = np.array([self.wall.R,self.wall.Z]).T
@@ -501,7 +501,7 @@ class Machine:
         distance = np.insert(distance,0,0)/distance[-1]
 
         interpolator = interp1d(distance,points,kind='linear',axis=0)
-        new_distances = np.linspace(0,1,500,endpoint=True)
+        new_distances = np.linspace(0,1,nlimit,endpoint=True)
         interpolated_points = interpolator(new_distances)
 
         R = np.asarray(interpolated_points[:,0])
