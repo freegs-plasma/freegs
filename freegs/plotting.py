@@ -33,7 +33,6 @@ def plotCoils(coils, axis=None):
 
     return axis
 
-
 def plotConstraints(control, axis=None, show=True):
     """
     Plots constraints used for coil current control
@@ -68,7 +67,6 @@ def plotConstraints(control, axis=None, show=True):
         plt.show()
 
     return axis
-
 
 def plotEquilibrium(eq, axis=None, show=True, oxpoints=True, wall=True):
     """
@@ -108,7 +106,7 @@ def plotEquilibrium(eq, axis=None, show=True, oxpoints=True, wall=True):
             axis.plot(r, z, "go")
 
         if xpt:
-            psi_bndry = xpt[0][2]
+            psi_bndry = eq.psi_bndry #xpt[0][2]
             axis.contour(eq.R, eq.Z, psi, levels=[psi_bndry], colors="r")
 
             # Add legend

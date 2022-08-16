@@ -26,10 +26,12 @@ from .gradshafranov import Greens, GreensBr, GreensBz
 
 from numpy import linspace
 import numpy as np
+from scipy.interpolate import interp1d
 
 from .coil import Coil, AreaCurrentLimit
 from .shaped_coil import ShapedCoil
-from .multi_coil import MultiCoil
+from .pre_calc_coil import PreCalcCoil
+from .filament_coil import FilamentCoil
 
 # We need this for the `label` part of the Circuit dtype for writing
 # to HDF5 files. See the following for information:
@@ -453,13 +455,18 @@ class Machine:
 
     """
 
-    def __init__(self, coils, wall=None):
+    def __init__(self, coils, wall=None, nlimit=500):
         """
         coils - A list of coils [(label, Coil|Circuit|Solenoid)]
         """
 
         self.coils = coils
         self.wall = wall
+        self.limit_points_R = None
+        self.limit_points_Z = None
+
+        if self.wall is not None:
+            self.limit_points_R, self.limit_points_Z = self.generate_limit_points(nlimit)
 
     def __repr__(self):
         return "Machine(coils={coils}, wall={wall})".format(
@@ -479,6 +486,28 @@ class Machine:
             if label == name:
                 return coil
         raise KeyError("Machine does not contain coil with label '{0}'".format(name))
+
+    def generate_limit_points(self,nlimit):
+        '''
+        Generate points along the machine wall that may be used to check
+        if the plasma is limited or not.
+        '''
+
+        # Interpolate wall limit points.
+        # Make an interpolator for point location as function of normalised distance
+        # along the wall
+        points = np.array([self.wall.R,self.wall.Z]).T
+        distance = np.cumsum(np.sqrt(np.sum(np.diff(points,axis=0)**2,axis=1)))
+        distance = np.insert(distance,0,0)/distance[-1]
+
+        interpolator = interp1d(distance,points,kind='linear',axis=0)
+        new_distances = np.linspace(0,1,nlimit,endpoint=True)
+        interpolated_points = interpolator(new_distances)
+
+        R = np.asarray(interpolated_points[:,0])
+        Z = np.asarray(interpolated_points[:,1])
+
+        return R, Z
 
     def psi(self, R, Z):
         """
@@ -654,6 +683,27 @@ def TestTokamak():
 
     return Machine(coils, wall)
 
+def TestTokamakLimited():
+    """
+    Create a simple tokamak
+    """
+
+    coils = [
+        (
+            "P1L",
+            ShapedCoil([(0.95, -1.15), (0.95, -1.05), (1.05, -1.05), (1.05, -1.15)]),
+        ),
+        ("P1U", ShapedCoil([(0.95, 1.15), (0.95, 1.05), (1.05, 1.05), (1.05, 1.15)])),
+        ("P2L", Coil(1.75, -0.6)),
+        ("P2U", Coil(1.75, 0.6)),
+    ]
+
+    wall = Wall(
+        [0.93, 0.93, 1.5, 1.8, 1.8, 1.5], [-0.85, 0.85, 0.85, 0.25, -0.25, -0.85]  # R
+    )  # Z
+
+    return Machine(coils, wall)
+
 
 def DIIID():
     """
@@ -791,7 +841,7 @@ def MASTU_simple():
     """This is an older version of the MAST-U coilset.
     A simplified set of coils, with one strand per coil.
     This may be easier to use for initial development of scenarios,
-    but less detailed than the MultiCoil description (MASTU).
+    but less detailed than the FilamentCoil description (MASTU).
     """
     coils = [
         ("Solenoid", Solenoid(0.19475, -1.581, 1.581, 324)),
@@ -1040,11 +1090,11 @@ def MASTU_simple():
 
 
 #########################################
-# MAST-U, using MultiCoil to represent multiple strands
+# MAST-U, using FilamentCoil to represent multiple strands
 
 
 def MASTU():
-    """MAST-Upgrade, using MultiCoil to represent coils with different locations
+    """MAST-Upgrade, using FilamentCoil to represent coils with different locations
     for each strand.
     """
     d1_upper_r = [
@@ -2263,13 +2313,13 @@ def MASTU():
 
     coils = [
         ("Solenoid", Solenoid(0.19475, -1.581, 1.581, 324, control=False)),
-        ("Pc", MultiCoil(pc_r, pc_z)),
+        ("Pc", FilamentCoil(pc_r, pc_z)),
         (
             "Px",
             Circuit(
                 [
-                    ("PxU", MultiCoil(px_upper_r, px_upper_z), 1.0),
-                    ("PxL", MultiCoil(px_upper_r, px_lower_z), 1.0),
+                    ("PxU", FilamentCoil(px_upper_r, px_upper_z), 1.0),
+                    ("PxL", FilamentCoil(px_upper_r, px_lower_z), 1.0),
                 ]
             ),
         ),
@@ -2277,8 +2327,8 @@ def MASTU():
             "D1",
             Circuit(
                 [
-                    ("D1U", MultiCoil(d1_upper_r, d1_upper_z), 1.0),
-                    ("D1L", MultiCoil(d1_upper_r, d1_lower_z), 1.0),
+                    ("D1U", FilamentCoil(d1_upper_r, d1_upper_z), 1.0),
+                    ("D1L", FilamentCoil(d1_upper_r, d1_lower_z), 1.0),
                 ]
             ),
         ),
@@ -2286,8 +2336,8 @@ def MASTU():
             "D2",
             Circuit(
                 [
-                    ("D2U", MultiCoil(d2_upper_r, d2_upper_z), 1.0),
-                    ("D2L", MultiCoil(d2_upper_r, d2_lower_z), 1.0),
+                    ("D2U", FilamentCoil(d2_upper_r, d2_upper_z), 1.0),
+                    ("D2L", FilamentCoil(d2_upper_r, d2_lower_z), 1.0),
                 ]
             ),
         ),
@@ -2295,8 +2345,8 @@ def MASTU():
             "D3",
             Circuit(
                 [
-                    ("D3U", MultiCoil(d3_upper_r, d3_upper_z), 1.0),
-                    ("D3L", MultiCoil(d3_upper_r, d3_lower_z), 1.0),
+                    ("D3U", FilamentCoil(d3_upper_r, d3_upper_z), 1.0),
+                    ("D3L", FilamentCoil(d3_upper_r, d3_lower_z), 1.0),
                 ]
             ),
         ),
@@ -2304,8 +2354,8 @@ def MASTU():
             "Dp",
             Circuit(
                 [
-                    ("DPU", MultiCoil(dp_upper_r, dp_upper_z), 1.0),
-                    ("DPL", MultiCoil(dp_upper_r, dp_lower_z), 1.0),
+                    ("DPU", FilamentCoil(dp_upper_r, dp_upper_z), 1.0),
+                    ("DPL", FilamentCoil(dp_upper_r, dp_lower_z), 1.0),
                 ]
             ),
         ),
@@ -2313,8 +2363,8 @@ def MASTU():
             "D5",
             Circuit(
                 [
-                    ("D5U", MultiCoil(d5_upper_r, d5_upper_z), 1.0),
-                    ("D5L", MultiCoil(d5_upper_r, d5_lower_z), 1.0),
+                    ("D5U", FilamentCoil(d5_upper_r, d5_upper_z), 1.0),
+                    ("D5L", FilamentCoil(d5_upper_r, d5_lower_z), 1.0),
                 ]
             ),
         ),
@@ -2322,8 +2372,8 @@ def MASTU():
             "D6",
             Circuit(
                 [
-                    ("D6U", MultiCoil(d6_upper_r, d6_upper_z), 1.0),
-                    ("D6L", MultiCoil(d6_upper_r, d6_lower_z), 1.0),
+                    ("D6U", FilamentCoil(d6_upper_r, d6_upper_z), 1.0),
+                    ("D6L", FilamentCoil(d6_upper_r, d6_lower_z), 1.0),
                 ]
             ),
         ),
@@ -2331,8 +2381,8 @@ def MASTU():
             "D7",
             Circuit(
                 [
-                    ("D7U", MultiCoil(d7_upper_r, d7_upper_z), 1.0),
-                    ("D7L", MultiCoil(d7_upper_r, d7_lower_z), 1.0),
+                    ("D7U", FilamentCoil(d7_upper_r, d7_upper_z), 1.0),
+                    ("D7L", FilamentCoil(d7_upper_r, d7_lower_z), 1.0),
                 ]
             ),
         ),
@@ -2340,8 +2390,8 @@ def MASTU():
             "P4",
             Circuit(
                 [
-                    ("P4U", MultiCoil(p4_upper_r, p4_upper_z), 1.0),
-                    ("P4L", MultiCoil(p4_upper_r, p4_lower_z), 1.0),
+                    ("P4U", FilamentCoil(p4_upper_r, p4_upper_z), 1.0),
+                    ("P4L", FilamentCoil(p4_upper_r, p4_lower_z), 1.0),
                 ]
             ),
         ),
@@ -2349,8 +2399,8 @@ def MASTU():
             "P5",
             Circuit(
                 [
-                    ("P5U", MultiCoil(p5_upper_r, p5_upper_z), 1.0),
-                    ("P5L", MultiCoil(p5_upper_r, p5_lower_z), 1.0),
+                    ("P5U", FilamentCoil(p5_upper_r, p5_upper_z), 1.0),
+                    ("P5L", FilamentCoil(p5_upper_r, p5_lower_z), 1.0),
                 ]
             ),
         ),
@@ -2358,8 +2408,8 @@ def MASTU():
             "P6",
             Circuit(
                 [
-                    ("P6U", MultiCoil(p6_upper_r, p6_upper_z), 1.0),
-                    ("P6L", MultiCoil(p6_upper_r, p6_lower_z), -1.0),
+                    ("P6U", FilamentCoil(p6_upper_r, p6_upper_z), 1.0),
+                    ("P6L", FilamentCoil(p6_upper_r, p6_lower_z), -1.0),
                 ]
             ),
         ),

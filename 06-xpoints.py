@@ -48,7 +48,9 @@ for r,z,_ in xpt:
 for r,z,_ in opt:
     ax.plot(r,z,'go')
 psi_bndry = xpt[0][2]
-sep_contour=ax.contour(eq.R, eq.Z,psi, levels=[psi_bndry], colors='r')
+sep_contour = ax.contour(eq.R, eq.Z,psi, levels=[psi_bndry], colors='r')
+psi_bndry = eq.psi_bndry
+sep_contour = ax.contour(eq.R, eq.Z,psi, levels=[psi_bndry], colors='k')
 plt.show()
 
 ##########################################################

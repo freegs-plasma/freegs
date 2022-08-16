@@ -1,4 +1,12 @@
-#!/usr/bin/env python
+'''
+Creates an equilibrium before saving it as a geqdsk file.
+Then reconstructs the equilibrium from the geqdsk using
+constraints on coil currents.
+'''
+
+from freegs import geqdsk
+from freegs import machine
+from freegs.plotting import plotEquilibrium
 
 import freegs
 
@@ -13,7 +21,6 @@ eq = freegs.Equilibrium(tokamak=tokamak,
                         Zmin=-1.0, Zmax=1.0,   # Height range
                         nx=65, ny=65,          # Number of grid points
                         boundary=freegs.boundary.freeBoundaryHagenow)  # Boundary condition
-
 
 #########################################
 # Plasma profiles
@@ -46,41 +53,61 @@ freegs.solve(eq,          # The equilibrium to adjust
 
 # eq now contains the solution
 
-print("Done!")
-
-print("Plasma current: %e Amps" % (eq.plasmaCurrent()))
-print("Plasma pressure on axis: %e Pascals" % (eq.pressure(0.0)))
-print("Poloidal beta: %e" % (eq.poloidalBeta()))
-
 # Currents in the coils
 tokamak.printCurrents()
 
-# Forces on the coils
-eq.printForces()
+psi1 = eq.psi()
 
-print("\nSafety factor:\n\tpsi \t q")
-for psi in [0.01, 0.9, 0.95]:
-    print("\t{:.2f}\t{:.2f}".format(psi, eq.q(psi)))
+#########################################
 
-##############################################
 # Save to G-EQDSK file
 
 from freegs import geqdsk
 
-with open("lsn.geqdsk", "w") as f:
+with open("lsn.geqdsk", "w+") as f:
     geqdsk.write(eq, f)
 
-##############################################
-# Final plot of equilibrium
+#########################################
+# Read in the geqdsk file with bounds on the coil currents
 
-axis = eq.plot(show=False)
-eq.tokamak.plot(axis=axis, show=False)
-constrain.plot(axis=axis, show=True)
+# Lower/Upper limits of coil currents
+current_lims = [(140000.0,155000.0),(60000.0,63000.0),(-105000.0,-90000.0),(-60000.0,-55000.0)]
 
-# Safety factor
+tokamak2 = freegs.machine.TestTokamak()
 
+with open("lsn.geqdsk") as f:
+    eq2= geqdsk.read(f, tokamak2, show=True, current_bounds=current_lims)
+
+# eq2 now contains the solution
+
+plotEquilibrium(eq2)
+
+# Currents in the coils
+tokamak2.printCurrents()
+
+# Compare reconstructed psi v original psi
+psi2 = eq2.psi()
+
+pct_change = abs(100.0*(psi2 - psi1)/psi1)
+
+import numpy as np
 import matplotlib.pyplot as plt
-plt.plot(*eq.q())
-plt.xlabel(r"Normalised $\psi$")
-plt.ylabel("Safety factor")
+
+fig, ax = plt.subplots()
+
+ax.imshow(pct_change.T, extent=[min(eq.R[:, 0]),max(eq.R[:, 0]),min(eq.Z[0, :]),max(eq.Z[0, :])],
+        origin='lower', vmax=20.0)
+
+ax.plot(eq.tokamak.wall.R,eq.tokamak.wall.Z,'k')
+ax.contour(eq.R,eq.Z,eq.psi(),levels=[eq.psi_bndry],colors='w')
+ax.contour(eq2.R,eq2.Z,eq2.psi(),levels=[eq2.psi_bndry],colors='r')
+ax.plot([],[],'r',label='original')
+ax.plot([],[],'w',label='achieved')
+
+ax.set_xlabel('R(m)')
+ax.set_ylabel('Z(m)')
+ax.set_aspect('equal')
+ax.set_title(r'pct diff in $\psi$')
+ax.legend()
+
 plt.show()

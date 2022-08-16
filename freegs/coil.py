@@ -271,6 +271,6 @@ class Coil:
             fig = plt.figure()
             axis = fig.add_subplot(111)
 
-        circle = plt.Circle((self.R, self.Z), minor_radius, color="b")
+        circle = plt.Circle((self.R, self.Z), minor_radius, color="gray")
         axis.add_artist(circle)
         return axis
