@@ -179,6 +179,11 @@ class ConstrainBetapIp(Profile):
             raise ValueError("No O-points found!")
         psi_axis = opt[0][2]
 
+        # Added by nicamo
+        # keeps memory of critical points
+        self.opt = opt
+        self.xpt = xpt
+
         if psi_bndry is not None:
             mask = critical.core_mask(R, Z, psi, opt, xpt, psi_bndry)
         elif xpt:
@@ -340,6 +345,11 @@ class ConstrainPaxisIp(Profile):
         if not opt:
             raise ValueError("No O-points found!")
         psi_axis = opt[0][2]
+
+        # Added by nicamo
+        # keeps memory of critical points
+        self.opt = opt
+        self.xpt = xpt
 
         if psi_bndry is not None:
             mask = critical.core_mask(R, Z, psi, opt, xpt, psi_bndry)
