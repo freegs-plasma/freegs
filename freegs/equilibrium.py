@@ -159,8 +159,8 @@ class Equilibrium:
                 psi_bnd = np.sum(self.greenfunc*Jtor[np.newaxis,:,:], axis=(-1,-2))
                 psi[:,0] = psi_bnd[:nx]
                 psi[:,-1] = psi_bnd[nx:2*nx]
-                psi[0,:] = psi_bnd[2*nx:3*nx]
-                psi[-1,:] = psi_bnd[3*nx:]
+                psi[0,:] = psi_bnd[2*nx:2*nx+ny]
+                psi[-1,:] = psi_bnd[2*nx+ny:,]
             self._applyBoundary = _freeboundary
 
 
