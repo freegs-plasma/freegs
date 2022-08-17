@@ -385,7 +385,7 @@ class Equilibrium:
         result = critical.find_safety(self, psinorm=psinorm)
         # Convert to a scalar if only one result
         if len(result) == 1:
-            return np.asscalar(result)
+            return result.item()
         return result
 
     def tor_flux(self, psi = None):
