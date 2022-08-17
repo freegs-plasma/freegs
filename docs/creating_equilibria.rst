@@ -21,6 +21,14 @@ These inputs are combined in a nonlinear Picard iteration with the main componen
   :width: 400
   :alt: Main components in the Picard iteration used to solve free boundary equilibrium problem.
 
+FreeGS can also operate in 'forward mode' to find a Grad-Shafranov solution
+given a set of coil currents and positions. In this case, a Newton-Krylov solver
+is used to find solutions by iteration in place of the Picard iteration.
+
+.. image:: nonlinear_solve_NK.png
+   :width: 400
+   :alt: Main components in the Newton-Krylov iteration.
+
 Tokamak coils, circuits and solenoid
 ------------------------------------
    
@@ -71,6 +79,16 @@ to fix the current in some of the coils. This can be done by turning off control
 
 where the current is in Amps, and is for a coil with a single turn. Setting ``control=False``
 removes the coil from feedback control.
+
+
+Forward mode
+~~~~~~~~~~~~
+
+When running in forward mode, FreeGS uses a Newton-Krylov solver to calculate a
+Grad-Shafranov equilibrium given a set of coil currents and positions. For
+instance, this can be used to determine the change to an equiibrium if the
+currents in some or all of the coils are altered. An demonstration of this is
+shown in example 15.
 
 
 Shaped coils

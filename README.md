@@ -48,7 +48,7 @@ A convergence test is [described in the manual](https://freegs.readthedocs.io/en
 Examples
 --------
 
-The Jupyter notebooks contain examples wuth additional notes
+The Jupyter notebooks contain examples with additional notes
 
 * MAST-example.ipynb 
 
@@ -98,6 +98,7 @@ The "freegs" module consists of the following files:
 * **machine.py**         - Represents the coils and power supply circuits
 * **multigrid.py**       - The multigrid solver for the linear elliptic operator
 * **picard.py**          - Nonlinear solver, iterating the profiles and constraints
+* **newtonk.py**         - Nonlinear solver, iterating the profiles 
 * **plotting.py**        - Plotting routines using matplotlib
 
 License
@@ -128,6 +129,11 @@ References
 
 Versions
 --------
+
+0.7.1  17th August 2022
+  - Precalculation of green functions for freeboundary
+  - Implementation of Newton Krylov non linear solver
+  - Separation of forward and inverse GS problems
 
 0.7.0  16th August 2022
   - Fixes and additional features for equilibrium measurements
