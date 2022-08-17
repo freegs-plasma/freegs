@@ -28,7 +28,8 @@ eq = freegs.Equilibrium(tokamak=tokamak,
 #########################################
 # Plasma profiles
 
-profiles = freegs.jtor.ConstrainPaxisIp(1e3, # Plasma pressure on axis [Pascals]
+profiles = freegs.jtor.ConstrainPaxisIp(eq,
+                                        1e3, # Plasma pressure on axis [Pascals]
                                         2e5, # Plasma current [Amps]
                                         2.0) # Vacuum f=R*Bt
 
@@ -72,7 +73,7 @@ plt.show(block=False)
 
 for _, coil in eq.tokamak.coils:
     coil.current *= 1.5
-    # optionally, you can set
+    # optionally, you can also set
     # coil.control = False
 freegs.solve(eq, profiles, constrain=None)
 
