@@ -231,7 +231,6 @@ class FilamentCoil(Coil):
         if Rfil is None:
             # No filaments provided. Need to populate the coil cross
             # section with -Nfils filaments.
-
             Rfil, Zfil = populate_with_fils(self.shape,Nfils)
         
         Rfil = np.asarray(Rfil)

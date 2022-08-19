@@ -2,6 +2,8 @@
 
 import freegs
 import freegs.critical as critical
+from freegs import geqdsk
+from freegs.plotting import plotEquilibrium
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -33,7 +35,7 @@ eq = freegs.Equilibrium(tokamak=tokamak,
 # Plasma profiles
 
 profiles = freegs.jtor.ConstrainBetapIp(eq,
-										0.15, # Plasma poloidal beta
+                                        0.15, # Plasma poloidal beta
                                         2e5, # Plasma current [Amps]
                                         2.0) # Vacuum f=R*Bt
 
@@ -54,11 +56,11 @@ constrain = freegs.control.constrain(xpoints=xpoints, isoflux=isoflux)
 # Nonlinear solve
 
 freegs.solve(eq,
-             profiles, 
-             constrain,
-             show=True,
-			 check_limited = True
-		     limit_it = 0)
+            profiles, 
+            constrain,
+            show=True,
+            check_limited = True,
+            limit_it = 0)
 
 # eq now contains the solution
 
@@ -87,12 +89,26 @@ ax.contour(eq.R,eq.Z,eq.psiN(),levels=30,colors='b')
 ax.contour(eq.R,eq.Z,eq.psiN(),levels=[1.0],colors='orange')
 ax.plot(eq.tokamak.wall.R,eq.tokamak.wall.Z,color='k')
 opt, xpt = critical.find_critical(eq.R,eq.Z,eq.psi())
-mask = critical.core_mask(eq.R,eq.Z,eq.psi(),opt,xpt,eq.psi_bndry)
-ax.contourf(eq.R,eq.Z,mask)
+isoflux = np.array(
+    freegs.critical.find_separatrix(eq, ntheta=101, opoint=opt, xpoint=xpt, psi=eq.psi())
+)
+ind = np.argmin(isoflux[:, 1])
+rbdry = np.roll(isoflux[:, 0][::-1], -ind)
+rbdry = np.append(rbdry,rbdry[0])
+zbdry = np.roll(isoflux[:, 1][::-1], -ind)
+zbdry = np.append(zbdry, zbdry[0])
+ax.plot(rbdry,zbdry,'rx')
+ax.contourf(eq.R,eq.Z,eq.mask)
 ax.set_aspect('equal')
 ax.set_xlabel('R(m)')
 ax.set_ylabel('Z(m)')
 plt.show()
+
+from freegs import geqdsk
+
+with open("limited.geqdsk", "w") as f:
+    geqdsk.write(eq, f)
+
 #########################################
 # Create the machine, which specifies coil locations
 # and equilibrium, specifying the domain to solve over
@@ -110,7 +126,7 @@ eq2 = freegs.Equilibrium(tokamak=tokamak,
 # Plasma profiles
 
 profiles = freegs.jtor.ConstrainBetapIp(eq2,
-										0.15, # Plasma poloidal beta
+                                        0.15, # Plasma poloidal beta
                                         2e5, # Plasma current [Amps]
                                         2.0) # Vacuum f=R*Bt
 
@@ -134,10 +150,10 @@ constrain = freegs.control.constrain(xpoints=xpoints, isoflux=isoflux)#, current
 # Nonlinear solve
 
 freegs.solve(eq2,
-             profiles, 
-             constrain,
-             show=True,
-			 check_limited = True)
+            profiles, 
+            constrain,
+            show=True,
+            check_limited = True)
 
 # eq now contains the solution
 
@@ -211,3 +227,13 @@ ax.set_xlabel('psiN')
 ax.set_ylabel('fpol')
 ax.legend()
 plt.show()
+
+#########################
+# Load in the geqdsk of the limited plasma
+tokamak = freegs.machine.TestTokamakLimited()
+
+with open("limited.geqdsk") as f:
+    eq3 = geqdsk.read(f, tokamak, show=True)
+
+# Plot equilibrium
+plotEquilibrium(eq3)
