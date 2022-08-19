@@ -1,11 +1,10 @@
 """
-Define a class of coil which contains a uniform current density
-over a shaped region.
+Classes and routines to represent coils and circuits
 
 License
 -------
 
-Copyright 2019 Ben Dudson, University of York. Email: benjamin.dudson@york.ac.uk
+Copyright 2022 Chris Marsden, Tokamak Energy. Email: chris.marsden@tokamakenergy.co.uk
 
 This file is part of FreeGS.
 
@@ -23,29 +22,32 @@ You should have received a copy of the GNU Lesser General Public License
 along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-from . import quadrature
-from . import polygons
+import numpy as np
+from .coil import Coil, AreaCurrentLimit
 from .gradshafranov import Greens, GreensBr, GreensBz
 
-import numpy as np
 
-from .coil import Coil
-
-
-class ShapedCoil(Coil):
+class PreCalcCoil(Coil):
     """
-    Represents a coil with a specified shape
+    This class represents a coil whose Green's functions have
+    already been calculated by some external code. This is useful
+    in modelling coils whose internal structure may be complex and
+    whose current distribution may be highly non-uniform.
+
+    The user needs to supply information on the R,Z grids that the
+    Green's functions have been pre-calculated on, as well as the
+    Br, Bz and psi data on said R,Z grid.
 
     public members
     --------------
 
-    R, Z - Location of the point coil/Locations of coil filaments
-    current - current in the coil(s) in Amps
-    turns   - Number of turns if using point coils
+    R, Z    - Location of the coil
+    current - current in the coil in Amps
+    turns   - Number of turns
     control - enable or disable control system
     area    - Cross-section area in m^2
 
-    The total toroidal current carried by the coil block is current * turns
+    The total toroidal current carried by the coil is current * turns
     """
 
     # A dtype for converting to Numpy array and storing in HDF5 files
@@ -57,20 +59,24 @@ class ShapedCoil(Coil):
             (str("current"), np.float64),
             (str("turns"), int),
             (str("control"), bool),
-            (str("npoints"), int),
         ]
     )
 
-    def __init__(self, shape, current=0.0, turns=1, control=True, npoints=6):
+    def __init__(self, shape, Rgrid, Zgrid, mapBr, mapBz, mapPsi, current=0.0, turns=1, control=True):
         """
         Inputs
         ------
-        shape     outline of the coil shape as a list of points [(r1,z1), (r2,z2), ...]
-                  Must have more than two points
-        current   The current in the circuit. The total current is current * turns
-        turns     Number of turns in point coil(s) block. Total block current is current * turns
-        control   enable or disable control system
-        npoints   Number of quadrature points per triangle. Valid choices: 1, 3, 6
+        shape  - outline of the coil shape as a list of points [(r1,z1), (r2,z2), ...]
+                 Must have more than two points
+
+        Rgrid   - 1D array of R coords that maps are calculated on.
+        Zgrid   - 1D array of Z coords that maps are calculated on.
+        mapBr   - 1D array of Br calculated on Rgrid,Zgrid for the coil @ 1A-turn.
+        mapBz   - 1D array of Bz calculated on Rgrid,Zgrid for the coil @ 1A-turn.
+        mapPsi  - 1D array of Psi calculated on Rgrid,Zgrid for the coil @ 1A-turn.
+        current - The current in the circuit. The total current is current * turns.
+        turns   - Number of turns in point coil(s) block. Total block current is current * turns.
+        control - Enable or disable control system.
 
         """
         assert len(shape) > 2
@@ -81,44 +87,62 @@ class ShapedCoil(Coil):
         self._Z_centre = sum(z for r, z in shape) / len(shape)
 
         self.current = current
-        self.turns = turns
+        self.turns   = turns
         self.control = control
-        self._area = abs(polygons.area(shape))
-        self.shape = shape
+        self._area   = abs(polygons.area(shape))
+        self.shape   = shape
+        self._points = np.array([(r,z) for r, z in self.shape])
 
-        # The quadrature points to be used
-        self.npoints_per_triangle = npoints
-        self._points = quadrature.polygon_quad(shape, n=npoints)
+        # Data for the pre-calculated Green's functions
+        self.Rgrid   = np.transpose(Rgrid)[:,0]
+        self.Zgrid   = np.transpose(Zgrid)[0,:]
+        self.map_psi = np.transpose(np.asarray(map_psi))
+        self.map_Br  = np.transpose(np.asarray(map_Br))
+        self.map_Bz  = np.transpose(np.asarray(map_Bz))
+
+        # Interpolators for the pre-calculated Green's functions
+        self.cPsi = RectBivariateSpline(self.Rgrid,self.Zgrid,self.mapPsi)
+        self.cBr  = RectBivariateSpline(self.Rgrid,self.Zgrid,self.mapBr)
+        self.cBz  = RectBivariateSpline(self.Rgrid,self.Zgrid,self.mapBz)
 
     def controlPsi(self, R, Z):
         """
-        Calculate poloidal flux at (R,Z) due to a unit current
+        Calculate poloidal flux at (R,Z) due to a unit current.
         """
-        result = 0.0
-        for R_fil, Z_fil, weight in self._points:
-            result += Greens(R_fil, Z_fil, R, Z) * weight
+        
+        if isinstance(R,float) or isinstance(R,int):
+            result = self.cPsi(R,Z)[0][0]
+        else:
+            result = self.cPsi(R,Z,grid=False)
+
         return result
 
     def controlBr(self, R, Z):
         """
-        Calculate radial magnetic field Br at (R,Z) due to a unit current
+        Calculate radial magnetic field Br at (R,Z) due to a unit current.
         """
-        result = 0.0
-        for R_fil, Z_fil, weight in self._points:
-            result += GreensBr(R_fil, Z_fil, R, Z) * weight
+        
+        if isinstance(R,float) or isinstance(R,int):
+            result = self.cBr(R,Z)[0][0]
+        else:
+            result = self.cBr(R,Z,grid=False)
+
         return result
 
     def controlBz(self, R, Z):
         """
-        Calculate vertical magnetic field Bz at (R,Z) due to a unit current
+        Calculate vertical magnetic field Br at (R,Z) due to a unit current.
         """
-        result = 0.0
-        for R_fil, Z_fil, weight in self._points:
-            result += GreensBz(R_fil, Z_fil, R, Z) * weight
+        
+        if isinstance(R,float) or isinstance(R,int):
+            result = self.cBz(R,Z)[0][0]
+        else:
+            result = self.cBz(R,Z,grid=False)
+
         return result
 
     def __repr__(self):
-        return "ShapedCoil({0}, current={1:.1f}, turns={2}, control={3})".format(
+        return "PreCalcCoil({0}, current={1:.1f}, turns={2}, control={3})".format(
             self.shape, self.current, self.turns, self.control
         )
 
@@ -133,7 +157,7 @@ class ShapedCoil(Coil):
     def R(self, Rnew):
         # Need to shift all points
         Rshift = Rnew - self._R_centre
-        self._points = [(r + Rshift, z, w) for r, z, w in self._points]
+        self._points = [(r + Rshift, z) for r, z in self._points]
         self._R_centre = Rnew
 
     @property
@@ -147,7 +171,7 @@ class ShapedCoil(Coil):
     def Z(self, Znew):
         # Need to shift all points
         Zshift = Znew - self._Z_centre
-        self._points = [(r, z + Zshift, w) for r, z, w in self._points]
+        self._points = [(r, z + Zshift) for r, z in self._points]
         self._Z_centre = Znew
 
     @property
@@ -156,7 +180,7 @@ class ShapedCoil(Coil):
 
     @area.setter
     def area(self, area):
-        raise ValueError("Area of a ShapedCoil is fixed")
+        raise ValueError("Area of a PreCalcCoil is fixed")
 
     def plot(self, axis=None, show=False):
         """
@@ -197,43 +221,9 @@ class ShapedCoil(Coil):
                 Z,
                 self.current,
                 self.turns,
-                self.control,
-                self.npoints_per_triangle,
+                self.control
             ),
             dtype=self.dtype,
-        )
-
-    @classmethod
-    def from_numpy_array(cls, value):
-        if value.dtype != cls.dtype:
-            raise ValueError(
-                "Can't create {this} from dtype: {got} (expected: {dtype})".format(
-                    this=type(cls), got=value.dtype, dtype=cls.dtype
-                )
-            )
-        RZlen = value["RZlen"]
-        R = value["R"][:RZlen]
-        Z = value["Z"][:RZlen]
-        current = value["current"]
-        turns = value["turns"]
-        control = value["control"]
-        npoints = value["npoints"]
-
-        return ShapedCoil(
-            list(zip(R, Z)),
-            current=current,
-            turns=turns,
-            control=control,
-            npoints=npoints,
-        )
-
-    def __eq__(self, other):
-        return (
-            np.allclose(self.shape, other.shape)
-            and self.current == other.current
-            and self.turns == other.turns
-            and self.control == other.control
-            and self.npoints_per_triangle == other.npoints_per_triangle
         )
 
     def __ne__(self, other):

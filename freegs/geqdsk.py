@@ -91,7 +91,7 @@ def write(eq, fh, label=None, oxpoints=None, fileformat=_geqdsk.write):
     data["rmagx"], data["zmagx"], data["simagx"] = opoint[0]  # magnetic axis
 
     # Remove Psi magi axis to set it to zero at mag x
-    data["sibdry"] = xpoint[0][2] - data["simagx"]  # Psi at boundary
+    data["sibdry"] = eq.psi_bndry - data["simagx"]  # Psi at boundary
 
     data["cpasma"] = eq.plasmaCurrent()  # Plasma current [A]
 
@@ -164,6 +164,7 @@ def read(
     blend=0.0,
     fit_sol=False,
     maxits=50,
+    current_bounds=None
 ):
     """
     Reads a G-EQDSK format file
@@ -203,6 +204,10 @@ def read(
     maxits : integer
         Maximum number of iterations. Set to None for no limit.
         If this limit is exceeded then a RuntimeError is raised.
+    current_bounds: List of tuples
+        Optional list of tuples representing constraints on coil currents to be used
+        when reconstructing the equilibrium from the geqdsk file.
+        [(l1,u1),(l2,u2)...(lN,uN)]
 
     A nonlinear solve will be performed, using Picard iteration
 
@@ -328,14 +333,16 @@ def read(
         Zmax=data["zmid"] + 0.5 * data["zdim"],
         nx=nx,
         ny=ny,  # Number of grid points
+        check_limited = True,
+        psi = psi
     )
     # Grid spacing
     dR = eq.R[1, 0] - eq.R[0, 0]
     dZ = eq.Z[0, 1] - eq.Z[0, 0]
 
-    # Create masking function: 1 inside plasma, 0 outside
-    opoint, xpoint = critical.find_critical(eq.R, eq.Z, psi)
-    mask = critical.core_mask(eq.R, eq.Z, psi, opoint, xpoint, psi_bndry)
+    psi_bndry = eq.psi_bndry
+    psi_axis = eq.psi_axis
+    mask = eq.mask
 
     # Toroidal current
     Jtor = eq.R * pprime_func(psi_norm) + ffprime_func(psi_norm) / (eq.R * mu0)
@@ -366,20 +373,20 @@ def read(
         # Create a new Equilibrium object
         # (replacing previous 'eq')
         eq = Equilibrium(
-            tokamak=machine, Rmin=Rmin, Rmax=Rmax, Zmin=Zmin, Zmax=Zmax, nx=nx, ny=ny
+            tokamak=machine, Rmin=Rmin, Rmax=Rmax, Zmin=Zmin, Zmax=Zmax, nx=nx, ny=ny, check_limited=True
         )
 
         # Interpolate Jtor and psi onto new grid
         Jtor = Jtor_func(eq.R, eq.Z, grid=False)
         psi = psi_func(eq.R, eq.Z, grid=False)
 
+        psi_bndry = eq.psi_bndry
+        psi_axis = eq.psi_axis
+        mask = eq.mask
+
         # Update the mask function by calculating normalised psi
         # on the new grid
         psi_norm = clip((psi - psi_axis) / (psi_bndry - psi_axis), 0.0, 1.0)
-
-        # Create masking function: 1 inside plasma, 0 outside
-        opoint, xpoint = critical.find_critical(eq.R, eq.Z, psi)
-        mask = critical.core_mask(eq.R, eq.Z, psi, opoint, xpoint, psi_bndry)
 
     # Note: Here we have
     #   eq : Equilibrium object
@@ -390,6 +397,7 @@ def read(
 
     # Perform a linear solve to calculate psi
     # using known Jtor
+    eq.check_limited = True
     eq.solve(profiles, Jtor=Jtor)
 
     print(
@@ -425,11 +433,24 @@ def read(
     # Find best fit for coil currents
     # First create a control system (see control.py)
     if fit_sol:
-        controlsystem = control.ConstrainPsi2D(psi)  # Fit entire domain
+        # Fit entire domain
+        if current_bounds is not None:
+            controlsystem = control.ConstrainPsi2DAdvanced(
+                psi, current_lims=current_bounds
+                )
+        else:
+            controlsystem = control.ConstrainPsi2D(psi)
     else:
-        controlsystem = control.ConstrainPsi2D(
-            psi, weights=mask
-        )  # Remove SOL from fitting
+        # Remove SOL from fitting
+        if current_bounds is not None:
+            controlsystem = control.ConstrainPsi2DAdvanced(
+                psi, weights=mask, current_lims=current_bounds
+            )
+        else:
+            controlsystem = control.ConstrainPsi2D(
+                psi, weights=mask
+            )
+
     # Run control system to find coil currents
     controlsystem(eq)
 
@@ -445,7 +466,12 @@ def read(
     # Solve using Picard iteration
     #
 
-    controlsystem = control.ConstrainPsiNorm2D(psi_norm, weights=mask)
+    if current_bounds is not None:
+        controlsystem = control.ConstrainPsiNorm2DAdvanced(psi_norm, weights=mask,
+            current_lims=current_bounds)
+        maxits = 1000 # Constrained coil currents may require many iterations
+    else:
+        controlsystem = control.ConstrainPsiNorm2D(psi_norm, weights=mask)
     picard.solve(
         eq,  # The equilibrium to adjust
         profiles,  # The toroidal current profile function
@@ -456,6 +482,7 @@ def read(
         rtol=rtol,
         blend=blend,
         maxits=maxits,
+        check_limited=True
     )
 
     print(

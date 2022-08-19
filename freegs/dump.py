@@ -39,7 +39,7 @@ import numpy as np
 from .equilibrium import Equilibrium
 from .machine import Coil, Circuit, Solenoid, Wall, Machine
 from .shaped_coil import ShapedCoil
-from .multi_coil import MultiCoil
+from .filament_coil import FilamentCoil
 from . import boundary
 from . import machine
 
@@ -115,14 +115,14 @@ class OutputFile(object):
 
         self.handle["coil_dtype"] = Coil.dtype
         self.handle["shapedcoil_dtype"] = ShapedCoil.dtype
-        self.handle["multicoil_dtype"] = MultiCoil.dtype
+        self.handle["filamentcoil_dtype"] = FilamentCoil.dtype
         self.handle["circuit_dtype"] = Circuit.dtype
         self.handle["solenoid_dtype"] = Solenoid.dtype
 
         type_to_dtype = {
             Coil.dtype: self.handle["coil_dtype"],
             ShapedCoil.dtype: self.handle["shapedcoil_dtype"],
-            MultiCoil.dtype: self.handle["multicoil_dtype"],
+            FilamentCoil.dtype: self.handle["filamentcoil_dtype"],
             Circuit.dtype: self.handle["circuit_dtype"],
             Solenoid.dtype: self.handle["solenoid_dtype"],
         }

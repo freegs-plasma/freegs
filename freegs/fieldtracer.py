@@ -195,7 +195,7 @@ def traceFieldLines(eq, solwidth=0.03, nlines=10, nturns=50, npoints=200, axis=N
     opoint, xpoint = critical.find_critical(eq.R, eq.Z, psi)
 
     r0, z0, psi_axis = opoint[0]
-    psi_bndry = xpoint[0][2]
+    psi_bndry = eq.psi_bndry
 
     # Find outboard midplane
     psifunc = interpolate.RectBivariateSpline(

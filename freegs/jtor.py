@@ -34,7 +34,7 @@ GNU Lesser General Public License for more details.
 You should have received a copy of the GNU Lesser General Public License
 along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 """
-
+import matplotlib.pyplot as plt
 from scipy.integrate import romb, quad  # Romberg integration
 from . import critical
 from .gradshafranov import mu0
@@ -135,7 +135,7 @@ class ConstrainBetapIp(Profile):
 
     """
 
-    def __init__(self, betap, Ip, fvac, alpha_m=1.0, alpha_n=2.0, Raxis=1.0):
+    def __init__(self, eq, betap, Ip, fvac, alpha_m=1.0, alpha_n=2.0, Raxis=1.0):
         """
         betap - Poloidal beta
         Ip    - Plasma current [Amps]
@@ -157,6 +157,7 @@ class ConstrainBetapIp(Profile):
         self.alpha_m = alpha_m
         self.alpha_n = alpha_n
         self.Raxis = Raxis
+        self.eq = eq
 
     def Jtor(self, R, Z, psi, psi_bndry=None):
         """Calculate toroidal plasma current
@@ -166,6 +167,11 @@ class ConstrainBetapIp(Profile):
         where jtorshape is a shape function
         L and Beta0 are parameters which are set by constraints
         """
+
+        # Intermediary update of the plasma
+        # boundary and axis flux
+        self.eq._updateBoundaryPsi(psi)
+        psi_bndry = self.eq.psi_bndry
 
         # Analyse the equilibrium, finding O- and X-points
         opt, xpt = critical.find_critical(R, Z, psi)
@@ -224,24 +230,32 @@ class ConstrainBetapIp(Profile):
             pfunc *= mask
 
         # Integrate over plasma
-        # betap = (8pi/mu0) * int(p)dRdZ / Ip^2
-        #       = - (8pi/mu0) * (L*Beta0/Raxis) * intp / Ip^2
+        # betap = (2mu0) * (int(p)RdRdZ)/(int(B_poloidal**2)RdRdZ)
+        #       = - (2L*Beta0*mu0/Raxis) * (pfunc*RdRdZ)/((int(B_poloidal**2)RdRdZ))
 
-        intp = romb(romb(pfunc)) * dR * dZ
+        # Produce array of Bpol in (R,Z) for core plasma
+        B_polvals_2 = self.eq.Br(R,Z)**2 + self.eq.Bz(R,Z)**2
+        if mask is not None:
+            B_polvals_2 *= mask
 
-        LBeta0 = -self.betap * (mu0 / (8.0 * pi)) * self.Raxis * self.Ip ** 2 / intp
+        p_int = romb(romb(pfunc * R)) * dR*dZ
+        b_int = romb(romb(B_polvals_2 *R)) * dR*dZ
+        
+        #self.betap = - (2*LBeta0*mu0/ self.Raxis) * (p_int/b_int)
+        LBeta0 = (b_int/p_int) * (- self.betap * self.Raxis)/(2*mu0)
 
         # Integrate current components
-        IR = romb(romb(jtorshape * R / self.Raxis)) * dR * dZ
-        I_R = romb(romb(jtorshape * self.Raxis / R)) * dR * dZ
-
+        IR = romb(romb(jtorshape * R/self.Raxis)) * dR*dZ
+        I_R = romb(romb(jtorshape * self.Raxis/R)) * dR*dZ
+        
         # Toroidal plasma current Ip is
         #
         # Ip = L * (Beta0 * IR + (1-Beta0)*I_R)
         #    = L*Beta0*(IR - I_R) + L*I_R
         #
+        #L = self.Ip / ( (Beta0*IR) + ((1.0-Beta0)*(I_R)) )
 
-        L = self.Ip / I_R - LBeta0 * (IR / I_R - 1)
+        L = self.Ip/I_R - LBeta0*(IR/I_R - 1)
         Beta0 = LBeta0 / L
 
         # print("Constraints: L = %e, Beta0 = %e" % (L, Beta0))
@@ -283,7 +297,7 @@ class ConstrainPaxisIp(Profile):
 
     """
 
-    def __init__(self, paxis, Ip, fvac, alpha_m=1.0, alpha_n=2.0, Raxis=1.0):
+    def __init__(self, eq, paxis, Ip, fvac, alpha_m=1.0, alpha_n=2.0, Raxis=1.0):
         """
         paxis - Pressure at magnetic axis [Pa]
         Ip    - Plasma current [Amps]
@@ -305,6 +319,7 @@ class ConstrainPaxisIp(Profile):
         self.alpha_m = alpha_m
         self.alpha_n = alpha_n
         self.Raxis = Raxis
+        self.eq = eq
 
     def Jtor(self, R, Z, psi, psi_bndry=None):
         """Calculate toroidal plasma current
@@ -314,6 +329,11 @@ class ConstrainPaxisIp(Profile):
         where jtorshape is a shape function
         L and Beta0 are parameters which are set by constraints
         """
+
+        # Intermediary update of the plasma
+        # boundary and axis flux
+        self.eq._updateBoundaryPsi(psi)
+        psi_bndry = self.eq.psi_bndry
 
         # Analyse the equilibrium, finding O- and X-points
         opt, xpt = critical.find_critical(R, Z, psi)

@@ -23,7 +23,7 @@ FreeGS is available on PyPI
 
 or clone/download this repository and run setup:
 
-    $ git clone https://github.com/bendudson/freegs.git
+    $ git clone https://github.com/freegs-plasma/freegs.git
     $ cd freegs
     $ python setup.py install --user
 
@@ -103,7 +103,7 @@ The "freegs" module consists of the following files:
 License
 -------
 
-    Copyright 2016-2021 Ben Dudson, University of York, and other contributors.
+    Copyright 2016-2022 Ben Dudson, University of York, and other contributors.
     Email: benjamin.dudson@york.ac.uk
 
     This program is free software: you can redistribute it and/or modify
@@ -128,6 +128,14 @@ References
 
 Versions
 --------
+
+0.7.0  16th August 2022
+  - Fixes and additional features for equilibrium measurements
+  - Limited plasma detection and handling throughout code
+  - Optional adittional constraints on coil currents
+  - Constraints on coil currents when reading geqdsks
+  - Replacement of MultiCoil with FilamentCoil
+  - Addition of PreCalcCoil
 
 0.6.1  11th February 2021
   - Fixes for HDF5 reading and writing
@@ -170,4 +178,3 @@ Versions
   - Add Equilibrium.Btor toroidal field calculation
   - Add Equilibrium.plasmaVolume
   - Fix rlim, zlim saved into GEQDSK files
-
