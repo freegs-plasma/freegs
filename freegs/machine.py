@@ -26,12 +26,19 @@ from .gradshafranov import Greens, GreensBr, GreensBz
 
 from numpy import linspace
 import numpy as np
+import scipy
 from scipy.interpolate import interp1d
+from scipy.special import ellipk, ellipe
 
 from .coil import Coil, AreaCurrentLimit
 from .shaped_coil import ShapedCoil
 from .pre_calc_coil import PreCalcCoil
 from .filament_coil import FilamentCoil
+from scipy.integrate import romb, trapz  # Romberg integration
+from shapely.geometry import Point, LinearRing, LineString
+from shapely.geometry.polygon import Polygon
+
+mu0 = 4e-7 * np.pi
 
 # We need this for the `label` part of the Circuit dtype for writing
 # to HDF5 files. See the following for information:
@@ -187,9 +194,9 @@ class Circuit:
 
     def __eq__(self, other):
         return (
-            self.coils == other.coils
-            and self.current == other.current
-            and self.control == other.control
+                self.coils == other.coils
+                and self.current == other.current
+                and self.control == other.control
         )
 
     def __ne__(self, other):
@@ -219,7 +226,8 @@ class Circuit:
         # HDF5 reads strings as bytes by default, so convert to string
         def toString(s):
             try:
-                return str(s, "utf-8")  # Convert bytes to string, using encoding
+                return str(s,
+                           "utf-8")  # Convert bytes to string, using encoding
             except TypeError:
                 return s  # Probably already a string
 
@@ -249,7 +257,8 @@ class Circuit:
 
 
 def MirroredCoil(
-    R, Z, current=0.0, turns=1, control=True, area=AreaCurrentLimit(), symmetric=True
+        R, Z, current=0.0, turns=1, control=True, area=AreaCurrentLimit(),
+        symmetric=True
 ):
     """
     Create a pair of coils, at +/- Z
@@ -260,12 +269,14 @@ def MirroredCoil(
         [
             (
                 "U",
-                Coil(R, Z, current=current, turns=turns, control=control, area=area),
+                Coil(R, Z, current=current, turns=turns, control=control,
+                     area=area),
                 1.0,
             ),
             (
                 "L",
-                Coil(R, Z, current=current, turns=turns, control=control, area=area),
+                Coil(R, Z, current=current, turns=turns, control=control,
+                     area=area),
                 1.0 if symmetric else -1.0,
             ),
         ]
@@ -382,17 +393,18 @@ class Solenoid:
 
     def __repr__(self):
         return "Solenoid(Rs={0}, Zsmin={1}, Zsmax={2}, current={3}, Ns={4}, control={5})".format(
-            self.Rs, self.Zsmin, self.Zsmax, self.current, self.Ns, self.control
+            self.Rs, self.Zsmin, self.Zsmax, self.current, self.Ns,
+            self.control
         )
 
     def __eq__(self, other):
         return (
-            self.Rs == other.Rs
-            and self.Zsmin == other.Zsmin
-            and self.Zsmax == other.Zsmax
-            and self.Ns == other.Ns
-            and self.current == other.current
-            and self.control == other.control
+                self.Rs == other.Rs
+                and self.Zsmin == other.Zsmin
+                and self.Zsmax == other.Zsmax
+                and self.Ns == other.Ns
+                and self.current == other.current
+                and self.control == other.control
         )
 
     def __ne__(self, other):
@@ -403,7 +415,8 @@ class Solenoid:
         Helper method for writing output
         """
         return np.array(
-            (self.Rs, self.Zsmin, self.Zsmax, self.Ns, self.current, self.control),
+            (self.Rs, self.Zsmin, self.Zsmax, self.Ns, self.current,
+             self.control),
             dtype=self.dtype,
         )
 
@@ -442,6 +455,336 @@ class Wall:
         return not self == other
 
 
+class RogowskiSensor:
+    """
+    Represents a Rogowski sensor.
+    Consists of an ordered list of (R,Z) points (defines polygon on which sensor lies)
+    Returns current inside the loop
+    """
+
+    def __init__(self, R, Z, current=0, name=None, weight=1, status=True):
+        assert len(R) == len(Z)
+        self.R = R
+        self.measurement = current
+        self.Z = Z
+        self.status = status
+        self.name = name
+        self.weight = weight
+
+    def __repr__(self):
+        return "R={R},Z={Z}".format(R=self.R, Z=self.Z)
+
+    def to_numpy(self):
+        """
+        Helper method for writing output
+        """
+        return np.array((self.R, self.Z))
+
+    def __eq__(self, other):
+        return np.allclose(self.R, other.R) and np.allclose(self.Z, other.Z)
+
+    def __ne__(self, other):
+        return not self == other
+
+    def get_measure(self, tokamak, equilibrium=None):
+        """
+                Method to update the current attribute of the sensor
+                with whatever current is contained within the sensor
+                if sensor is on (status == True)
+        """
+
+        if self.status:
+            sensor_loc = self.to_numpy()
+            Rs = sensor_loc[0]
+            Zs = sensor_loc[1]
+
+            polygon_list = []
+            coil_current = 0
+
+            for r, z in zip(Rs, Zs):
+                point = (r, z)
+                polygon_list.append(point)
+
+            polygon = Polygon(polygon_list)
+
+            # coil current
+            for label, coil in tokamak.coils:
+
+                if isinstance(coil, ShapedCoil):
+                    Shaped_Coil_List = []
+                    for shape in coil.shape:
+                        Shaped_Coil_List.append(Point(shape))
+                    Shaped_Coil = Polygon(Shaped_Coil_List)
+                    coil_current += (polygon.intersection(
+                        Shaped_Coil).area) / (coil._area) * coil.current
+
+                elif isinstance(coil, Coil):
+                    point = Point(coil.R, coil.Z)
+                    if polygon.contains(point):
+                        coil_current += coil.current
+
+                elif isinstance(coil, FilamentCoil):
+                    for r, z in coil.points:
+                        point = Point(r, z)
+                        if polygon.contains(point):
+                            coil_current += coil.current / coil.npoints
+
+
+                elif isinstance(coil, Circuit):
+                    for name, sub_coil, multiplier in coil.coils:
+
+                        if isinstance(coil, ShapedCoil):
+                            Shaped_Coil_List = []
+                            for shape in coil.shape:
+                                Shaped_Coil_List.append(Point(shape))
+                            Shaped_Coil = Polygon(Shaped_Coil_List)
+                            coil_current += (polygon.intersection(
+                                Shaped_Coil).area) / (
+                                                coil._area) * coil.current
+
+                        elif isinstance(coil, Coil):
+                            point = Point(coil.R, coil.Z)
+                            if polygon.contains(point):
+                                coil_current += coil.current
+
+                        if isinstance(sub_coil, FilamentCoil):
+                            for r, z in sub_coil.points:
+                                point = Point(r, z)
+                                if polygon.contains(point):
+                                    # this next line is dependent on which convention is used for circuit currents
+                                    # this assumes in a filament coil, each wire has current that is being provided to the circuit
+                                    # therefore the multiplier of a filament coil is filamentcoil.npoints
+                                    coil_current += s
+
+            if tokamak.vessel is not None:
+                for filament in tokamak.vessel:
+
+                    if isinstance(filament, Filament):
+                        point = Point(filament.R, filament.Z)
+                        if polygon.contains(point):
+                            coil_current += filament.current
+
+                    if isinstance(filament, group_of_Filaments):
+                        for subfil in filament.filaments:
+                            point = Point(subfil.R, subfil.Z)
+                            if polygon.contains(point):
+                                coil_current += subfil.current
+
+            # plasma current
+            if equilibrium != None:
+                dim = equilibrium.R.shape
+                sensor_jtor = np.zeros(dim)
+                for i in range(dim[0]):
+                    for j in range(dim[1]):
+                        point = Point(equilibrium.R[i, j], equilibrium.Z[i, j])
+                        if polygon.contains(point):
+                            sensor_jtor[i, j] = equilibrium.Jtor[i, j]
+                dR = equilibrium.R[1, 0] - equilibrium.R[0, 0]
+                dZ = equilibrium.Z[0, 1] - equilibrium.Z[0, 0]
+                self.measurement = trapz(
+                    trapz(sensor_jtor)) * dR * dZ + coil_current
+            else:
+                self.measurement = coil_current
+
+
+class PoloidalFieldSensor:
+    """
+    Represents position of a Poloidal B field sensor.
+    Consists a single (R,Z) point, and an angle Theta
+    At which the field is measured at
+    """
+
+    def __init__(self, R, Z, theta, field=0, name=None, weight=1, status=True):
+        self.R = R
+        self.Z = Z
+        self.theta = theta
+        self.measurement = field
+        self.status = status
+        self.name = name
+        self.weight = weight
+
+    def __repr__(self):
+        return "R={R},Z={Z}".format(R=self.R, Z=self.Z)
+
+    def __eq__(self, other):
+        return np.allclose(self.R, other.R) and np.allclose(self.Z, other.Z)
+
+    def __ne__(self, other):
+        return not self == other
+
+    def get_measure(self, tokamak, equilibrium=None):
+        """
+        Updates field attribute of sensor with measured field at that
+        point/direction if sensor is on
+        """
+        if self.status:
+            if equilibrium == None:
+                self.measurement = (tokamak.Br(self.R, self.Z)) * np.cos(
+                    self.theta) + (
+                                       tokamak.Bz(self.R, self.Z)) * np.sin(
+                    self.theta)
+            else:
+                self.measurement = (equilibrium.plasmaBr(self.R,
+                                                         self.Z) + tokamak.Br(
+                    self.R, self.Z)) * np.cos(self.theta) + (
+                                           equilibrium.plasmaBz(self.R,
+                                                                self.Z) + tokamak.Bz(
+                                       self.R, self.Z)) * np.sin(
+                    self.theta)
+        return
+
+
+class FluxLoopSensor:
+    """
+    Represents position of a Flux Loop Sensor.
+    Consists a single (R,Z) point, describing the position of the probe
+    Contains a method to find the value of flux (psi) at the position
+    """
+
+    def __init__(self, R, Z, flux=0, name=None, weight=1, status=True):
+        self.R = R
+        self.Z = Z
+        self.measurement = flux
+        self.status = status
+        self.name = name
+        self.weight = weight
+
+    def __repr__(self):
+        return "R={R},Z={Z}".format(R=self.R, Z=self.Z)
+
+    def __eq__(self, other):
+        return np.allclose(self.R, other.R) and np.allclose(self.Z, other.Z)
+
+    def __ne__(self, other):
+        return not self == other
+
+    def get_measure(self, tokamak, equilibrium=None):
+        """
+            Updates flux attribute with
+            poloidal flux at the point of measurement
+            if sensor is on
+        """
+        if self.status:
+            if equilibrium != None:
+                psi = equilibrium.psiRZ(self.R, self.Z)
+            else:
+                psi = tokamak.psi(self.R, self.Z)
+            self.measurement = psi
+        return
+
+
+class Filament(Coil):
+    """
+    Represents a filament in the vessel structure, capable of carrying currents
+    """
+
+    def __init__(self, R, Z, dR, dZ, resistivity, name, current=0):
+        Coil.__init__(self, R, Z, current=current, control=False)
+        self.name = name
+        self.dR = dR
+        self.dZ = dZ
+        self.resistance = 2 * np.pi * self.R * resistivity / (
+                    self.dR * self.dZ)
+        # need to add an option for this to add an angle
+
+    def calcEigenbasis(self):
+        self.eigenbasis = [[1]]
+
+
+class group_of_Filaments:
+    def __init__(self, filaments, name, Nbasis=10):
+        self.filaments = filaments
+        self.N = Nbasis
+        self.calcEigenbasis()
+        self.name = name
+
+    def psi(self, R, Z):
+        """
+        Calculate poloidal flux at (R,Z)
+        """
+        psival = 0.0
+        for filament in self.filaments:
+            psival += filament.psi(R, Z)
+        return psival
+
+    def createPsiGreens(self, R, Z):
+        """
+        Calculate Greens functions
+        """
+        pgreen = {}
+        for filament in self.filaments:
+            pgreen[filament.name] = filament.createPsiGreens(R, Z)
+        return pgreen
+
+    def calcPsiFromGreens(self, pgreen):
+        """
+        Calculate psi from Greens functions
+
+        """
+        psival = 0.0
+        for filament in self.filaments:
+            psival += filament.calcPsiFromGreens(pgreen[filament.name])
+        return psival
+
+    def Br(self, R, Z):
+        """
+        Calculate radial magnetic field Br at (R,Z)
+        """
+        result = 0.0
+        for filament in self.filaments:
+            result += filament.Br(R, Z)
+        return result
+
+    def Bz(self, R, Z):
+        """
+        Calculate vertical magnetic field Bz at (R,Z)
+        """
+        result = 0.0
+        for filament in self.filaments:
+            result += filament.Bz(R, Z)
+        return result
+
+    def calcEigenbasis(self):
+        R = np.zeros((len(self.filaments), len(self.filaments)))
+        M = np.zeros((len(self.filaments), len(self.filaments)))
+
+        for i, fil in enumerate(self.filaments):
+            R[i, i] = fil.resistance
+
+            for j in range(i, len(self.filaments)):
+                fil2 = self.filaments[j]
+
+                R1, R2, Z1, Z2 = fil.R, fil2.R, fil.Z, fil2.Z
+
+                k = 2 * (R1 * R2) ** 0.5 / (
+                            (R1 + R2) ** 2 + (Z1 - Z2) ** 2) ** 0.5
+                M12 = mu0 * (R1 * R2) ** 0.5 * (
+                            (2 / k - k) * ellipk(k ** 2) - 2 / k * ellipe(
+                        k ** 2))
+
+                if i == j:
+                    M12 = mu0 * R1 * (
+                                np.log(8 * R1 / (fil.dR + fil.dZ)) - 1 / 2)
+
+                M[i, j] = M12
+                M[j, i] = M12
+
+        J = scipy.linalg.solve_sylvester(M, np.zeros(M.shape), R)
+
+        eigvals, eigvecs = np.linalg.eig(J)
+
+        sorted_eigvecs = [x for _, x in
+                          sorted(zip(eigvals, np.transpose(eigvecs)),
+                                 reverse=False)]
+
+        vessel_basis = np.zeros((len(self.filaments), self.N))
+        for n in range(self.N):
+            for i, val in enumerate(sorted_eigvecs[n]):
+                vessel_basis[i, n] = val
+
+        self.eigenbasis = vessel_basis
+
+
 class Machine:
     """
     Represents the machine (Tokamak), including
@@ -455,16 +798,32 @@ class Machine:
 
     """
 
-    def __init__(self, coils, wall=None):
+    def __init__(self, coils, wall=None, sensors=None, vessel=None,
+                 createVessel=False, groupFilaments=True, Nfils=250, G=None,
+                 Gc=None, Gfil=None):
         """
         coils - A list of coils [(label, Coil|Circuit|Solenoid)]
+        sensors - A list of sensors
         """
 
         self.coils = coils
         self.wall = wall
+        self.vessel = vessel
+        self.sensors = sensors
+        self.G = G
+        self.Gc = Gc
+        self.Gfil = Gfil
+
+        if createVessel and vessel is None:
+            self.createVesselFilaments(Nfils, groupFilaments=groupFilaments)
+            self.getVesselEigenbasis()
+        else:
+            self.vessel = vessel
+            if self.vessel is not None:
+                self.getVesselEigenbasis()
+
         self.limit_points_R = None
         self.limit_points_Z = None
-
         if self.wall is not None:
             self.limit_points_R, self.limit_points_Z = self.generate_limit_points()
 
@@ -476,7 +835,8 @@ class Machine:
     def __eq__(self, other):
         # Other Machine might be equivalent except for order of
         # coils. Assume this doesn't actually matter
-        return sorted(self.coils) == sorted(other.coils) and self.wall == other.wall
+        return sorted(self.coils) == sorted(
+            other.coils) and self.wall == other.wall
 
     def __ne__(self, other):
         return not self == other
@@ -485,7 +845,90 @@ class Machine:
         for label, coil in self.coils:
             if label == name:
                 return coil
-        raise KeyError("Machine does not contain coil with label '{0}'".format(name))
+        raise KeyError(
+            "Machine does not contain coil with label '{0}'".format(name))
+
+    def createVesselFilaments(self, Nfils, groupFilaments):
+        wall = self.wall
+        wallRZ = []
+        wallRZ2 = []
+
+        # create shape here and make it with a hole
+        for R, Z in zip(wall.R, wall.Z):
+            wallRZ.append([R, Z])
+
+        inner = LinearRing(wallRZ)
+        outer = inner.buffer(0.05, join_style=2,
+                             cap_style=3).exterior  # consider how to add thickness here as opposed to a given value
+
+        for x, y in zip(outer.xy[0], outer.xy[1]):
+            wallRZ2.append([x, y])
+
+        inner = Polygon(wallRZ)
+        outer = Polygon(wallRZ2)
+
+        # Generating filament points
+        R0 = wallRZ[0]
+        wallRZ.append(R0)
+        innerline = LineString(wallRZ)
+        midline = innerline.buffer(0.025).exterior
+        distances = np.linspace(0, midline.length, Nfils + 1)
+        points = [midline.interpolate(distance).xy for distance in distances]
+        rfils = [point[0][0] for point in points[:-1]]
+        zfils = [point[1][0] for point in points[:-1]]
+
+        vessel = []
+        for R, Z in zip(rfils, zfils):
+            vessel.append(Filament(R, Z, 0.025, 0.025, 1, name='fil' + str(
+                round(10000 * R ** 2 + 100 * Z))))
+
+        if groupFilaments:
+            vessel = [group_of_Filaments(vessel, 'ivc', Nbasis=6)]
+
+        self.vessel = vessel
+
+    def updateVesselCurrents(self, currents):
+        fil_num = 0
+        for fil in self.vessel:
+            if isinstance(fil, Filament):
+                fil.current = currents[fil_num]
+                fil_num += 1
+
+            if isinstance(fil, group_of_Filaments):
+                for sub_fil in fil.filaments:
+                    sub_fil.current = currents[fil_num]
+                    fil_num += 1
+
+    def getVesselEigenbasis(self):
+        n_basis = 0
+        n_fils = 0
+        for fil in self.vessel:
+            if isinstance(fil, Filament):
+                n_basis += 1
+                n_fils += 1
+            if isinstance(fil, group_of_Filaments):
+                n_basis += fil.N
+                n_fils += len(fil.filaments)
+
+        eigenbasis = np.zeros((n_fils, n_basis))
+
+        fil_num = 0
+        basis_num = 0
+        for counter, fil in enumerate(self.vessel):
+            if isinstance(fil, Filament):
+                eigenbasis[fil_num, basis_num] = 1
+                fil_num += 1
+                basis_num + 1
+
+            if isinstance(fil, group_of_Filaments):
+                for i in range(fil.eigenbasis.shape[0]):
+                    for j in range(fil.eigenbasis.shape[1]):
+                        eigenbasis[fil_num + i, basis_num + j] = \
+                        fil.eigenbasis[i, j]
+                fil_num += fil.eigenbasis.shape[0]
+                basis_num += fil.N
+
+        self.eigenbasis = eigenbasis
 
     def generate_limit_points(self):
         '''
@@ -496,16 +939,17 @@ class Machine:
         # Interpolate wall limit points (get_divcoords typically only return 8 or so points)
         # Make an interpolator for point location as function of normalised distance
         # along the wall
-        points = np.array([self.wall.R,self.wall.Z]).T
-        distance = np.cumsum(np.sqrt(np.sum(np.diff(points,axis=0)**2,axis=1)))
-        distance = np.insert(distance,0,0)/distance[-1]
+        points = np.array([self.wall.R, self.wall.Z]).T
+        distance = np.cumsum(
+            np.sqrt(np.sum(np.diff(points, axis=0) ** 2, axis=1)))
+        distance = np.insert(distance, 0, 0) / distance[-1]
 
-        interpolator = interp1d(distance,points,kind='linear',axis=0)
-        new_distances = np.linspace(0,1,500,endpoint=True)
+        interpolator = interp1d(distance, points, kind='linear', axis=0)
+        new_distances = np.linspace(0, 1, 500, endpoint=True)
         interpolated_points = interpolator(new_distances)
 
-        R = np.asarray(interpolated_points[:,0])
-        Z = np.asarray(interpolated_points[:,1])
+        R = np.asarray(interpolated_points[:, 0])
+        Z = np.asarray(interpolated_points[:, 1])
 
         return R, Z
 
@@ -516,6 +960,10 @@ class Machine:
         psi_coils = 0.0
         for label, coil in self.coils:
             psi_coils += coil.psi(R, Z)
+
+        if self.vessel is not None:
+            for filament in self.vessel:
+                psi_coils += filament.psi(R, Z)
 
         return psi_coils
 
@@ -528,7 +976,42 @@ class Machine:
         pgreen = {}
         for label, coil in self.coils:
             pgreen[label] = coil.createPsiGreens(R, Z)
+
+        if self.vessel is not None:
+            for filament in self.vessel:
+                pgreen[filament.name] = filament.createPsiGreens(R, Z)
+
         return pgreen
+
+    def takeMeasurements(self, equilibrium=None):
+        """
+        Method calling the measure method of each sensor on the machine
+        """
+        for sensor in self.sensors:
+            sensor.get_measure(self, equilibrium=equilibrium)
+        return
+
+    def printMeasurements(self, equilibrium=None):
+        """
+        Method for calling the takeMeasurements method, then printing the results
+        """
+        print("==========================")
+        self.takeMeasurements(equilibrium=equilibrium)
+        for sensor in self.sensors:
+            if isinstance(sensor, RogowskiSensor):
+                print('Rogowski Sensor ' + str(sensor) + " current= " + str(
+                    sensor.measurement))
+
+            elif isinstance(sensor, PoloidalFieldSensor):
+                print('Poloidal Field Sensor ' + str(sensor) + " theta=" + str(
+                    sensor.theta) + " field=" + str(sensor.measurement))
+
+            elif isinstance(sensor, FluxLoopSensor):
+                print('Flux Loop Sensor ' + str(sensor) + " flux=" + str(
+                    sensor.measurement))
+
+        print("==========================")
+        return
 
     def calcPsiFromGreens(self, pgreen):
         """
@@ -538,6 +1021,11 @@ class Machine:
         psi_coils = 0.0
         for label, coil in self.coils:
             psi_coils += coil.calcPsiFromGreens(pgreen[label])
+
+        if self.vessel is not None:
+            for filament in self.vessel:
+                psi_coils += filament.calcPsiFromGreens(pgreen[filament.name])
+
         return psi_coils
 
     def Br(self, R, Z):
@@ -547,6 +1035,10 @@ class Machine:
         Br = 0.0
         for label, coil in self.coils:
             Br += coil.Br(R, Z)
+
+        if self.vessel is not None:
+            for filament in self.vessel:
+                Br += filament.Br(R, Z)
 
         return Br
 
@@ -558,6 +1050,10 @@ class Machine:
         for label, coil in self.coils:
             Bz += coil.Bz(R, Z)
 
+        if self.vessel is not None:
+            for filament in self.vessel:
+                Bz += filament.Bz(R, Z)
+
         return Bz
 
     def controlBr(self, R, Z):
@@ -565,21 +1061,24 @@ class Machine:
         Returns a list of control responses for Br
         at the given (R,Z) location(s).
         """
-        return [coil.controlBr(R, Z) for label, coil in self.coils if coil.control]
+        return [coil.controlBr(R, Z) for label, coil in self.coils if
+                coil.control]
 
     def controlBz(self, R, Z):
         """
         Returns a list of control responses for Bz
         at the given (R,Z) location(s)
         """
-        return [coil.controlBz(R, Z) for label, coil in self.coils if coil.control]
+        return [coil.controlBz(R, Z) for label, coil in self.coils if
+                coil.control]
 
     def controlPsi(self, R, Z):
         """
         Returns a list of control responses for psi
         at the given (R,Z) location(s)
         """
-        return [coil.controlPsi(R, Z) for label, coil in self.coils if coil.control]
+        return [coil.controlPsi(R, Z) for label, coil in self.coils if
+                coil.control]
 
     def controlAdjust(self, current_change):
         """
@@ -670,18 +1169,22 @@ def TestTokamak():
     coils = [
         (
             "P1L",
-            ShapedCoil([(0.95, -1.15), (0.95, -1.05), (1.05, -1.05), (1.05, -1.15)]),
+            ShapedCoil(
+                [(0.95, -1.15), (0.95, -1.05), (1.05, -1.05), (1.05, -1.15)]),
         ),
-        ("P1U", ShapedCoil([(0.95, 1.15), (0.95, 1.05), (1.05, 1.05), (1.05, 1.15)])),
+        ("P1U",
+         ShapedCoil([(0.95, 1.15), (0.95, 1.05), (1.05, 1.05), (1.05, 1.15)])),
         ("P2L", Coil(1.75, -0.6)),
         ("P2U", Coil(1.75, 0.6)),
     ]
 
     wall = Wall(
-        [0.75, 0.75, 1.5, 1.8, 1.8, 1.5], [-0.85, 0.85, 0.85, 0.25, -0.25, -0.85]  # R
+        [0.75, 0.75, 1.5, 1.8, 1.8, 1.5],
+        [-0.85, 0.85, 0.85, 0.25, -0.25, -0.85]  # R
     )  # Z
 
     return Machine(coils, wall)
+
 
 def TestTokamakLimited():
     """
@@ -691,18 +1194,124 @@ def TestTokamakLimited():
     coils = [
         (
             "P1L",
-            ShapedCoil([(0.95, -1.15), (0.95, -1.05), (1.05, -1.05), (1.05, -1.15)]),
+            ShapedCoil(
+                [(0.95, -1.15), (0.95, -1.05), (1.05, -1.05), (1.05, -1.15)]),
         ),
-        ("P1U", ShapedCoil([(0.95, 1.15), (0.95, 1.05), (1.05, 1.05), (1.05, 1.15)])),
+        ("P1U",
+         ShapedCoil([(0.95, 1.15), (0.95, 1.05), (1.05, 1.05), (1.05, 1.15)])),
         ("P2L", Coil(1.75, -0.6)),
         ("P2U", Coil(1.75, 0.6)),
     ]
 
     wall = Wall(
-        [0.93, 0.93, 1.5, 1.8, 1.8, 1.5], [-0.85, 0.85, 0.85, 0.25, -0.25, -0.85]  # R
+        [0.93, 0.93, 1.5, 1.8, 1.8, 1.5],
+        [-0.85, 0.85, 0.85, 0.25, -0.25, -0.85]  # R
     )  # Z
 
     return Machine(coils, wall)
+
+
+def TestTokamakSensor():
+    """
+    Creating a simple tokamak with sensors along the boundary
+    """
+
+    coils = [
+        (
+            "P1L",
+            ShapedCoil(
+                [(0.95, -1.15), (0.95, -1.05), (1.05, -1.05), (1.05, -1.15)]),
+        ),
+        ("P1U",
+         ShapedCoil([(0.95, 1.15), (0.95, 1.05), (1.05, 1.05), (1.05, 1.15)])),
+        ("P2L", Coil(1.75, -0.6)),
+        ("P2U", Coil(1.75, 0.6)),
+    ]
+
+    wall = Wall(
+        [0.75, 0.75, 1.5, 1.8, 1.8, 1.5],
+        [-0.85, 0.85, 0.85, 0.25, -0.25, -0.85]  # R
+    )  # Z
+
+    # order of inputting points matters, must go around a polygon clockwise starting from the bottom left
+    sensors = [RogowskiSensor([0.77, 0.77, 1.48, 1.78, 1.78, 1.48],
+                              [-0.83, 0.83, 0.83, 0.23, -0.23, -0.83])
+        , PoloidalFieldSensor(1.8, 0.14, 2.2)
+        , PoloidalFieldSensor(1.8, -0.14, -2.2)
+        , PoloidalFieldSensor(1.7, 0.475, 2.2)
+        , PoloidalFieldSensor(1.7, -0.475, -2.2)
+        , PoloidalFieldSensor(1.5, 0.85, 2.2)
+        , PoloidalFieldSensor(1.5, -0.85, -2.2)
+        , FluxLoopSensor(1.8, 0.2)
+        , FluxLoopSensor(1.8, -0.2)
+        , FluxLoopSensor(1.65, 0.52)
+        , FluxLoopSensor(1.65, -0.52)
+        , FluxLoopSensor(1.1, 0.85)
+        , FluxLoopSensor(1.1, -0.85)
+               ]
+
+    return Machine(coils, wall, sensors)
+
+
+def EfitTestMachine(vessel=None, createVessel=False, group=True, Nfils=100):
+    """
+    Creating a simple tokamak with sensors along the boundary
+    """
+
+    coils = [
+        (
+            "P1L",
+            ShapedCoil(
+                [(0.95, -1.15), (0.95, -1.05), (1.05, -1.05), (1.05, -1.15)])),
+        ("P1U",
+         ShapedCoil([(0.95, 1.15), (0.95, 1.05), (1.05, 1.05), (1.05, 1.15)])),
+        ("P2L", Coil(1.75, -0.6)),
+        ("P2U", Coil(1.75, 0.6, )),
+    ]
+
+    wall = Wall([0.75, 0.75, 1.5, 1.8, 1.8, 1.5],
+                [-0.85, 0.85, 0.85, 0.25, -0.25, -0.85])
+    # wall = Wall([0.75,0.9,0.9, 0.75, 1.5, 1.8, 1.8, 1.5], [-0.85,-0.4,0.4, 0.85, 0.85, 0.25, -0.25, -0.85])
+
+    sensors = [RogowskiSensor([0.77, 0.77, 1.48, 1.78, 1.78, 1.48],
+                              [-0.83, 0.83, 0.83, 0.23, -0.23, -0.83])
+        , PoloidalFieldSensor(1.8, 0.14, 2.2)
+        , PoloidalFieldSensor(1.8, -0.14, 2 * np.pi - 2.2)
+        , PoloidalFieldSensor(1.7, 0.475, 2.2)
+        , PoloidalFieldSensor(1.7, -0.475, 2 * np.pi - 2.2)
+        , PoloidalFieldSensor(1.5, 0.8, 2.2)
+        , PoloidalFieldSensor(1.5, -0.8, 2 * np.pi - 2.2)
+        , PoloidalFieldSensor(0.75, 0.14, 2.2)
+        , PoloidalFieldSensor(0.75, -0.14, 2 * np.pi - 2.2)
+        , PoloidalFieldSensor(0.75, 0.475, 2.2)
+        , PoloidalFieldSensor(0.75, -0.475, 2 * np.pi - 2.2)
+        , PoloidalFieldSensor(0.75, 0.8, 2.2)
+        , PoloidalFieldSensor(0.75, -0.8, 2 * np.pi - 2.2)
+        , FluxLoopSensor(1.78, 0.2)
+        , FluxLoopSensor(1.78, -0.2)
+        , FluxLoopSensor(1.65, 0.52)
+        , FluxLoopSensor(1.65, -0.52)
+        , FluxLoopSensor(1.75, 0.32)
+        , FluxLoopSensor(1.75, -0.32)
+        , FluxLoopSensor(1.1, 0.8)
+        , FluxLoopSensor(1.1, -0.8)
+        , FluxLoopSensor(1.4, 0.8)
+        , FluxLoopSensor(1.4, -0.8)
+        , FluxLoopSensor(0.75, 0.25)
+        , FluxLoopSensor(0.75, -0.25)
+        , RogowskiSensor([0.94, 0.94, 1.06, 1.06],
+                         [-1.16, -1.04, -1.04, -1.16])
+        , RogowskiSensor([0.94, 0.94, 1.06, 1.06],
+                         [1.16, 1.04, 1.04, 1.16])
+        , RogowskiSensor([1.74, 1.74, 1.76, 1.76],
+                         [-0.59, -0.61, -0.61, -0.59])
+        , RogowskiSensor([1.74, 1.74, 1.76, 1.76],
+                         [0.59, 0.61, 0.61, 0.59])
+               ]
+
+    return Machine(coils, wall, sensors, vessel=vessel,
+                   createVessel=createVessel, groupFilaments=group,
+                   Nfils=Nfils)
 
 
 def DIIID():
@@ -766,20 +1375,25 @@ def MAST_sym():
     coils = [
         (
             "P2",
-            Circuit([("P2U", Coil(0.49, 1.76), 1.0), ("P2L", Coil(0.49, -1.76), 1.0)]),
+            Circuit([("P2U", Coil(0.49, 1.76), 1.0),
+                     ("P2L", Coil(0.49, -1.76), 1.0)]),
         ),
-        ("P3", Circuit([("P3U", Coil(1.1, 1.1), 1.0), ("P3L", Coil(1.1, -1.1), 1.0)])),
+        ("P3", Circuit(
+            [("P3U", Coil(1.1, 1.1), 1.0), ("P3L", Coil(1.1, -1.1), 1.0)])),
         (
             "P4",
             Circuit(
-                [("P4U", Coil(1.51, 1.095), 1.0), ("P4L", Coil(1.51, -1.095), 1.0)]
+                [("P4U", Coil(1.51, 1.095), 1.0),
+                 ("P4L", Coil(1.51, -1.095), 1.0)]
             ),
         ),
         (
             "P5",
-            Circuit([("P5U", Coil(1.66, 0.52), 1.0), ("P5L", Coil(1.66, -0.52), 1.0)]),
+            Circuit([("P5U", Coil(1.66, 0.52), 1.0),
+                     ("P5L", Coil(1.66, -0.52), 1.0)]),
         ),
-        ("P6", Circuit([("P6U", Coil(1.5, 0.9), 1.0), ("P6L", Coil(1.5, -0.9), -1.0)])),
+        ("P6", Circuit(
+            [("P6U", Coil(1.5, 0.9), 1.0), ("P6L", Coil(1.5, -0.9), -1.0)])),
         ("P1", Solenoid(0.15, -1.45, 1.45, 100)),
     ]
 
