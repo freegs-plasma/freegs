@@ -29,6 +29,7 @@ import numpy as np
 import scipy
 from scipy.interpolate import interp1d
 from scipy.special import ellipk, ellipe
+from .recon_tools import grid_to_line, line_to_grid
 
 from .coil import Coil, AreaCurrentLimit
 from .shaped_coil import ShapedCoil
@@ -799,8 +800,7 @@ class Machine:
     """
 
     def __init__(self, coils, wall=None, sensors=None, vessel=None,
-                 createVessel=False, groupFilaments=True, Nfils=250, G=None,
-                 Gc=None, Gfil=None):
+                 createVessel=False, groupFilaments=True, Nfils=250):
         """
         coils - A list of coils [(label, Coil|Circuit|Solenoid)]
         sensors - A list of sensors
@@ -810,9 +810,6 @@ class Machine:
         self.wall = wall
         self.vessel = vessel
         self.sensors = sensors
-        self.G = G
-        self.Gc = Gc
-        self.Gfil = Gfil
 
         if createVessel and vessel is None:
             self.createVesselFilaments(Nfils, groupFilaments=groupFilaments)
@@ -929,6 +926,217 @@ class Machine:
                 basis_num += fil.N
 
         self.eigenbasis = eigenbasis
+
+    def get_PlasmaGreens(self, eq):
+        """
+        Function for calculating greens matrix for the plasma response to machine sensors.
+        Runs on initialisation only
+
+        Parameters
+        ----------
+        eq - equilibrium object
+
+        Returns
+        -------
+        PlasmaGreens - Plasma Greens Matrix
+        """
+
+        # Creating Grid
+        N = eq.nx * eq.ny
+        PlasmaGreens = np.zeros((len(self.sensors), N))
+        dR = eq.R[1, 0] - eq.R[0, 0]
+        dZ = eq.Z[0, 1] - eq.Z[0, 0]
+
+        for w, sensor in enumerate(self.sensors):
+            dim = eq.R.shape
+            # Creating 2d array over equilibrium Points
+            greens_matrix = np.zeros(dim)
+
+            # If Rog sensors, find all points on equilibrium grid that lie inside rog
+            # Greens function is then simply 1 (or dRdZ with the integral) as the rog measures current
+            if isinstance(sensor, RogowskiSensor):
+                sensor_loc = sensor.to_numpy()
+                Rs = sensor_loc[0]
+                Zs = sensor_loc[1]
+                polygon_list = []
+
+                for r, z in zip(Rs, Zs):
+                    point = (r, z)
+                    polygon_list.append(point)
+
+                polygon = Polygon(polygon_list)
+
+                for i in range(dim[0]):
+                    for j in range(dim[1]):
+                        if polygon.contains(Point(eq.R[i, j], eq.Z[i, j])):
+                            greens_matrix[i, j] = dR * dZ
+
+            # If FL sensor, find position of flux loop sensor and then find the greens function relating unit current at each grid position to psi at sensor
+            if isinstance(sensor, FluxLoopSensor):
+                for i in range(dim[0]):
+                    for j in range(dim[1]):
+                        greens_matrix[i, j] = dR * dZ * Greens(eq.R[i, j],
+                                                               eq.Z[i, j],
+                                                               sensor.R,
+                                                               sensor.Z)
+
+            # If BP sensor, find position of sensor and then find the greens function relating unit current at each grid position to B field
+            if isinstance(sensor, PoloidalFieldSensor):
+                for i in range(dim[0]):
+                    for j in range(dim[1]):
+                        greens_matrix[i, j] = dR * dZ * (
+                                GreensBr(eq.R[i, j], eq.Z[i, j], sensor.R,
+                                         sensor.Z) * np.cos(
+                            sensor.theta) + GreensBz(eq.R[i, j],
+                                                     eq.Z[i, j], sensor.R,
+                                                     sensor.Z) * np.sin(
+                            sensor.theta))
+
+            # Convert the grid to a line, then append the greens plasma response matrix with it
+            greens_row = grid_to_line(greens_matrix)
+            PlasmaGreens[w] = greens_row
+        self.Gplasma = PlasmaGreens
+
+    def get_CoilGreens(self, eq):
+        n_coils = len(self.coils)
+        CoilGreens = np.zeros((len(self.sensors), n_coils))
+        dR = eq.R[1, 0] - eq.R[0, 0]
+        dZ = eq.Z[0, 1] - eq.Z[0, 0]
+
+        for w, sensor in enumerate(self.sensors):
+            for coil_num, coil in enumerate(self.coils):
+                coil = coil[1]  # Getting the coil
+
+                if isinstance(sensor, RogowskiSensor):
+                    sensor_loc = sensor.to_numpy()
+                    Rs = sensor_loc[0]
+                    Zs = sensor_loc[1]
+                    polygon_list = []
+
+                    for r, z in zip(Rs, Zs):
+                        point = (r, z)
+                        polygon_list.append(point)
+
+                    # Create rog sensor polygon
+                    polygon = Polygon(polygon_list)
+
+                    # If shaped coil find the proportion of shaped coil inside rog
+                    if isinstance(coil, ShapedCoil):
+                        Shaped_Coil_List = []
+                        for shape in coil.shape:
+                            Shaped_Coil_List.append(Point(shape))
+                        Shaped_Coil = Polygon(Shaped_Coil_List)
+                        CoilGreens[w, coil_num] = (polygon.intersection(
+                            Shaped_Coil).area) / (coil._area)
+
+                    # If coil, find if coil lies inside rog
+                    elif isinstance(coil, Coil):
+                        point = Point(coil.R, coil.Z)
+                        if polygon.contains(point):
+                            CoilGreens[w, coil_num] = 1
+
+                    # If coil is a circuit, find coils inside circuit
+                    elif isinstance(coil, Circuit):
+                        for name, sub_coil, multiplier in coil.coils:
+
+                            # If itis a filament coil, loop through all the wires in the filament coil
+                            # If the wire lies inside, append greens matrix by 1, as the coefficient that is being modeleld for the circuit current is the current in each wire aswell
+                            if isinstance(sub_coil, FilamentCoil):
+                                for r, z in sub_coil.points:
+                                    point = Point(r, z)
+                                    if polygon.contains(point):
+                                        CoilGreens[w, coil_num] += 1
+
+                # Using the greens functions already specificed, calculate the effect of a unit current through the coil at the position of the sensor
+                if isinstance(sensor, FluxLoopSensor):
+                    CoilGreens[w, coil_num] += coil.controlPsi(sensor.R,
+                                                               sensor.Z)
+
+                if isinstance(sensor, PoloidalFieldSensor):
+                    CoilGreens[w, coil_num] += np.cos(
+                        sensor.theta) * coil.controlBr(sensor.R,
+                                                       sensor.Z) + np.sin(
+                        sensor.theta) * coil.controlBz(sensor.R, sensor.Z)
+
+        self.Gcoil = CoilGreens
+
+    def get_FilamentGreens(self, eq):
+        n_fils = 0
+        for fil in self.vessel:
+            if isinstance(fil, Filament):
+                n_fils += 1
+            if isinstance(fil, group_of_Filaments):
+                n_fils += len(fil.filaments)
+
+        FilamentGreens = np.zeros((len(self.sensors), n_fils))
+        dR = eq.R[1, 0] - eq.R[0, 0]
+        dZ = eq.Z[0, 1] - eq.Z[0, 0]
+
+        # Works very similarly to coils, loops through each of the sensors and each of the filaments, find the effect of unit current through each filament on the measurement
+        for w, sensor in enumerate(self.sensors):
+            fil_num = 0
+            for fil in self.vessel:
+                if isinstance(fil, Filament):
+                    if isinstance(sensor, RogowskiSensor):
+                        sensor_loc = sensor.to_numpy()
+                        Rs = sensor_loc[0]
+                        Zs = sensor_loc[1]
+                        polygon_list = []
+
+                        for r, z in zip(Rs, Zs):
+                            point = (r, z)
+                            polygon_list.append(point)
+
+                        polygon = Polygon(polygon_list)
+
+                        point = Point(fil.R, fil.Z)
+                        if polygon.contains(point):
+                            FilamentGreens[w, fil_num] = 1
+
+                    if isinstance(sensor, FluxLoopSensor):
+                        FilamentGreens[w, fil_num] = fil.controlPsi(sensor.R,
+                                                                    sensor.Z)
+
+                    if isinstance(sensor, PoloidalFieldSensor):
+                        FilamentGreens[w, fil_num] = np.cos(
+                            sensor.theta) * fil.controlBr(
+                            sensor.R, sensor.Z) + np.sin(
+                            sensor.theta) * fil.controlBz(sensor.R, sensor.Z)
+
+                    fil_num += 1
+
+                if isinstance(fil, group_of_Filaments):
+                    for sub_fil in fil.filaments:
+
+                        if isinstance(sensor, RogowskiSensor):
+                            sensor_loc = sensor.to_numpy()
+                            Rs = sensor_loc[0]
+                            Zs = sensor_loc[1]
+                            polygon_list = []
+
+                            for r, z in zip(Rs, Zs):
+                                point = (r, z)
+                                polygon_list.append(point)
+
+                            polygon = Polygon(polygon_list)
+
+                            point = Point(sub_fil.R, sub_fil.Z)
+                            if polygon.contains(point):
+                                FilamentGreens[w, fil_num] += 1
+
+                        if isinstance(sensor, FluxLoopSensor):
+                            FilamentGreens[w, fil_num] += sub_fil.controlPsi(
+                                sensor.R, sensor.Z)
+
+                        if isinstance(sensor, PoloidalFieldSensor):
+                            FilamentGreens[w, fil_num] += np.cos(
+                                sensor.theta) * sub_fil.controlBr(
+                                sensor.R, sensor.Z) + np.sin(
+                                sensor.theta) * sub_fil.controlBz(sensor.R,
+                                                                  sensor.Z)
+
+                        fil_num += 1
+        self.Gfil = FilamentGreens
 
     def generate_limit_points(self):
         '''

@@ -35,8 +35,7 @@ eq = equilibrium.Equilibrium(tokamak, Rmin=Rmin, Rmax=Rmax, Zmin=Zmin, Zmax=Zmax
 # Performing Reconstruction
 print('Starting Reconstruction')
 chi, eq2, c = reconstruction.solve(tokamak, eq, M, sigma, pprime_order, ffprime_order, tolerance=1e-7, Fscale=True,
-                               VC=True, show=show, CI=True, returnChi=True, check_limited=check_limited, VesselCurrents=True,
-                               G=tokamak.G, Gc=tokamak.Gc, Gfil=tokamak.Gfil, J=tokamak.eigenbasis)
+                               VC=True, show=show, CI=True, returnChi=True, check_limited=check_limited, VesselCurrents=True)
 
 
 plotting.plotEquilibrium(eq2)

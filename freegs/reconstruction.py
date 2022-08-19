@@ -1,7 +1,7 @@
 import numpy as np
 import scipy
 from .recon_tools import grid_to_line, line_to_grid, chi_squared_test, blender, print_H, current_initialise
-from .recon_matrices import get_G, get_Gc, get_Gfil, get_E, get_B, get_c, get_x, get_A, get_F, get_T
+from .recon_matrices import get_E, get_B, get_c, get_x, get_A, get_F, get_T
 from . import plotting
 
 
@@ -42,25 +42,21 @@ def solve(tokamak, eq, M, sigma, pprime_order, ffprime_order, tolerance=1, blend
             axis = fig.add_subplot(111)
 
 
-    #If no greens matrices given, then calculate
-    if not isinstance(G, np.ndarray):
-        G = get_G(tokamak, eq)
-    if not isinstance(Gc, np.ndarray):
-        Gc = get_Gc(tokamak, eq)
+    if not hasattr(tokamak, 'Gplasma'):
+        tokamak.get_PlasmaGreens(eq)
+    if not hasattr(tokamak, 'Gcoil'):
+        tokamak.get_CoilGreens(eq)
     if VesselCurrents:
-        if not isinstance(J, np.ndarray):
-            J = tokamak.eigenbasis
-        if not isinstance(Gfil, np.ndarray):
-            Gfil = get_Gfil(tokamak,eq)
-
-        Gvessel = Gfil@J
+        if not hasattr(tokamak, 'Gfil'):
+            tokamak.get_FilamentGreens(eq)
+        tokamak.Gvessel = tokamak.Gfil @ tokamak.eigenbasis
 
     jtor_2d = None
 
     # Performs plasma current density initialisation
     if CI:
         T = get_T(eq,5,5)
-        jtor_1d = current_initialise(G, M[:-len(tokamak.coils)],tokamak, eq,T=T)
+        jtor_1d = current_initialise(M[:-len(tokamak.coils)],tokamak, eq, T=T)
         jtor_2d = line_to_grid(jtor_1d, eq.nx, eq.ny)
 
     # Fetching our initial normalised psi
@@ -78,12 +74,12 @@ def solve(tokamak, eq, M, sigma, pprime_order, ffprime_order, tolerance=1, blend
 
 
     # Calculating operator matrix A
-    A = G@B
+    A = tokamak.Gplasma @ B
 
     if VesselCurrents:
-        E = get_E(A,Gc, Gvessel)
+        E = get_E(A,tokamak.Gcoil, tokamak.Gvessel)
     else:
-        E= get_E(A,Gc)
+        E= get_E(A,tokamak.Gcoil)
 
     # Performing least squares calculation for c
     if Fscale:
@@ -123,7 +119,7 @@ def solve(tokamak, eq, M, sigma, pprime_order, ffprime_order, tolerance=1, blend
 
         # Use B & C to calculate Jtor matrix
         if VesselCurrents:
-            jtor_1d = np.matmul(B, c[:-(len(tokamak.coils)+Gvessel.shape[1])])
+            jtor_1d = np.matmul(B, c[:-(len(tokamak.coils)+tokamak.Gvessel.shape[1])])
         else:
             jtor_1d = np.matmul(B, c[:-(len(tokamak.coils))])
 
@@ -145,11 +141,11 @@ def solve(tokamak, eq, M, sigma, pprime_order, ffprime_order, tolerance=1, blend
 
 
         # Calculating operator matrix A
-        A = get_A(G, B)
+        A = get_A(tokamak.Gplasma, B)
         if VesselCurrents:
-            E = get_E(A, Gc, Gvessel)
+            E = get_E(A, tokamak.Gcoil, tokamak.Gvessel)
         else:
-            E = get_E(A,Gc)
+            E = get_E(A, tokamak.Gcoil)
 
         # Performing least squares calculation for c
         if Fscale:
@@ -158,10 +154,10 @@ def solve(tokamak, eq, M, sigma, pprime_order, ffprime_order, tolerance=1, blend
             c = scipy.linalg.lstsq(E, M)[0]
 
         if VesselCurrents:
-            fil_currents = J @ c[-(J.shape[1]):]
+            fil_currents = tokamak.eigenbasis @ c[-(tokamak.eigenbasis.shape[1]):]
             tokamak.updateVesselCurrents(fil_currents)
 
-        for i in range(Gc.shape[1]):
+        for i in range(tokamak.Gcoil.shape[1]):
             name, circuit = tokamak.coils[i]
             circuit.current = c[pprime_order+ffprime_order+1+i][0]
 
@@ -176,7 +172,7 @@ def solve(tokamak, eq, M, sigma, pprime_order, ffprime_order, tolerance=1, blend
             if it>50:
                 print('Finished due to runtime')
             if VesselCurrents:
-                print('dz=',c[-len(tokamak.coils)-1-Gvessel.shape[1]])
+                print('dz=',c[-len(tokamak.coils)-1-tokamak.Gvessel.shape[1]])
             else:
                 print('dz=', c[-len(tokamak.coils) - 1])
             print(it)

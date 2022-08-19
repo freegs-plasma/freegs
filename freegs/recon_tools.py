@@ -194,7 +194,7 @@ def get_M_plasma(M, tokamak):
 
 
 # Calculate the Current initialisation T matrix
-def current_initialise(G,M, tokamak, eq, T=None):
+def current_initialise(M, tokamak, eq, T=None):
     """
     Function for calculating the initial jtor
 
@@ -215,7 +215,7 @@ def current_initialise(G,M, tokamak, eq, T=None):
     if not isinstance(T, np.ndarray):
         T = get_T(eq,5,5)
 
-    coefs = scipy.linalg.lstsq(G@T, M_plasma)[0]
+    coefs = scipy.linalg.lstsq(tokamak.Gplasma@T, M_plasma)[0]
     jtor = T@coefs
     return jtor
 
