@@ -1,13 +1,13 @@
 import numpy as np
 import scipy
-from .recon_tools import grid_to_line, line_to_grid, chi_squared_test, blender, print_H, current_initialise
-from .recon_matrices import get_E, get_B, get_c, get_x, get_A, get_F, get_T
+from .recon_tools import chi_squared_test, blender, current_initialise
+from .recon_matrices import get_E, get_B, get_c, get_x, get_F, get_T
 from . import plotting
 
 
 # Perform the iteration
 def solve(tokamak, eq, M, sigma, pprime_order, ffprime_order, tolerance=1, blend=0,
-          show=True, pause=0.01, axis=None, VC=False, CI=False, Fscale=True, VesselCurrents=False, returnChi=False, check_limited=False):
+          show=True, pause=0.01, axis=None, VerticalControl=False, CurrentInitialisation=False, FittingWeight=True, VesselCurrents=False, returnChi=False, check_limited=False):
 
     """
     Parameters
@@ -25,9 +25,9 @@ def solve(tokamak, eq, M, sigma, pprime_order, ffprime_order, tolerance=1, blend
     show - option to display psi through the iterations
     pause - time to wait between iterations
     axis - axis to plot iterations on
-    VC - option for ferron's vertical control
+    VerticalControl - option for ferron's vertical control
     CI - option for current initialisation
-    Fscale - option to apply a fitting weight vector to scale lstsq calculation
+    FittingWeight - option to apply a fitting weight vector to scale lstsq calculation
     returnChi - option to return the final value of chi squared
 
     """
@@ -54,20 +54,20 @@ def solve(tokamak, eq, M, sigma, pprime_order, ffprime_order, tolerance=1, blend
     jtor_2d = None
 
     # Performs plasma current density initialisation
-    if CI:
+    if CurrentInitialisation:
         T = get_T(eq,5,5)
         jtor_1d = current_initialise(M[:-len(tokamak.coils)],tokamak, eq, T=T)
-        jtor_2d = line_to_grid(jtor_1d, eq.nx, eq.ny)
+        jtor_2d = np.reshape(jtor_1d, (eq.nx, eq.ny), order='F')
 
     # Fetching our initial normalised psi
     x_2d, mask = get_x(eq,jtor=jtor_2d, check_limited=check_limited)
-    x_1d = grid_to_line(x_2d)
+    x_1d = x_2d.flatten('F')
 
 
     #Calculate B and apply mask
     B = get_B(x_1d, eq, pprime_order, ffprime_order)
     if mask is not None:
-        maskline = grid_to_line(mask)
+        maskline = mask.flatten('F')
         for j in range(B.shape[1]):
             for i in range(B.shape[0]):
                 B[i, j] *= maskline[i]
@@ -82,7 +82,7 @@ def solve(tokamak, eq, M, sigma, pprime_order, ffprime_order, tolerance=1, blend
         E= get_E(A,tokamak.Gcoil)
 
     # Performing least squares calculation for c
-    if Fscale:
+    if FittingWeight:
         F = get_F(sigma)
         c = scipy.linalg.lstsq(F@E, F@M)[0]
     else:
@@ -123,32 +123,32 @@ def solve(tokamak, eq, M, sigma, pprime_order, ffprime_order, tolerance=1, blend
         else:
             jtor_1d = np.matmul(B, c[:-(len(tokamak.coils))])
 
-        jtor_2d = line_to_grid(jtor_1d, eq.nx, eq.ny)
+        jtor_2d = np.reshape(jtor_1d, (eq.nx, eq.ny), order='F')
 
 
         #Recalculate Psi values with elliptical solver
         x_last = x_1d
         x_2d, mask = get_x(eq, jtor=jtor_2d, check_limited=check_limited)
-        x_1d = blender(grid_to_line(x_2d),x_last,blend)
+        x_1d = blender(x_2d.flatten('F'),x_last,blend)
 
         # Recalculate B and A matrices from new Psi
-        B = get_B(x_1d, eq, pprime_order, ffprime_order, c=c, VC=VC)
+        B = get_B(x_1d, eq, pprime_order, ffprime_order, c=c, VC=VerticalControl)
         if mask is not None:
-            maskline = grid_to_line(mask)
+            maskline = mask.flatten('F')
             for j in range(B.shape[1]):
                 for i in range(B.shape[0]):
                     B[i, j] *= maskline[i]
 
 
         # Calculating operator matrix A
-        A = get_A(tokamak.Gplasma, B)
+        A = tokamak.Gplasma @ B
         if VesselCurrents:
             E = get_E(A, tokamak.Gcoil, tokamak.Gvessel)
         else:
             E = get_E(A, tokamak.Gcoil)
 
         # Performing least squares calculation for c
-        if Fscale:
+        if FittingWeight:
             c = scipy.linalg.lstsq(F @ E, F @ M)[0]
         else:
             c = scipy.linalg.lstsq(E, M)[0]

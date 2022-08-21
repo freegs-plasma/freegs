@@ -107,49 +107,6 @@ def give_values(tokamak, sensors,coils):
 
     return M, sigma
 
-# Grid Conversion Functions
-def grid_to_line(Grid):
-    """
-    Takes a grid creates a line
-
-    Parameters
-    ----------
-    Grid - input Grid to be converted
-
-    Returns
-    -------
-    Line - returns the grid in line form
-    """
-    nx = Grid.shape[0]
-    ny = Grid.shape[1]
-    Line = np.zeros(nx * ny)
-    for j in range(ny):
-        for i in range(nx):
-            Line[j * nx + i] = Grid[i, j]
-    return Line
-
-def line_to_grid(Line, nx, ny):
-    """
-    Takes a line and creates a grid
-
-    Parameters
-    ----------
-    Line - input the line to be converted
-
-
-    Returns
-    -------
-    Grid - returns Grid from line
-    """
-    assert len(Line) == nx * ny
-    Grid = np.zeros((nx, ny))
-    for j in range(ny):
-        for i in range(nx):
-            #breakpoint()
-            Grid[i, j] = Line[j * nx + i]
-    return Grid
-
-
 # Perform chi squared test for convergence
 def chi_squared_test(M, sigma, H):
     """
@@ -237,21 +194,3 @@ def blender(x_new,x_old, blend=0.4):
     """
     x = (1-blend)*x_new + blend*x_old
     return x
-
-
-
-# Printing Functions
-def print_frac_error(tokamak, H):
-    print(' ')
-    print('Fractional Error between H and Sensors')
-    print('==========================')
-    for i in range(len(tokamak.sensors)):
-        sensor = tokamak.sensors[i]
-        hval = H[i]
-        print((hval - sensor.measurement) / hval)
-
-def print_H(H):
-    print(' ')
-    print('Computed Values')
-    print('==========================')
-    print(H)

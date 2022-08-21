@@ -31,7 +31,7 @@ fig = plt.figure()
 ax = fig.add_subplot(111)
 ax.set_aspect('equal')
 for filament in tokamak.vessel:
-    if isinstance(filament, freegs.machine.group_of_Filaments):
+    if isinstance(filament, freegs.machine.Filament_Group):
         for fil in filament.filaments:
             ax.scatter(fil.R, fil.Z, color='green')
 

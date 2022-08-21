@@ -26,14 +26,14 @@ def test_reconstruction():
 
     tokamak = machine.EfitTestMachine()
     eq = equilibrium.Equilibrium(tokamak, Rmin=Rmin, Rmax=Rmax, Zmin=Zmin,Zmax=Zmax, nx=nx, ny=ny)
-    G=recon_matrices.get_G(tokamak, eq)
-    Gc = recon_matrices.get_Gc(tokamak,eq)
-    show = True
+    tokamak.get_PlasmaGreens(eq)
+    tokamak.get_CoilGreens(eq)
+    show = False
 
     for alpha_n, pprime_order, ffprime_order, x_z1, x_z2 in zip(alpha_n,pprime_order_list,ffprime_order_list,x_point_list1,x_point_list2):
 
         # Making up some measurements
-        sensors, coils, Beta0, L, mask, eq = recon_tools.get_values(tokamak, alpha_m, alpha_n, Rmin=Rmin, Rmax=Rmax, Zmin=Zmin, Zmax=Zmax,nx=nx,ny=ny,x_z1=x_z1,x_z2=x_z2, show=show)
+        sensors, coils, eq = recon_tools.get_values(tokamak, alpha_m, alpha_n, Rmin=Rmin, Rmax=Rmax, Zmin=Zmin, Zmax=Zmax,nx=nx,ny=ny,x_z1=x_z1,x_z2=x_z2, show=show)
 
         psi1 = eq.psi()
         opt, xpt = critical.find_critical(eq.R, eq.Z, psi1)
@@ -44,7 +44,7 @@ def test_reconstruction():
         eq = equilibrium.Equilibrium(tokamak, Rmin=Rmin, Rmax=Rmax, Zmin=Zmin, Zmax=Zmax,nx=nx,ny=ny,)
 
         # Performing Reconstruction
-        chi,eq ,c = reconstruction.solve(tokamak, eq, M, sigma, pprime_order, ffprime_order, Fscale=False, tolerance=1e-9, show=show, VC=True, returnChi=True, G=G, Gc=Gc)
+        chi,eq ,c = reconstruction.solve(tokamak, eq, M, sigma, pprime_order, ffprime_order, FittingWeight=False, tolerance=1e-9, show=show, CurrentInitialisation=True, VerticalControl=True, returnChi=True)
 
         psi2 = eq.psi()
         recon_opt, recon_xpt = critical.find_critical(eq.R, eq.Z, psi2)
@@ -83,7 +83,8 @@ def test_vessel_eigenmode():
     # Generating Values
 
     # Creating Machine
-    tokamak = machine.EfitTestMachine(createVessel=True, Nfils=50)
+    tokamak = machine.EfitTestMachine(createVessel=True)
+
 
     eq = equilibrium.Equilibrium(tokamak)
 
@@ -92,13 +93,13 @@ def test_vessel_eigenmode():
 
     fil_num = 0
     for fil in tokamak.vessel:
-        if isinstance(fil,machine.filament):
+        if isinstance(fil,machine.Filament):
             r, z = fil.R, fil.Z
             size = (eigenfunction[fil_num]) * 400
             tokamak.coils.append(('fil' + str(fil_num), machine.Coil(r, z, control=False, current=size)))
             fil_num+=1
 
-        if isinstance(fil, machine.group_of_filaments):
+        if isinstance(fil, machine.Filament_Group):
             for subfil in fil.filaments:
                 r, z = subfil.R, subfil.Z
                 size = (eigenfunction[fil_num]) * 400
@@ -106,7 +107,7 @@ def test_vessel_eigenmode():
                 fil_num += 1
 
     # Making up some measurements
-    sensors, coils, Beta0, L, mask, eq1 = recon_tools.get_values(tokamak,
+    sensors, coils, eq1 = recon_tools.get_values(tokamak,
                                                                  alpha_m,
                                                                  alpha_n,
                                                                  Rmin=Rmin,
@@ -130,21 +131,17 @@ def test_vessel_eigenmode():
     eq = equilibrium.Equilibrium(tokamak, Rmin=Rmin, Rmax=Rmax, Zmin=Zmin,
                                  Zmax=Zmax, nx=nx, ny=ny)
 
-    # Creating Reconstruction Matrices
-    G = recon_matrices.get_G(tokamak, eq)
-    Gc = recon_matrices.get_Gc(tokamak, eq)
-    Gfil = recon_matrices.get_Gfil(tokamak, eq)
-
     # Performing Reconstruction
     chi, eq, c = reconstruction.solve(tokamak, eq, M, sigma, pprime_order,
-                                    ffprime_order, tolerance=1e-9, Fscale=True,
-                                    VC=True, show=show, CI=True,
+                                    ffprime_order, tolerance=1e-9, FittingWeight=True,
+                                    VerticalControl=True, show=show, CurrentInitialisation=True,
                                     returnChi=True,
                                     check_limited=check_limited,
-                                    VesselCurrents=True,
-                                    G=G, Gc=Gc, Gfil=Gfil, J=tokamak.eigenbasis)
+                                    VesselCurrents=True)
 
     eig_coef = c[-tokamak.eigenbasis.shape[1]+i]
+    print(c)
     assert abs(c[-tokamak.eigenbasis.shape[1]+i]) > 50*abs(c[-tokamak.eigenbasis.shape[1]+i+1]) and abs(c[-tokamak.eigenbasis.shape[1]+i]) > 50*abs(c[-tokamak.eigenbasis.shape[1]+i-1])
 
-test_reconstruction()
+#test_reconstruction()
+test_vessel_eigenmode()

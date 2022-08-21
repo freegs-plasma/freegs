@@ -4,7 +4,7 @@ from . import critical, plotting, machine
 from .gradshafranov import Greens, GreensBr, GreensBz
 from shapely.geometry import Point
 from shapely.geometry.polygon import Polygon
-from .recon_tools import grid_to_line, line_to_grid, chi_squared_test
+from .recon_tools import chi_squared_test
 from scipy.special import ellipe, ellipk
 mu0 = 4e-7 * np.pi
 
@@ -29,7 +29,7 @@ def get_B(x, eq, pprime_order, ffprime_order,c=None,VC=False):
     """
     # Create Empty Matrix
     N = eq.nx * eq.ny
-    R = grid_to_line(eq.R)
+    R = eq.R.flatten(order='F')
     nc = pprime_order + ffprime_order
     dR = eq.R[1, 0] - eq.R[0, 0]
     dZ = eq.Z[0, 1] - eq.Z[0, 0]
@@ -47,7 +47,7 @@ def get_B(x, eq, pprime_order, ffprime_order,c=None,VC=False):
             for j in range(N):
                 B[j, i + pprime_order] = (1 / (mu0 * R[j])) * (x[j])**i
 
-        x_z = grid_to_line(np.gradient(line_to_grid(x, eq.nx, eq.ny), dR, dZ)[1])
+        x_z = np.gradient(np.reshape(x, (eq.nx, eq.ny), order='F'), dR, dZ)[1].flatten(order='F')
         for j in range(N):
             psum=0
             ffsum=0
@@ -78,24 +78,6 @@ def get_B(x, eq, pprime_order, ffprime_order,c=None,VC=False):
     return B
 
 
-# Operator Matrix A (nm x nc+1)
-def get_A(G, B):
-    """
-    Calculates operator matrix A
-
-    Parameters
-    ----------
-    G - Greens Matrix
-    B - Basis Matrix
-
-    Returns
-    -------
-
-    """
-    A = np.matmul(G, B)
-    return A
-
-
 # Finding total operator matrix E (nm+n_coils + nc+n_coils+1)
 def get_E(A,Gc, Gvessel=None):
     B = np.identity(Gc.shape[1])
@@ -107,23 +89,6 @@ def get_E(A,Gc, Gvessel=None):
         E = np.block([[A,Gc],[C,B]])
 
     return E
-
-
-# Pseudo inverse of operator matrix A (nc x nm)
-def get_A_inv(A):
-    """
-    Getting pseudo inverse
-
-    Parameters
-    ----------
-    A - Operator
-
-    Returns
-    -------
-    A_inv - inverse matrix of A
-    """
-    A_inv = np.linalg.pinv(A)
-    return A_inv
 
 
 # Coefficient Matrix c (nc x 1)
@@ -262,8 +227,8 @@ def get_T(eq, m, n, inside=True):
     """
     m+=2
     n+=2
-    R = grid_to_line(eq.R)
-    Z = grid_to_line(eq.Z)
+    R = eq.R.flatten(order='F')
+    Z = eq.Z.flatten(order='F')
     a, b, c, d = eq.Rmin, eq.Rmax, eq.Zmin, eq.Zmax
     dR = (b - a) / (m-1)
     dZ = (d - c) / (n-1)

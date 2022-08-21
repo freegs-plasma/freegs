@@ -29,7 +29,6 @@ import numpy as np
 import scipy
 from scipy.interpolate import interp1d
 from scipy.special import ellipk, ellipe
-from .recon_tools import grid_to_line, line_to_grid
 
 from .coil import Coil, AreaCurrentLimit
 from .shaped_coil import ShapedCoil
@@ -456,30 +455,18 @@ class Wall:
         return not self == other
 
 
-class RogowskiSensor:
-    """
-    Represents a Rogowski sensor.
-    Consists of an ordered list of (R,Z) points (defines polygon on which sensor lies)
-    Returns current inside the loop
-    """
-
-    def __init__(self, R, Z, current=0, name=None, weight=1, status=True):
-        assert len(R) == len(Z)
+class Sensor:
+    def __init__(self, R, Z, name=None, weight=1, status=True,
+                 measurement=None):
         self.R = R
-        self.measurement = current
         self.Z = Z
         self.status = status
         self.name = name
         self.weight = weight
+        self.measurement = measurement
 
     def __repr__(self):
         return "R={R},Z={Z}".format(R=self.R, Z=self.Z)
-
-    def to_numpy(self):
-        """
-        Helper method for writing output
-        """
-        return np.array((self.R, self.Z))
 
     def __eq__(self, other):
         return np.allclose(self.R, other.R) and np.allclose(self.Z, other.Z)
@@ -487,11 +474,30 @@ class RogowskiSensor:
     def __ne__(self, other):
         return not self == other
 
+
+class RogowskiSensor(Sensor):
+    """
+    Represents a Rogowski sensor.
+    Consists of an ordered list of (R,Z) points (defines polygon on which sensor lies)
+    Returns current inside the loop
+    """
+
+    def __init__(self, R, Z, current=0, name=None, weight=1, status=True,
+                 measurement=None):
+        Sensor.__init__(self, R, Z, name=name, weight=weight, status=status,
+                        measurement=measurement)
+
+    def to_numpy(self):
+        """
+        Helper method for writing output
+        """
+        return np.array((self.R, self.Z))
+
     def get_measure(self, tokamak, equilibrium=None):
         """
-                Method to update the current attribute of the sensor
-                with whatever current is contained within the sensor
-                if sensor is on (status == True)
+        Method to update the current attribute of the sensor
+        with whatever current is contained within the sensor
+        if sensor is on (status == True)
         """
 
         if self.status:
@@ -533,6 +539,7 @@ class RogowskiSensor:
 
                 elif isinstance(coil, Circuit):
                     for name, sub_coil, multiplier in coil.coils:
+                        sub_coil.current = coil.current * multiplier
 
                         if isinstance(coil, ShapedCoil):
                             Shaped_Coil_List = []
@@ -541,35 +548,31 @@ class RogowskiSensor:
                             Shaped_Coil = Polygon(Shaped_Coil_List)
                             coil_current += (polygon.intersection(
                                 Shaped_Coil).area) / (
-                                                coil._area) * coil.current
+                                                coil._area) * sub_coil.current
 
                         elif isinstance(coil, Coil):
                             point = Point(coil.R, coil.Z)
                             if polygon.contains(point):
-                                coil_current += coil.current
+                                coil_current += sub_coil.current
 
                         if isinstance(sub_coil, FilamentCoil):
                             for r, z in sub_coil.points:
                                 point = Point(r, z)
                                 if polygon.contains(point):
-                                    # this next line is dependent on which convention is used for circuit currents
-                                    # this assumes in a filament coil, each wire has current that is being provided to the circuit
-                                    # therefore the multiplier of a filament coil is filamentcoil.npoints
-                                    coil_current += s
+                                    coil_current += sub_coil.current / sub_coil.npoints
 
             if tokamak.vessel is not None:
                 for filament in tokamak.vessel:
-
                     if isinstance(filament, Filament):
                         point = Point(filament.R, filament.Z)
                         if polygon.contains(point):
                             coil_current += filament.current
 
-                    if isinstance(filament, group_of_Filaments):
-                        for subfil in filament.filaments:
-                            point = Point(subfil.R, subfil.Z)
+                    if isinstance(filament, Filament_Group):
+                        for sub_fil in filament.filaments:
+                            point = Point(sub_fil.R, sub_fil.Z)
                             if polygon.contains(point):
-                                coil_current += subfil.current
+                                coil_current += sub_fil.current
 
             # plasma current
             if equilibrium != None:
@@ -588,30 +591,15 @@ class RogowskiSensor:
                 self.measurement = coil_current
 
 
-class PoloidalFieldSensor:
+class PoloidalFieldSensor(Sensor):
     """
     Represents position of a Poloidal B field sensor.
     Consists a single (R,Z) point, and an angle Theta
     At which the field is measured at
     """
-
-    def __init__(self, R, Z, theta, field=0, name=None, weight=1, status=True):
-        self.R = R
-        self.Z = Z
+    def __init__(self, R, Z, theta, field=0, name=None, weight=1, status=True, measurement=None):
+        Sensor.__init__(self, R, Z, name=name, weight=weight, status=status,measurement=measurement)
         self.theta = theta
-        self.measurement = field
-        self.status = status
-        self.name = name
-        self.weight = weight
-
-    def __repr__(self):
-        return "R={R},Z={Z}".format(R=self.R, Z=self.Z)
-
-    def __eq__(self, other):
-        return np.allclose(self.R, other.R) and np.allclose(self.Z, other.Z)
-
-    def __ne__(self, other):
-        return not self == other
 
     def get_measure(self, tokamak, equilibrium=None):
         """
@@ -632,32 +620,16 @@ class PoloidalFieldSensor:
                                                                 self.Z) + tokamak.Bz(
                                        self.R, self.Z)) * np.sin(
                     self.theta)
-        return
 
 
-class FluxLoopSensor:
+class FluxLoopSensor(Sensor):
     """
     Represents position of a Flux Loop Sensor.
     Consists a single (R,Z) point, describing the position of the probe
     Contains a method to find the value of flux (psi) at the position
     """
-
-    def __init__(self, R, Z, flux=0, name=None, weight=1, status=True):
-        self.R = R
-        self.Z = Z
-        self.measurement = flux
-        self.status = status
-        self.name = name
-        self.weight = weight
-
-    def __repr__(self):
-        return "R={R},Z={Z}".format(R=self.R, Z=self.Z)
-
-    def __eq__(self, other):
-        return np.allclose(self.R, other.R) and np.allclose(self.Z, other.Z)
-
-    def __ne__(self, other):
-        return not self == other
+    def __init__(self, R, Z, flux=0, name=None, weight=1, status=True, measurement=None):
+        Sensor.__init__(self, R, Z, name=name, weight=weight, status=status, measurement=measurement)
 
     def get_measure(self, tokamak, equilibrium=None):
         """
@@ -671,7 +643,6 @@ class FluxLoopSensor:
             else:
                 psi = tokamak.psi(self.R, self.Z)
             self.measurement = psi
-        return
 
 
 class Filament(Coil):
@@ -692,7 +663,7 @@ class Filament(Coil):
         self.eigenbasis = [[1]]
 
 
-class group_of_Filaments:
+class Filament_Group:
     def __init__(self, filaments, name, Nbasis=10):
         self.filaments = filaments
         self.N = Nbasis
@@ -881,7 +852,7 @@ class Machine:
                 round(10000 * R ** 2 + 100 * Z))))
 
         if groupFilaments:
-            vessel = [group_of_Filaments(vessel, 'ivc', Nbasis=6)]
+            vessel = [Filament_Group(vessel, 'ivc', Nbasis=6)]
 
         self.vessel = vessel
 
@@ -892,7 +863,7 @@ class Machine:
                 fil.current = currents[fil_num]
                 fil_num += 1
 
-            if isinstance(fil, group_of_Filaments):
+            if isinstance(fil, Filament_Group):
                 for sub_fil in fil.filaments:
                     sub_fil.current = currents[fil_num]
                     fil_num += 1
@@ -904,7 +875,7 @@ class Machine:
             if isinstance(fil, Filament):
                 n_basis += 1
                 n_fils += 1
-            if isinstance(fil, group_of_Filaments):
+            if isinstance(fil, Filament_Group):
                 n_basis += fil.N
                 n_fils += len(fil.filaments)
 
@@ -918,7 +889,7 @@ class Machine:
                 fil_num += 1
                 basis_num + 1
 
-            if isinstance(fil, group_of_Filaments):
+            if isinstance(fil, Filament_Group):
                 for i in range(fil.eigenbasis.shape[0]):
                     for j in range(fil.eigenbasis.shape[1]):
                         eigenbasis[fil_num + i, basis_num + j] = \
@@ -994,7 +965,7 @@ class Machine:
                             sensor.theta))
 
             # Convert the grid to a line, then append the greens plasma response matrix with it
-            greens_row = grid_to_line(greens_matrix)
+            greens_row = greens_matrix.flatten(order='F')
             PlasmaGreens[w] = greens_row
         self.Gplasma = PlasmaGreens
 
@@ -1066,7 +1037,7 @@ class Machine:
         for fil in self.vessel:
             if isinstance(fil, Filament):
                 n_fils += 1
-            if isinstance(fil, group_of_Filaments):
+            if isinstance(fil, Filament_Group):
                 n_fils += len(fil.filaments)
 
         FilamentGreens = np.zeros((len(self.sensors), n_fils))
@@ -1106,7 +1077,7 @@ class Machine:
 
                     fil_num += 1
 
-                if isinstance(fil, group_of_Filaments):
+                if isinstance(fil, Filament_Group):
                     for sub_fil in fil.filaments:
 
                         if isinstance(sensor, RogowskiSensor):

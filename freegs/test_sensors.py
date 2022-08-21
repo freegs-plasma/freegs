@@ -141,8 +141,6 @@ def test_flux():
     for sensor in tokamak.sensors:
         if isinstance(sensor, freegs.machine.FluxLoopSensor):
             sensor.get_measure(tokamak)
-            print(psi)
-            print(sensor.measurement)
             assert math.isclose(sensor.measurement, psi, abs_tol=1e-8)
 
 
@@ -212,79 +210,10 @@ def test_rog_with_plasma():
     assert math.isclose(tokamak.sensors[0].measurement, plasmacurrent,
                         abs_tol=1000)
 
-
-def test_all_against_solovev():
-    """
-    Testing flux and rog coil against the analytic solovev equilibrium values
-    """
-    # Defining Variables
-    mu0 = 4e-7 * np.pi
-    R0 = 1.0  # major radius
-
-    # Grid Points
-    nx = 129
-    ny = 129
-    Rmin = 0.7
-    Rmax = 1.3
-    Zmin = -0.3
-    Zmax = 0.3
-    R_1D = np.linspace(Rmin, Rmax, nx)
-    Z_1D = np.linspace(Zmin, Zmax, ny)
-    R, Z = np.meshgrid(R_1D, Z_1D, indexing='ij')
-    c1 = 1.2
-    c2 = -1
-    c0 = 1.1
-    eta = (R ** 2 - R0 ** 2) / (2 * R0 ** 2)
-    psi = 0.5 * (c2 + c0) * (Z ** 2) + c0 * eta * (Z ** 2) + 0.5 * (
-            c1 - c0) * (eta ** 2)
-
-    # defining positions of sensors - these are taken half way between the outmost and second grid points to avoid any egde errors
-    rdif = (Rmax - Rmin) / nx
-    zdif = (Zmax - Zmin) / ny
-    rp = Rmax - rdif / 2
-    rm = Rmin + rdif / 2
-    zp = Zmax - zdif / 2
-    zm = Zmin + zdif / 2
-    theta = 0.7
-
-    tokamak = freegs.machine.EmptyTokamak()
-    tokamak.sensors = [
-        freegs.machine.RogowskiSensor([rm, rm, rp, rp], [zm, zp, zp, zm]),
-        freegs.machine.PoloidalFieldSensor(rm, zm, theta),
-        freegs.machine.FluxLoopSensor(rm, zm)
-    ]
-
-    eq = freegs.Equilibrium(tokamak=tokamak,
-                            Rmin=Rmin, Rmax=Rmax,  # Radial domain
-                            Zmin=Zmin, Zmax=Zmax,  # Height range
-                            nx=nx, ny=ny,  # Number of grid points
-                            psi=psi,
-                            boundary=freegs.boundary.fixedBoundary,
-                            usePsiBoundary=True)  # Boundary condition
-
-    def pprime_func(psi_norm=None):
-        return -c1 / mu0
-
-    def ffprime_func(psi_norm=None):
-        return -c2 * R0 ** 2
-
-    profiles = freegs.jtor.ProfilesPprimeFfprime(pprime_func, ffprime_func, 0,
-                                                 useMask=False)
-
-    eq.solve(profiles)
-
-    for sensor in tokamak.sensors:
-        if isinstance(sensor, freegs.machine.RogowskiSensor):
-            sensor.get_measure(tokamak, equilibrium=eq)
-            analytical = -((zp - zm) / mu0) * (
-                    c1 * (rp ** 2 - rm ** 2) / 2 + c2 * R0 ** 2 * (
-                np.log(rp / rm)))
-            assert math.isclose(sensor.measurement, analytical, abs_tol=10)
-        elif isinstance(sensor, freegs.machine.FluxLoopSensor):
-            sensor.get_measure(tokamak, equilibrium=eq)
-            eta = (rm ** 2 - R0 ** 2) / (2 * R0 ** 2)
-            psival = 0.5 * (c2 + c0) * (zm ** 2) + c0 * eta * (
-                    zm ** 2) + 0.5 * (c1 - c0) * (eta ** 2)
-            assert math.isclose(sensor.measurement, psival, abs_tol=1e-8)
-
-    return
+test_flux()
+test_iso_flux()
+test_rog_around_Shapedcoil()
+test_offaxis_Bfield()
+test_xpoint_field()
+test_rog_around_coil()
+test_rog_with_plasma()
