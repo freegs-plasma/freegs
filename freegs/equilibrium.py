@@ -95,6 +95,8 @@ class Equilibrium:
         self.Rmax = Rmax
         self.Zmin = Zmin
         self.Zmax = Zmax
+        self.nx = nx
+        self.ny = ny
 
         self.R_1D = linspace(Rmin, Rmax, nx)
         self.Z_1D = linspace(Zmin, Zmax, ny)
@@ -120,6 +122,7 @@ class Equilibrium:
         self._pgreen = tokamak.createPsiGreens(self.R, self.Z)
 
         self._current = current  # Plasma current
+        self.Jtor = None
 
         self._updatePlasmaPsi(psi)  # Needs to be after _pgreen
 
@@ -467,6 +470,7 @@ class Equilibrium:
         dR = self.R[1, 0] - self.R[0, 0]
         dZ = self.Z[0, 1] - self.Z[0, 0]
         self._current = romb(romb(Jtor)) * dR * dZ
+        self.Jtor = Jtor
 
     def _updateBoundaryPsi(self,psi=None):
         """

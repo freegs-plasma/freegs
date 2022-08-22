@@ -26,12 +26,19 @@ from .gradshafranov import Greens, GreensBr, GreensBz
 
 from numpy import linspace
 import numpy as np
+import scipy
 from scipy.interpolate import interp1d
+from scipy.special import ellipk, ellipe
 
 from .coil import Coil, AreaCurrentLimit
 from .shaped_coil import ShapedCoil
 from .pre_calc_coil import PreCalcCoil
 from .filament_coil import FilamentCoil
+from scipy.integrate import romb, trapz  # Romberg integration
+from shapely.geometry import Point, LinearRing, LineString
+from shapely.geometry.polygon import Polygon
+
+mu0 = 4e-7 * np.pi
 
 # We need this for the `label` part of the Circuit dtype for writing
 # to HDF5 files. See the following for information:
@@ -442,6 +449,162 @@ class Wall:
         return not self == other
 
 
+class Sensor:
+    def __init__(self, R, Z, name=None, weight=1, status=True, measurement=None):
+        self.R = R
+        self.Z = Z
+        self.status = status
+        self.name = name
+        self.weight = weight
+        self.measurement = measurement
+
+    def __repr__(self):
+        return "R={R},Z={Z}".format(R=self.R, Z=self.Z)
+
+    def __eq__(self, other):
+        return np.allclose(self.R, other.R) and np.allclose(self.Z, other.Z)
+
+    def __ne__(self, other):
+        return not self == other
+
+
+class RogowskiSensor(Sensor):
+    """
+    Represents a Rogowski sensor.
+    Consists of an ordered list of (R,Z) points (defines polygon on which sensor lies)
+    Returns current inside the loop
+    """
+
+    def __init__(self, R, Z, current=0, name=None, weight=1, status=True,
+                 measurement=None):
+        Sensor.__init__(self, R, Z, name=name, weight=weight, status=status,
+                        measurement=measurement)
+
+    def to_numpy(self):
+        """
+        Helper method for writing output
+        """
+        return np.array((self.R, self.Z))
+
+    def get_measure(self, tokamak, equilibrium=None):
+        """
+        Method to update the current attribute of the sensor
+        with whatever current is contained within the sensor
+        if sensor is on (status == True)
+        """
+
+        if self.status:
+            sensor_loc = self.to_numpy()
+            Rs = sensor_loc[0]
+            Zs = sensor_loc[1]
+
+            polygon_list = []
+            coil_current = 0
+
+            polygon_list= [(r,z) for r,z in zip(Rs,Zs)]
+
+            polygon = Polygon(polygon_list)
+
+            # coil current
+            for label, coil in tokamak.coils:
+                if isinstance(coil, Coil):
+                    coil_current += self.find_coil_currents(coil, polygon)
+
+                elif isinstance(coil, Circuit):
+                    for name, sub_coil, multiplier in coil.coils:
+                        sub_coil.current = coil.current * multiplier
+                        coil_current += self.find_coil_currents(coil, polygon)
+
+
+            # plasma current
+
+            # lets stop testing the points and start testing the squares, diving through by intersection area instead of R,Z
+            # switch to sum as opposed to trapz
+            plasma_current = 0
+            if equilibrium != None:
+                dim = equilibrium.R.shape
+                sensor_jtor = np.zeros(dim)
+                for i in range(dim[0]):
+                    for j in range(dim[1]):
+                        point = Point(equilibrium.R[i, j], equilibrium.Z[i, j])
+                        if polygon.contains(point):
+                            sensor_jtor[i, j] = equilibrium.Jtor[i, j]
+                dR = equilibrium.R[1, 0] - equilibrium.R[0, 0]
+                dZ = equilibrium.Z[0, 1] - equilibrium.Z[0, 0]
+                plasma_current = trapz(trapz(sensor_jtor)) * dR * dZ
+
+            self.measurement =  plasma_current + coil_current
+
+    def find_coil_currents(self, coil, polygon):
+        if isinstance(coil, FilamentCoil):
+            coil_current = 0
+            for r, z in coil.points:
+                if polygon.contains(Point(r,z) for r, z in coil.points):
+                    coil_current += coil.current / coil.npoints
+
+        elif isinstance(coil, ShapedCoil):
+            Shaped_Coil = Polygon([shape for shape in coil.shape])
+            coil_current = (polygon.intersection(Shaped_Coil).area) / (coil._area) * coil.current
+
+        else:
+            if polygon.contains(Point(coil.R, coil.Z)):
+                coil_current = coil.current
+
+        return coil_current
+
+
+
+class PoloidalFieldSensor(Sensor):
+    """
+    Represents position of a Poloidal B field sensor.
+    Consists a single (R,Z) point, and an angle Theta
+    At which the field is measured at
+    """
+    def __init__(self, R, Z, theta, field=0, name=None, weight=1, status=True, measurement=None):
+        Sensor.__init__(self, R, Z, name=name, weight=weight, status=status,measurement=measurement)
+        self.theta = theta
+
+    def __repr__(self):
+        return "R={R},Z={Z}, Theta={Theta}".format(R=self.R, Z=self.Z, Theta=self.theta)
+
+    def get_measure(self, tokamak, equilibrium=None):
+        """
+        Updates field attribute of sensor with measured field at that
+        point/direction if sensor is on
+        """
+        if self.status:
+            field = (tokamak.Br(self.R, self.Z)) * np.cos(self.theta) + (tokamak.Bz(self.R, self.Z)) * np.sin(self.theta)
+
+            if equilibrium != None:
+                field += equilibrium.plasmaBr(self.R, self.Z) * np.cos(self.theta) + equilibrium.plasmaBz(self.R,self.Z) * np.sin(self.theta)
+
+            self.measurement = field
+
+
+
+class FluxLoopSensor(Sensor):
+    """
+    Represents position of a Flux Loop Sensor.
+    Consists a single (R,Z) point, describing the position of the probe
+    Contains a method to find the value of flux (psi) at the position
+    """
+    def __init__(self, R, Z, flux=0, name=None, weight=1, status=True, measurement=None):
+        Sensor.__init__(self, R, Z, name=name, weight=weight, status=status, measurement=measurement)
+
+    def get_measure(self, tokamak, equilibrium=None):
+        """
+            Updates flux attribute with
+            poloidal flux at the point of measurement
+            if sensor is on
+        """
+        if self.status:
+            if equilibrium != None:
+                psi = equilibrium.psiRZ(self.R, self.Z)
+            else:
+                psi = tokamak.psi(self.R, self.Z)
+            self.measurement = psi
+
+
 class Machine:
     """
     Represents the machine (Tokamak), including
@@ -455,13 +618,15 @@ class Machine:
 
     """
 
-    def __init__(self, coils, wall=None, nlimit=500):
+    def __init__(self, coils, wall=None, sensors=None, nlimit=500):
         """
         coils - A list of coils [(label, Coil|Circuit|Solenoid)]
+        sensors - A list of sensors
         """
 
         self.coils = coils
         self.wall = wall
+        self.sensors = sensors
         self.limit_points_R = None
         self.limit_points_Z = None
 
@@ -616,6 +781,31 @@ class Machine:
             print(label + " : " + str(coil))
         print("==========================")
 
+    def takeMeasurements(self, equilibrium=None):
+        """
+        Method calling the measure method of each sensor on the machine
+        """
+        for sensor in self.sensors:
+            sensor.get_measure(self, equilibrium=equilibrium)
+        return
+
+    def printMeasurements(self, equilibrium=None):
+        """
+        Method for calling the takeMeasurements method, then printing the results
+        """
+        print("==========================")
+        self.takeMeasurements(equilibrium=equilibrium)
+        for sensor in self.sensors:
+            if sensor.name != None:
+                print(sensor.name + str(sensor) + " Measurement = " + str(
+                    sensor.measurement))
+            else:
+                print(type(sensor) + str(sensor) + " Measurement = " + str(
+                    sensor.measurement))
+        print("==========================")
+        return
+
+
     def getForces(self, equilibrium=None):
         """
         Calculate forces on the coils, given the plasma equilibrium.
@@ -683,6 +873,7 @@ def TestTokamak():
 
     return Machine(coils, wall)
 
+
 def TestTokamakLimited():
     """
     Create a simple tokamak
@@ -703,6 +894,46 @@ def TestTokamakLimited():
     )  # Z
 
     return Machine(coils, wall)
+
+
+def TestTokamakSensor():
+    """
+    Creating a simple tokamak with sensors along the boundary
+    """
+
+    coils = [
+        (
+            "P1L",
+            ShapedCoil(
+                [(0.95, -1.15), (0.95, -1.05), (1.05, -1.05), (1.05, -1.15)]),
+        ),
+        ("P1U",
+         ShapedCoil([(0.95, 1.15), (0.95, 1.05), (1.05, 1.05), (1.05, 1.15)])),
+        ("P2L", Coil(1.75, -0.6)),
+        ("P2U", Coil(1.75, 0.6)),
+    ]
+
+    wall = Wall(
+        [0.75, 0.75, 1.5, 1.8, 1.8, 1.5],
+        [-0.85, 0.85, 0.85, 0.25, -0.25, -0.85])
+
+    sensors = [RogowskiSensor([0.77, 0.77, 1.48, 1.78, 1.78, 1.48],
+                              [-0.83, 0.83, 0.83, 0.23, -0.23, -0.83])
+        , PoloidalFieldSensor(1.8, 0.14, 2.2)
+        , PoloidalFieldSensor(1.8, -0.14, -2.2)
+        , PoloidalFieldSensor(1.7, 0.475, 2.2)
+        , PoloidalFieldSensor(1.7, -0.475, -2.2)
+        , PoloidalFieldSensor(1.5, 0.85, 2.2)
+        , PoloidalFieldSensor(1.5, -0.85, -2.2)
+        , FluxLoopSensor(1.8, 0.2)
+        , FluxLoopSensor(1.8, -0.2)
+        , FluxLoopSensor(1.65, 0.52)
+        , FluxLoopSensor(1.65, -0.52)
+        , FluxLoopSensor(1.1, 0.85)
+        , FluxLoopSensor(1.1, -0.85)
+               ]
+
+    return Machine(coils, wall, sensors)
 
 
 def DIIID():
