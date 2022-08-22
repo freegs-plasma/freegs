@@ -69,7 +69,6 @@ def plotConstraints(control, axis=None, show=True):
 
     return axis
 
-
 def plotEquilibrium(eq, axis=None, show=True, oxpoints=True, wall=True, sensors = True):
     """
     Plot the equilibrium flux surfaces
@@ -78,7 +77,11 @@ def plotEquilibrium(eq, axis=None, show=True, oxpoints=True, wall=True, sensors 
     show     - Call matplotlib.pyplot.show() before returning
     oxpoints - Plot X points as red circles, O points as green circles
     wall     - Plot the wall (limiter)
+<<<<<<< HEAD
     sensors  - Plot the sensors
+=======
+    sensors - Plot the sensors
+>>>>>>> full_sensors
 
     """
 
@@ -144,9 +147,8 @@ def plotEquilibrium(eq, axis=None, show=True, oxpoints=True, wall=True, sensors 
             axis.plot([], [], 'mo', label='Poloidal Field Sensor')
             axis.plot([], [], 'ro', label='Flux Loop Sensor')
 
-
     if show:
-        #plt.legend()
+        plt.legend()
         plt.show()
 
     return axis

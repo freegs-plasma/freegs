@@ -458,6 +458,7 @@ class Wall:
 class Sensor:
     def __init__(self, R, Z, name=None, weight=1, status=True,
                  measurement=None):
+
         self.R = R
         self.Z = Z
         self.status = status
@@ -516,65 +517,19 @@ class RogowskiSensor(Sensor):
             for label, coil in tokamak.coils:
 
                 if isinstance(coil, Coil):
-                    point = Point(coil.R, coil.Z)
-                    if polygon.contains(point):
-                        coil_current += coil.current
-
-                elif isinstance(coil, ShapedCoil):
-                    Shaped_Coil_List = []
-                    for shape in coil.shape:
-                        Shaped_Coil_List.append(Point(shape))
-                    Shaped_Coil = Polygon(Shaped_Coil_List)
-                    coil_current += (polygon.intersection(
-                        Shaped_Coil).area) / (coil._area) * coil.current
-
-                elif isinstance(coil, FilamentCoil):
-                    for r, z in coil.points:
-                        point = Point(r, z)
-                        if polygon.contains(point):
-                            coil_current += coil.current / coil.npoints
-
+                    coil_current += self.find_coil_currents(coil, polygon)
 
                 elif isinstance(coil, Circuit):
                     for name, sub_coil, multiplier in coil.coils:
                         sub_coil.current = coil.current * multiplier
+                        coil_current += self.find_coil_currents(coil, polygon)
 
-                        if isinstance(sub_coil, ShapedCoil):
-                            Shaped_Coil_List = []
-                            for shape in coil.shape:
-                                Shaped_Coil_List.append(Point(shape))
-                            Shaped_Coil = Polygon(Shaped_Coil_List)
-                            coil_current += (polygon.intersection(
-                                Shaped_Coil).area) / (
-                                                coil._area) * sub_coil.current
-
-                        elif isinstance(sub_coil, FilamentCoil):
-                            for r, z in sub_coil.points:
-                                point = Point(r, z)
-                                if polygon.contains(point):
-                                    coil_current += sub_coil.current / sub_coil.npoints
-
-                        elif isinstance(sub_coil, Coil):
-                            point = Point(coil.R, coil.Z)
-                            if polygon.contains(point):
-                                coil_current += sub_coil.current
-
-
-
-            if tokamak.vessel is not None:
-                for filament in tokamak.vessel:
-                    if isinstance(filament, Filament):
-                        point = Point(filament.R, filament.Z)
-                        if polygon.contains(point):
-                            coil_current += filament.current
-
-                    elif isinstance(filament, Filament_Group):
-                        for sub_fil in filament.filaments:
-                            point = Point(sub_fil.R, sub_fil.Z)
-                            if polygon.contains(point):
-                                coil_current += sub_fil.current
 
             # plasma current
+
+            # lets stop testing the points and start testing the squares, diving through by intersection area instead of R,Z
+            # switch to sum as opposed to trapz
+            plasma_current = 0
             if equilibrium != None:
                 dim = equilibrium.R.shape
                 sensor_jtor = np.zeros(dim)
@@ -585,10 +540,27 @@ class RogowskiSensor(Sensor):
                             sensor_jtor[i, j] = equilibrium.Jtor[i, j]
                 dR = equilibrium.R[1, 0] - equilibrium.R[0, 0]
                 dZ = equilibrium.Z[0, 1] - equilibrium.Z[0, 0]
-                self.measurement = trapz(
-                    trapz(sensor_jtor)) * dR * dZ + coil_current
-            else:
-                self.measurement = coil_current
+                plasma_current = trapz(trapz(sensor_jtor)) * dR * dZ
+
+            self.measurement =  plasma_current + coil_current
+
+    def find_coil_currents(self, coil, polygon):
+        coil_current = 0
+        if isinstance(coil, FilamentCoil):
+            for r, z in coil.points:
+                if polygon.contains(Point(r,z) for r, z in coil.points):
+                    coil_current += coil.current / coil.npoints
+
+        elif isinstance(coil, ShapedCoil):
+            Shaped_Coil = Polygon([shape for shape in coil.shape])
+            coil_current += (polygon.intersection(Shaped_Coil).area) / (coil._area) * coil.current
+
+        else:
+            if polygon.contains(Point(coil.R, coil.Z)):
+                coil_current += coil.current
+
+        return coil_current
+
 
 
 class PoloidalFieldSensor(Sensor):
@@ -601,25 +573,21 @@ class PoloidalFieldSensor(Sensor):
         Sensor.__init__(self, R, Z, name=name, weight=weight, status=status,measurement=measurement)
         self.theta = theta
 
+    def __repr__(self):
+        return "R={R},Z={Z}, Theta={Theta}".format(R=self.R, Z=self.Z, Theta=self.theta)
+
     def get_measure(self, tokamak, equilibrium=None):
         """
         Updates field attribute of sensor with measured field at that
         point/direction if sensor is on
         """
         if self.status:
-            if equilibrium == None:
-                self.measurement = (tokamak.Br(self.R, self.Z)) * np.cos(
-                    self.theta) + (
-                                       tokamak.Bz(self.R, self.Z)) * np.sin(
-                    self.theta)
-            else:
-                self.measurement = (equilibrium.plasmaBr(self.R,
-                                                         self.Z) + tokamak.Br(
-                    self.R, self.Z)) * np.cos(self.theta) + (
-                                           equilibrium.plasmaBz(self.R,
-                                                                self.Z) + tokamak.Bz(
-                                       self.R, self.Z)) * np.sin(
-                    self.theta)
+            field = (tokamak.Br(self.R, self.Z)) * np.cos(self.theta) + (tokamak.Bz(self.R, self.Z)) * np.sin(self.theta)
+
+            if equilibrium != None:
+                field += equilibrium.plasmaBr(self.R, self.Z) * np.cos(self.theta) + equilibrium.plasmaBz(self.R,self.Z) * np.sin(self.theta)
+
+            self.measurement = field
 
 
 class FluxLoopSensor(Sensor):
@@ -792,7 +760,6 @@ class Machine:
             self.vessel = vessel
             if self.vessel is not None:
                 self.getVesselEigenbasis()
-
         self.limit_points_R = None
         self.limit_points_Z = None
         if self.wall is not None:
@@ -1295,6 +1262,31 @@ class Machine:
             print(label + " : " + str(coil))
         print("==========================")
 
+    def takeMeasurements(self, equilibrium=None):
+        """
+        Method calling the measure method of each sensor on the machine
+        """
+        for sensor in self.sensors:
+            sensor.get_measure(self, equilibrium=equilibrium)
+        return
+
+    def printMeasurements(self, equilibrium=None):
+        """
+        Method for calling the takeMeasurements method, then printing the results
+        """
+        print("==========================")
+        self.takeMeasurements(equilibrium=equilibrium)
+        for sensor in self.sensors:
+            if sensor.name != None:
+                print(sensor.name + str(sensor) + " Measurement = " + str(
+                    sensor.measurement))
+            else:
+                print(type(sensor) + str(sensor) + " Measurement = " + str(
+                    sensor.measurement))
+        print("==========================")
+        return
+
+
     def getForces(self, equilibrium=None):
         """
         Calculate forces on the coils, given the plasma equilibrium.
@@ -1410,10 +1402,9 @@ def TestTokamakSensor():
 
     wall = Wall(
         [0.75, 0.75, 1.5, 1.8, 1.8, 1.5],
-        [-0.85, 0.85, 0.85, 0.25, -0.25, -0.85]  # R
-    )  # Z
 
-    # order of inputting points matters, must go around a polygon clockwise starting from the bottom left
+        [-0.85, 0.85, 0.85, 0.25, -0.25, -0.85])
+
     sensors = [RogowskiSensor([0.77, 0.77, 1.48, 1.78, 1.78, 1.48],
                               [-0.83, 0.83, 0.83, 0.23, -0.23, -0.83])
         , PoloidalFieldSensor(1.8, 0.14, 2.2)
@@ -1492,7 +1483,6 @@ def EfitTestMachine(vessel=None, createVessel=False, group=True, Nfils=100):
     return Machine(coils, wall, sensors, vessel=vessel,
                    createVessel=createVessel, groupFilaments=group,
                    Nfils=Nfils)
-
 
 def DIIID():
     """

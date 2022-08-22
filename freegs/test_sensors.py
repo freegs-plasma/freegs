@@ -206,5 +206,12 @@ def test_rog_with_plasma():
 
     eq.solve(profiles)
     tokamak.takeMeasurements(eq)
-    assert math.isclose(tokamak.sensors[0].measurement, plasmacurrent,
-                        abs_tol=1000)
+    assert math.isclose(tokamak.sensors[0].measurement, plasmacurrent,abs_tol=1000)
+
+test_flux()
+test_iso_flux()
+test_rog_around_coil()
+test_rog_with_plasma()
+test_rog_around_Shapedcoil()
+test_offaxis_Bfield()
+test_xpoint_field()

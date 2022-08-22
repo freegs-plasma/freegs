@@ -470,7 +470,7 @@ class Equilibrium:
         dR = self.R[1, 0] - self.R[0, 0]
         dZ = self.Z[0, 1] - self.Z[0, 0]
         self._current = romb(romb(Jtor)) * dR * dZ
-        self.Jtor=Jtor
+        self.Jtor = Jtor
 
     def _updateBoundaryPsi(self,psi=None):
         """
