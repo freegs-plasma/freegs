@@ -124,44 +124,13 @@ class Equilibrium:
 
         self._current = current  # Plasma current
 
-        self._updatePlasmaPsi(psi)  # Needs to be after _pgreen
-
-
-        # added by nicamo
-        # only used if boundary == freeBoundary
-        # pre-calculates green function matrices for later use
-        # no change is made if fixedboudary
-        # no change is made if freeboundary with von Hagenow's method
         if boundary == freeBoundary:
-            # List of indices on the boundary
-            bndry_indices = np.concatenate(
-                [
-                    [(x, 0) for x in range(nx)],
-                    [(x, ny - 1) for x in range(nx)],
-                    [(0, y) for y in range(ny)],
-                    [(nx - 1, y) for y in range(ny)],
-                ]
-            )
-            self.bndry_indices = bndry_indices
-
-            # matrices of responses of boundary locations to each grid positions
-            greenfunc = Greens(self.R[np.newaxis,:,:], 
-                               self.Z[np.newaxis,:,:], 
-                               self.R_1D[self.bndry_indices[:,0]][:,np.newaxis,np.newaxis], 
-                               self.Z_1D[self.bndry_indices[:,1]][:,np.newaxis,np.newaxis])
-            # Prevent infinity/nan by removing Greens(x,y,x,y) 
-            zeros = np.ones_like(greenfunc)
-            zeros[np.arange(len(bndry_indices)), self.bndry_indices[:,0], self.bndry_indices[:,1]] = 0
-            self.greenfunc = greenfunc*zeros*dR*dZ
-
-            # the following function replaces boundary.freeboundary
-            def _freeboundary(self, Jtor, psi):
-                psi_bnd = np.sum(self.greenfunc*Jtor[np.newaxis,:,:], axis=(-1,-2))
-                psi[:,0] = psi_bnd[:nx]
-                psi[:,-1] = psi_bnd[nx:2*nx]
-                psi[0,:] = psi_bnd[2*nx:2*nx+ny]
-                psi[-1,:] = psi_bnd[2*nx+ny:,]
+            _freeboundary = freeBoundary(self)
             self._applyBoundary = _freeboundary
+        else:
+            self._applyBoundary = boundary
+
+        self._updatePlasmaPsi(psi)  # Needs to be after _pgreen
 
 
 

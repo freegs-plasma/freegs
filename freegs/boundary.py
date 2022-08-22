@@ -22,7 +22,7 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 
 from .gradshafranov import Greens
 from numpy import concatenate, sqrt
-
+import numpy as np
 from scipy.integrate import romb  # Romberg integration
 
 
@@ -47,56 +47,64 @@ def fixedBoundary(eq, Jtor, psi):
     psi[:, -1] = 0.0
 
 
-def freeBoundary(eq, Jtor, psi):
+class freeBoundary:
     """
-    Apply a free boundary condition using Green's functions
+        Apply a free boundary condition using Green's functions
 
-    Note: This method is inefficient because it requires
-    an integral over the area of the domain for each point
-    on the boundary.
+        Note: This method is inefficient because it requires
+        an integral over the area of the domain for each point
+        on the boundary.
+        Uses pre-calculated Green matrices and a __call_ method.
 
-    Inputs
-    ------
+        Inputs
+        ------
 
-    eq    Equilibrium object (not used)
-    Jtor  2D array of toroidal current (not used)
-    psi   2D array of psi values (modified by call)
+        eq    Equilibrium object (not used)
+        Jtor  2D array of toroidal current (not used)
+        psi   2D array of psi values (modified by call)
 
-    Returns
-    -------
+        Returns
+        -------
 
-    None
-    """
+        None
+        """
 
-    # Get the (R,Z) coordinates from the Equilibrium object
-    R = eq.R
-    Z = eq.Z
+    def __init__(self, eq):
+    
+        # pre-calculate green function matrices for later use
 
-    nx, ny = psi.shape
+        self.nx, self.ny = np.shape(eq.R)
 
-    dR = R[1, 0] - R[0, 0]
-    dZ = Z[0, 1] - Z[0, 0]
+        # List of indices on the boundary
+        bndry_indices = np.concatenate(
+            [
+                [(x, 0) for x in range(self.nx)],
+                [(x, self.ny - 1) for x in range(self.nx)],
+                [(0, y) for y in range(self.ny)],
+                [(self.nx - 1, y) for y in range(self.ny)],
+            ]
+        )
+        self.bndry_indices = bndry_indices
 
-    # List of indices on the boundary
-    bndry_indices = concatenate(
-        [
-            [(x, 0) for x in range(nx)],
-            [(x, ny - 1) for x in range(nx)],
-            [(0, y) for y in range(ny)],
-            [(nx - 1, y) for y in range(ny)],
-        ]
-    )
+        # matrices of responses of boundary locations to each grid positions
+        greenfunc = Greens(eq.R[np.newaxis,:,:], 
+                            eq.Z[np.newaxis,:,:], 
+                            eq.R_1D[self.bndry_indices[:,0]][:,np.newaxis,np.newaxis], 
+                            eq.Z_1D[self.bndry_indices[:,1]][:,np.newaxis,np.newaxis])
+        # Prevent infinity/nan by removing Greens(x,y,x,y) 
+        zeros = np.ones_like(greenfunc)
+        zeros[np.arange(len(bndry_indices)), self.bndry_indices[:,0], self.bndry_indices[:,1]] = 0
+        dR = eq.R_1D[1]-eq.R_1D[0]
+        dZ = eq.Z_1D[1]-eq.Z_1D[0]
+        self.greenfunc = greenfunc*zeros*dR*dZ
 
-    for x, y in bndry_indices:
-        # Calculate the response of the boundary point
-        # to each cell in the plasma domain
-        greenfunc = Greens(R, Z, R[x, y], Z[x, y])
+    def __call__(self, eq, Jtor, psi):
+        psi_bnd = np.sum(self.greenfunc*Jtor[np.newaxis,:,:], axis=(-1,-2))
+        psi[:,0] = psi_bnd[:self.nx]
+        psi[:,-1] = psi_bnd[self.nx:2*self.nx]
+        psi[0,:] = psi_bnd[2*self.nx:2*self.nx+self.ny]
+        psi[-1,:] = psi_bnd[2*self.nx+self.ny:,]
 
-        # Prevent infinity/nan by removing (x,y) point
-        greenfunc[x, y] = 0.0
-
-        # Integrate over the domain
-        psi[x, y] = romb(romb(greenfunc * Jtor)) * dR * dZ
 
 
 def freeBoundaryHagenow(eq, Jtor, psi):
