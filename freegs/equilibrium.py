@@ -122,6 +122,7 @@ class Equilibrium:
         self._pgreen = tokamak.createPsiGreens(self.R, self.Z)
 
         self._current = current  # Plasma current
+        self.Jtor = None
 
         self._updatePlasmaPsi(psi)  # Needs to be after _pgreen
 

@@ -80,7 +80,6 @@ def test_vessel_eigenmode():
     x_r1 = 1.1
     x_r2 = 1.1
 
-    # Generating Values
 
     # Creating Machine
     tokamak = machine.EfitTestMachine(createVessel=True)
@@ -88,7 +87,13 @@ def test_vessel_eigenmode():
 
     eq = equilibrium.Equilibrium(tokamak)
 
-    i = 4
+    for i in range(tokamak.eigenbasis.shape[1]):
+        for j in range(tokamak.eigenbasis.shape[1]):
+            if i == j :
+                assert np.dot(tokamak.eigenbasis[:, i],tokamak.eigenbasis[:, j]) == 1
+            else:
+                assert np.dot(tokamak.eigenbasis[:, i],tokamak.eigenbasis[:, j]) == 0 # use math is close
+
     eigenfunction = tokamak.eigenbasis[:, i]
 
     fil_num = 0

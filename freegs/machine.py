@@ -508,27 +508,25 @@ class RogowskiSensor(Sensor):
             polygon_list = []
             coil_current = 0
 
-            for r, z in zip(Rs, Zs):
-                point = (r, z)
-                polygon_list.append(point)
+            polygon_list= [(r,z) for r,z in zip(Rs,Zs)]
 
             polygon = Polygon(polygon_list)
 
             # coil current
             for label, coil in tokamak.coils:
 
-                if isinstance(coil, ShapedCoil):
+                if isinstance(coil, Coil):
+                    point = Point(coil.R, coil.Z)
+                    if polygon.contains(point):
+                        coil_current += coil.current
+
+                elif isinstance(coil, ShapedCoil):
                     Shaped_Coil_List = []
                     for shape in coil.shape:
                         Shaped_Coil_List.append(Point(shape))
                     Shaped_Coil = Polygon(Shaped_Coil_List)
                     coil_current += (polygon.intersection(
                         Shaped_Coil).area) / (coil._area) * coil.current
-
-                elif isinstance(coil, Coil):
-                    point = Point(coil.R, coil.Z)
-                    if polygon.contains(point):
-                        coil_current += coil.current
 
                 elif isinstance(coil, FilamentCoil):
                     for r, z in coil.points:
@@ -541,7 +539,7 @@ class RogowskiSensor(Sensor):
                     for name, sub_coil, multiplier in coil.coils:
                         sub_coil.current = coil.current * multiplier
 
-                        if isinstance(coil, ShapedCoil):
+                        if isinstance(sub_coil, ShapedCoil):
                             Shaped_Coil_List = []
                             for shape in coil.shape:
                                 Shaped_Coil_List.append(Point(shape))
@@ -550,16 +548,18 @@ class RogowskiSensor(Sensor):
                                 Shaped_Coil).area) / (
                                                 coil._area) * sub_coil.current
 
-                        elif isinstance(coil, Coil):
-                            point = Point(coil.R, coil.Z)
-                            if polygon.contains(point):
-                                coil_current += sub_coil.current
-
-                        if isinstance(sub_coil, FilamentCoil):
+                        elif isinstance(sub_coil, FilamentCoil):
                             for r, z in sub_coil.points:
                                 point = Point(r, z)
                                 if polygon.contains(point):
                                     coil_current += sub_coil.current / sub_coil.npoints
+
+                        elif isinstance(sub_coil, Coil):
+                            point = Point(coil.R, coil.Z)
+                            if polygon.contains(point):
+                                coil_current += sub_coil.current
+
+
 
             if tokamak.vessel is not None:
                 for filament in tokamak.vessel:
@@ -655,19 +655,19 @@ class Filament(Coil):
         self.name = name
         self.dR = dR
         self.dZ = dZ
-        self.resistance = 2 * np.pi * self.R * resistivity / (
-                    self.dR * self.dZ)
+        self.resistance = 2 * np.pi * self.R * resistivity / (self.dR * self.dZ)
+        self.eigenbasis = self.calcEigenbasis()
         # need to add an option for this to add an angle
 
     def calcEigenbasis(self):
-        self.eigenbasis = [[1]]
+        return [[1]]
 
 
 class Filament_Group:
     def __init__(self, filaments, name, Nbasis=10):
         self.filaments = filaments
         self.N = Nbasis
-        self.calcEigenbasis()
+        self.eigenbasis = self.calcEigenbasis()
         self.name = name
 
     def psi(self, R, Z):
@@ -754,7 +754,7 @@ class Filament_Group:
             for i, val in enumerate(sorted_eigvecs[n]):
                 vessel_basis[i, n] = val
 
-        self.eigenbasis = vessel_basis
+        return vessel_basis
 
 
 class Machine:

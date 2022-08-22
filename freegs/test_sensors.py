@@ -39,15 +39,11 @@ def test_offaxis_Bfield():
             (1 + a ** 2 + b ** 2) / (Q - 4 * a)) - ellipk(k ** 2))
     B = Bz * np.sin(theta) + Br * np.cos(theta)
 
-    #    def analytic_Bz(dZ):
-    #        return (mu0 / 2) * Rcoil ** 2 * current / ((dZ ** 2 + Rcoil ** 2) ** 1.5)
-
     # secondly want to pull the magentic field i am calculating from the sensors
     for sensor in tokamak.sensors:
         if isinstance(sensor, freegs.machine.PoloidalFieldSensor):
             sensor.get_measure(tokamak)
             assert math.isclose(sensor.measurement, B, abs_tol=1e-8)
-        return
 
 
 def test_xpoint_field():
@@ -57,7 +53,10 @@ def test_xpoint_field():
     """
     tokamak = freegs.machine.TestTokamak()
     tokamak.sensors = [freegs.machine.PoloidalFieldSensor(1.1, -0.6, 0),
-                       freegs.machine.PoloidalFieldSensor(1.1, 0.6, 3.6)]
+                       freegs.machine.PoloidalFieldSensor(1.1, 0.6, 0),
+                       freegs.machine.PoloidalFieldSensor(1.1, -0.6, np.pi/2),
+                       freegs.machine.PoloidalFieldSensor(1.1, 0.6, np.pi/2)
+                       ]
 
     eq = freegs.Equilibrium(tokamak=tokamak,
                             Rmin=0.1, Rmax=2.0,  # Radial domain
@@ -209,11 +208,3 @@ def test_rog_with_plasma():
     tokamak.takeMeasurements(eq)
     assert math.isclose(tokamak.sensors[0].measurement, plasmacurrent,
                         abs_tol=1000)
-
-test_flux()
-test_iso_flux()
-test_rog_around_Shapedcoil()
-test_offaxis_Bfield()
-test_xpoint_field()
-test_rog_around_coil()
-test_rog_with_plasma()
