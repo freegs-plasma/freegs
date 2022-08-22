@@ -127,9 +127,8 @@ def solve(tokamak, eq, M, sigma, pprime_order, ffprime_order, tolerance=1, blend
 
 
         #Recalculate Psi values with elliptical solver
-        x_last = x_1d
         x_2d, mask = get_x(eq, jtor=jtor_2d, check_limited=check_limited)
-        x_1d = blender(x_2d.flatten('F'),x_last,blend)
+        x_1d = x_2d.flatten('F')
 
         # Recalculate B and A matrices from new Psi
         B = get_B(x_1d, eq, pprime_order, ffprime_order, c=c, VC=VerticalControl)

@@ -6,7 +6,7 @@ from shapely.geometry import Point
 from shapely.geometry.polygon import Polygon
 from .recon_tools import chi_squared_test
 from scipy.special import ellipe, ellipk
-mu0 = 4e-7 * np.pi
+from scipy.constants import mu_0
 
 # Basis Matrix B (N x nc)
 def get_B(x, eq, pprime_order, ffprime_order,c=None,VC=False):
@@ -45,7 +45,7 @@ def get_B(x, eq, pprime_order, ffprime_order,c=None,VC=False):
         # ff' relations
         for i in range(ffprime_order):
             for j in range(N):
-                B[j, i + pprime_order] = (1 / (mu0 * R[j])) * (x[j])**i
+                B[j, i + pprime_order] = (1 / (mu_0 * R[j])) * (x[j])**i
 
         x_z = np.gradient(np.reshape(x, (eq.nx, eq.ny), order='F'), dR, dZ)[1].flatten(order='F')
         for j in range(N):
@@ -62,7 +62,7 @@ def get_B(x, eq, pprime_order, ffprime_order,c=None,VC=False):
                     pass
                 else:
                     ffsum += c[i+pprime_order]*math.comb(i,1)*x[j]**(i-1)
-            B[j,nc] = x_z[j] * (R[j]*psum + 1/(mu0*R[j])*ffsum)
+            B[j,nc] = x_z[j] * (R[j]*psum + 1/(mu_0*R[j])*ffsum)
 
     else:
         B = np.zeros((N, nc))
@@ -74,7 +74,7 @@ def get_B(x, eq, pprime_order, ffprime_order,c=None,VC=False):
         # ff' relations
         for i in range(ffprime_order):
             for j in range(N):
-                B[j, i + pprime_order] = (1/ (mu0 * R[j])) * x[j] ** i
+                B[j, i + pprime_order] = (1/ (mu_0 * R[j])) * x[j] ** i
     return B
 
 
@@ -132,7 +132,7 @@ def get_x(eq, jtor=None, psi_bndry=None, check_limited=False):
         eq.Jtor = jtor  # update eq jtor attirbute
 
         # Using Elliptical Solver to calculate plasma_psi from plasma jtor profile
-        rhs = -mu0 * eq.R * jtor
+        rhs = -mu_0 * eq.R * jtor
 
         # dont use plasma psi, calculate expected from new jtor and greens
         R = eq.R

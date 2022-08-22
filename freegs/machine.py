@@ -568,7 +568,7 @@ class RogowskiSensor(Sensor):
                         if polygon.contains(point):
                             coil_current += filament.current
 
-                    if isinstance(filament, Filament_Group):
+                    elif isinstance(filament, Filament_Group):
                         for sub_fil in filament.filaments:
                             point = Point(sub_fil.R, sub_fil.Z)
                             if polygon.contains(point):
@@ -778,6 +778,8 @@ class Machine:
         sensors - A list of sensors
         """
 
+        # add a dictionary kwargs
+
         self.coils = coils
         self.wall = wall
         self.vessel = vessel
@@ -819,16 +821,13 @@ class Machine:
 
     def createVesselFilaments(self, Nfils, groupFilaments):
         wall = self.wall
-        wallRZ = []
         wallRZ2 = []
 
-        # create shape here and make it with a hole
-        for R, Z in zip(wall.R, wall.Z):
-            wallRZ.append([R, Z])
+        wallRZ = [[R, Z] for R, Z in zip(wall.R, wall.Z)]
 
         inner = LinearRing(wallRZ)
         outer = inner.buffer(0.05, join_style=2,
-                             cap_style=3).exterior  # consider how to add thickness here as opposed to a given value
+                             cap_style=3).exterior
 
         for x, y in zip(outer.xy[0], outer.xy[1]):
             wallRZ2.append([x, y])
@@ -883,7 +882,7 @@ class Machine:
 
         fil_num = 0
         basis_num = 0
-        for counter, fil in enumerate(self.vessel):
+        for fil in self.vessel:
             if isinstance(fil, Filament):
                 eigenbasis[fil_num, basis_num] = 1
                 fil_num += 1
