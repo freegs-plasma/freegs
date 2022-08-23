@@ -7,26 +7,6 @@ np.set_printoptions(threshold=np.inf)
 # Loading Machine
 tokamak = freegs.machine.EfitTestMachine(createVessel=True, Nfils=100)
 
-
-for sensor in tokamak.sensors:
-    if isinstance(sensor, freegs.machine.RogowskiSensor):
-        print(sensor.name + " current= " + str(
-            sensor.measurement))
-
-    elif isinstance(sensor, freegs.machine.PoloidalFieldSensor):
-        print(sensor.name +" field=" + str(sensor.measurement))
-
-    elif isinstance(sensor, freegs.machine.FluxLoopSensor):
-        print(sensor.name +  " flux=" + str(
-            sensor.measurement))
-tokamak.printCurrents()
-
-eq = freegs.equilibrium.Equilibrium(tokamak)
-
-freegs.plotting.plotEquilibrium(eq)
-
-
-
 fig = plt.figure()
 ax = fig.add_subplot(111)
 ax.set_aspect('equal')

@@ -587,7 +587,7 @@ class PoloidalFieldSensor(Sensor):
             if equilibrium != None:
                 field += equilibrium.plasmaBr(self.R, self.Z) * np.cos(self.theta) + equilibrium.plasmaBz(self.R,self.Z) * np.sin(self.theta)
 
-            self.measurement = field
+            self.measurement = float(field)
 
 
 class FluxLoopSensor(Sensor):
@@ -610,7 +610,7 @@ class FluxLoopSensor(Sensor):
                 psi = equilibrium.psiRZ(self.R, self.Z)
             else:
                 psi = tokamak.psi(self.R, self.Z)
-            self.measurement = psi
+            self.measurement = float(psi)
 
 
 class Filament(Coil):
@@ -788,27 +788,14 @@ class Machine:
 
     def createVesselFilaments(self, Nfils, groupFilaments):
         wall = self.wall
-        wallRZ2 = []
-
         wallRZ = [[R, Z] for R, Z in zip(wall.R, wall.Z)]
-
-        inner = LinearRing(wallRZ)
-        outer = inner.buffer(0.05, join_style=2,
-                             cap_style=3).exterior
-
-        for x, y in zip(outer.xy[0], outer.xy[1]):
-            wallRZ2.append([x, y])
-
-        inner = Polygon(wallRZ)
-        outer = Polygon(wallRZ2)
 
         # Generating filament points
         R0 = wallRZ[0]
         wallRZ.append(R0)
         innerline = LineString(wallRZ)
-        midline = innerline.buffer(0.025).exterior
-        distances = np.linspace(0, midline.length, Nfils + 1)
-        points = [midline.interpolate(distance).xy for distance in distances]
+        distances = np.linspace(0, innerline.length, Nfils + 1)
+        points = [innerline.interpolate(distance).xy for distance in distances]
         rfils = [point[0][0] for point in points[:-1]]
         zfils = [point[1][0] for point in points[:-1]]
 
@@ -835,34 +822,8 @@ class Machine:
                     fil_num += 1
 
     def getVesselEigenbasis(self):
-        n_basis = 0
-        n_fils = 0
-        for fil in self.vessel:
-            if isinstance(fil, Filament):
-                n_basis += 1
-                n_fils += 1
-            if isinstance(fil, Filament_Group):
-                n_basis += fil.N
-                n_fils += len(fil.filaments)
-
-        eigenbasis = np.zeros((n_fils, n_basis))
-
-        fil_num = 0
-        basis_num = 0
-        for fil in self.vessel:
-            if isinstance(fil, Filament):
-                eigenbasis[fil_num, basis_num] = 1
-                fil_num += 1
-                basis_num + 1
-
-            if isinstance(fil, Filament_Group):
-                for i in range(fil.eigenbasis.shape[0]):
-                    for j in range(fil.eigenbasis.shape[1]):
-                        eigenbasis[fil_num + i, basis_num + j] = \
-                        fil.eigenbasis[i, j]
-                fil_num += fil.eigenbasis.shape[0]
-                basis_num += fil.N
-
+        eigenbasis_list = (filament.eigenbasis for filament in self.vessel)
+        eigenbasis = scipy.linalg.block_diag(*eigenbasis_list)
         self.eigenbasis = eigenbasis
 
 
@@ -946,7 +907,6 @@ class Machine:
             elif isinstance(sensor, FluxLoopSensor):
                 print('Flux Loop Sensor ' + str(sensor) + " flux=" + str(
                     sensor.measurement))
-
         print("==========================")
         return
 
@@ -1196,19 +1156,19 @@ def TestTokamakSensor():
         [-0.85, 0.85, 0.85, 0.25, -0.25, -0.85])
 
     sensors = [RogowskiSensor([0.77, 0.77, 1.48, 1.78, 1.78, 1.48],
-                              [-0.83, 0.83, 0.83, 0.23, -0.23, -0.83])
-        , PoloidalFieldSensor(1.8, 0.14, 2.2)
-        , PoloidalFieldSensor(1.8, -0.14, -2.2)
-        , PoloidalFieldSensor(1.7, 0.475, 2.2)
-        , PoloidalFieldSensor(1.7, -0.475, -2.2)
-        , PoloidalFieldSensor(1.5, 0.85, 2.2)
-        , PoloidalFieldSensor(1.5, -0.85, -2.2)
-        , FluxLoopSensor(1.8, 0.2)
-        , FluxLoopSensor(1.8, -0.2)
-        , FluxLoopSensor(1.65, 0.52)
-        , FluxLoopSensor(1.65, -0.52)
-        , FluxLoopSensor(1.1, 0.85)
-        , FluxLoopSensor(1.1, -0.85)
+                              [-0.83, 0.83, 0.83, 0.23, -0.23, -0.83], name=Rog1)
+        , PoloidalFieldSensor(1.8, 0.14, 2.2, name=BP1)
+        , PoloidalFieldSensor(1.8, -0.14, -2.2, name=BP2)
+        , PoloidalFieldSensor(1.7, 0.475, 2.2, name=BP3)
+        , PoloidalFieldSensor(1.7, -0.475, -2.2, name=BP4)
+        , PoloidalFieldSensor(1.5, 0.85, 2.2, name=BP5)
+        , PoloidalFieldSensor(1.5, -0.85, -2.2, name=BP6)
+        , FluxLoopSensor(1.8, 0.2, name=FL1)
+        , FluxLoopSensor(1.8, -0.2, name=FL2)
+        , FluxLoopSensor(1.65, 0.52, name=FL3)
+        , FluxLoopSensor(1.65, -0.52, name=FL4)
+        , FluxLoopSensor(1.1, 0.85, name=FL5)
+        , FluxLoopSensor(1.1, -0.85, name=FL6)
                ]
 
     return Machine(coils, wall, sensors)
@@ -1230,44 +1190,45 @@ def EfitTestMachine(vessel=None, createVessel=False, group=True, Nfils=100):
         ("P2U", Coil(1.75, 0.6, )),
     ]
 
-    wall = Wall([0.75, 0.75, 1.5, 1.8, 1.8, 1.5],
-                [-0.85, 0.85, 0.85, 0.25, -0.25, -0.85])
+    wall = Wall([0.75, 0.75, 1.5, 1.8, 1.8, 1.5,0.75],[0, 0.85, 0.85, 0.25, -0.25, -0.85,-0.85])
+
+
     # wall = Wall([0.75,0.9,0.9, 0.75, 1.5, 1.8, 1.8, 1.5], [-0.85,-0.4,0.4, 0.85, 0.85, 0.25, -0.25, -0.85])
 
     sensors = [RogowskiSensor([0.77, 0.77, 1.48, 1.78, 1.78, 1.48],
-                              [-0.83, 0.83, 0.83, 0.23, -0.23, -0.83])
-        , PoloidalFieldSensor(1.8, 0.14, 2.2)
-        , PoloidalFieldSensor(1.8, -0.14, 2 * np.pi - 2.2)
-        , PoloidalFieldSensor(1.7, 0.475, 2.2)
-        , PoloidalFieldSensor(1.7, -0.475, 2 * np.pi - 2.2)
-        , PoloidalFieldSensor(1.5, 0.8, 2.2)
-        , PoloidalFieldSensor(1.5, -0.8, 2 * np.pi - 2.2)
-        , PoloidalFieldSensor(0.75, 0.14, 2.2)
-        , PoloidalFieldSensor(0.75, -0.14, 2 * np.pi - 2.2)
-        , PoloidalFieldSensor(0.75, 0.475, 2.2)
-        , PoloidalFieldSensor(0.75, -0.475, 2 * np.pi - 2.2)
-        , PoloidalFieldSensor(0.75, 0.8, 2.2)
-        , PoloidalFieldSensor(0.75, -0.8, 2 * np.pi - 2.2)
-        , FluxLoopSensor(1.78, 0.2)
-        , FluxLoopSensor(1.78, -0.2)
-        , FluxLoopSensor(1.65, 0.52)
-        , FluxLoopSensor(1.65, -0.52)
-        , FluxLoopSensor(1.75, 0.32)
-        , FluxLoopSensor(1.75, -0.32)
-        , FluxLoopSensor(1.1, 0.8)
-        , FluxLoopSensor(1.1, -0.8)
-        , FluxLoopSensor(1.4, 0.8)
-        , FluxLoopSensor(1.4, -0.8)
-        , FluxLoopSensor(0.75, 0.25)
-        , FluxLoopSensor(0.75, -0.25)
+                              [-0.83, 0.83, 0.83, 0.23, -0.23, -0.83], name='Rog1')
+        , PoloidalFieldSensor(1.8, 0.14, 2.2, name='BP1')
+        , PoloidalFieldSensor(1.8, -0.14, 2 * np.pi - 2.2, name='BP2')
+        , PoloidalFieldSensor(1.7, 0.475, 2.2, name='BP3')
+        , PoloidalFieldSensor(1.7, -0.475, 2 * np.pi - 2.2, name='BP4')
+        , PoloidalFieldSensor(1.5, 0.8, 2.2, name='BP5')
+        , PoloidalFieldSensor(1.5, -0.8, 2 * np.pi - 2.2, name='BP6')
+        , PoloidalFieldSensor(0.75, 0.14, 2.2, name='BP7')
+        , PoloidalFieldSensor(0.75, -0.14, 2 * np.pi - 2.2, name='BP8')
+        , PoloidalFieldSensor(0.75, 0.475, 2.2, name='BP9')
+        , PoloidalFieldSensor(0.75, -0.475, 2 * np.pi - 2.2, name='BP10')
+        , PoloidalFieldSensor(0.75, 0.8, 2.2, name='BP11')
+        , PoloidalFieldSensor(0.75, -0.8, 2 * np.pi - 2.2, name='BP12')
+        , FluxLoopSensor(1.78, 0.2, name='FL1')
+        , FluxLoopSensor(1.78, -0.2, name='FL2')
+        , FluxLoopSensor(1.65, 0.52, name='FL3')
+        , FluxLoopSensor(1.65, -0.52, name='FL4')
+        , FluxLoopSensor(1.75, 0.32, name='FL5')
+        , FluxLoopSensor(1.75, -0.32, name='FL6')
+        , FluxLoopSensor(1.1, 0.8, name='FL7')
+        , FluxLoopSensor(1.1, -0.8, name='FL8')
+        , FluxLoopSensor(1.4, 0.8, name='FL9')
+        , FluxLoopSensor(1.4, -0.8, name='FL10')
+        , FluxLoopSensor(0.75, 0.25, name='FL11')
+        , FluxLoopSensor(0.75, -0.25, name='FL12')
         , RogowskiSensor([0.94, 0.94, 1.06, 1.06],
-                         [-1.16, -1.04, -1.04, -1.16])
+                         [-1.16, -1.04, -1.04, -1.16], name='Rog2')
         , RogowskiSensor([0.94, 0.94, 1.06, 1.06],
-                         [1.16, 1.04, 1.04, 1.16])
+                         [1.16, 1.04, 1.04, 1.16], name='Rog3')
         , RogowskiSensor([1.74, 1.74, 1.76, 1.76],
-                         [-0.59, -0.61, -0.61, -0.59])
+                         [-0.59, -0.61, -0.61, -0.59], name='Rog4')
         , RogowskiSensor([1.74, 1.74, 1.76, 1.76],
-                         [0.59, 0.61, 0.61, 0.59])
+                         [0.59, 0.61, 0.61, 0.59], name='Rog5')
                ]
 
     return Machine(coils, wall, sensors, vessel=vessel,
