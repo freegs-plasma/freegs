@@ -501,7 +501,7 @@ class RogowskiSensor(Sensor):
             polygon_list = []
             coil_current = 0
 
-            polygon_list= [(r,z) for r,z in zip(Rs,Zs)]
+            polygon_list = [(r, z) for r, z in zip(Rs, Zs)]
 
             polygon = Polygon(polygon_list)
 
@@ -515,29 +515,34 @@ class RogowskiSensor(Sensor):
                         sub_coil.current = coil.current * multiplier
                         coil_current += self.find_coil_currents(coil, polygon)
 
-
             # plasma current
 
             # lets stop testing the points and start testing the squares, diving through by intersection area instead of R,Z
             # switch to sum as opposed to trapz
             plasma_current = 0
             if equilibrium != None:
-                dim = equilibrium.R.shape
+                dR = equilibrium.R[1, 0] - equilibrium.R[0, 0]
+                dZ = equilibrium.Z[0, 1] - equilibrium.Z[0, 0]
+                dim = (equilibrium.nx, equilibrium.ny)
                 sensor_jtor = np.zeros(dim)
                 for i in range(dim[0]):
                     for j in range(dim[1]):
-                        point = Point(equilibrium.R[i, j], equilibrium.Z[i, j])
-                        if polygon.contains(point):
-                            sensor_jtor[i, j] = equilibrium.Jtor[i, j]
-                dR = equilibrium.R[1, 0] - equilibrium.R[0, 0]
-                dZ = equilibrium.Z[0, 1] - equilibrium.Z[0, 0]
-                plasma_current = trapz(trapz(sensor_jtor)) * dR * dZ
+                        gridpoint = Polygon([(equilibrium.R[i, j] - dR / 2,
+                                             equilibrium.Z[i, j] + dZ / 2), (
+                                            equilibrium.R[i, j] + dR / 2,
+                                            equilibrium.Z[i, j] + dZ / 2), (
+                                            equilibrium.R[i, j] + dR / 2,
+                                            equilibrium.Z[i, j] - dZ / 2), (
+                                            equilibrium.R[i, j] - dR / 2,
+                                            equilibrium.Z[i, j] - dZ / 2)])
 
-            self.measurement =  plasma_current + coil_current
+                        plasma_current += equilibrium.Jtor[i, j] * polygon.intersection(gridpoint).area
+
+            self.measurement = plasma_current + coil_current
 
     def find_coil_currents(self, coil, polygon):
+        coil_current = 0
         if isinstance(coil, FilamentCoil):
-            coil_current = 0
             for r, z in coil.points:
                 if polygon.contains(Point(r,z) for r, z in coil.points):
                     coil_current += coil.current / coil.npoints
