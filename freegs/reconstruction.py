@@ -10,7 +10,7 @@ from scipy.special import ellipk, ellipe
 from scipy.constants import mu_0
 
 class Reconstruction(Equilibrium):
-    def __init__(self, tokamak, pprime_order, ffprime_order,  nx=65, ny=65, Rmin=0.1, Rmax=2, Zmin=-1, Zmax=1, tolerance=1e-7, VesselCurrents=True, VerticalControl=True, CurrentInitialisation=True, FittingWeight=True, show=True):
+    def __init__(self, tokamak, pprime_order, ffprime_order,  nx=65, ny=65, Rmin=0.1, Rmax=2, Zmin=-1, Zmax=1, tolerance=1e-7, VesselCurrents=True, VerticalControl=True, CurrentInitialisation=True, show=True):
         Equilibrium.__init__(self, tokamak=tokamak, Rmin=Rmin, Rmax=Rmax, Zmin=Zmin, Zmax=Zmax, nx=nx, ny=ny)
 
         # Defining Reconstruction Parameters
@@ -18,7 +18,6 @@ class Reconstruction(Equilibrium):
         self.ffprime_order = ffprime_order
         self.VesselCurrents = VesselCurrents
         self.VerticalControl = VerticalControl
-        self.FittingWeight = FittingWeight
         self.CurrentInitialisation = CurrentInitialisation
         self.show=show
 
@@ -33,12 +32,14 @@ class Reconstruction(Equilibrium):
     def solve_from_tokamak(self):
         self.take_Measurements_from_tokamak()
         self.reconstruct()
+        self.print_reconstruction()
         self.plot()
 
     def solve_from_dictionary(self,measurement_dict, sigma_dict):
         self.take_Measurements_from_dictionary(measurement_dict, sigma_dict)
         self.initialise_coil_current()
         self.reconstruct()
+        self.print_reconstruction()
         self.plot()
 
     # Methods for building measurment and uncertainty matrices
@@ -65,7 +66,12 @@ class Reconstruction(Equilibrium):
 
         for sensor in self.tokamak.sensors:
             M.append([measurement_dict[sensor.name]])
-            sigma.append([sigma_dict[sensor.name]])
+            if sigma_dict is not None:
+                self.FittingWeight = True
+                sigma.append([sigma_dict[sensor.name]])
+            else:
+                self.FittingWeight = False
+                sigma.append([1])
 
         for name, coil in self.tokamak.coils:
             M.append([measurement_dict[name]])
@@ -93,6 +99,7 @@ class Reconstruction(Equilibrium):
 
         M = []
         sigma = []
+        self.FittingWeight=True
 
         for sensor in self.tokamak.sensors:
             M.append([sensor.measurement])
@@ -153,7 +160,7 @@ class Reconstruction(Equilibrium):
         M_plasma
         """
         M_plasma = []
-        self.tokamak.printMeasurements()
+        self.tokamak.takeMeasurements()
         for i in range(len(self.M) - len(self.tokamak.coils)):
             sensor = self.tokamak.sensors[i]
             M_plasma.append([self.M[i][0] - sensor.measurement])
@@ -630,12 +637,8 @@ class Reconstruction(Equilibrium):
 
         return T
 
-    # Plot
-    def plot(self):
-        plotting.plotEquilibrium(self)
-
     # Reconstruction Algorithm
-    def reconstruct(self, pause=0.01, tolerance=1e-20, ):
+    def reconstruct(self, pause=0.01, tolerance=1e-7, ):
         """
         Parameters
         ----------
@@ -774,7 +777,7 @@ class Reconstruction(Equilibrium):
         # Printing final constructed values
         print(' ')
         print('Reconstruction Sensor Diagnostics')
-        self.tokamak.printMeasurements(equilibrium=self.eq)
+        self.tokamak.printMeasurements(equilibrium=self)
         self.tokamak.printCurrents()
 
         for sensor, val1, val2 in zip(self.tokamak.sensors, self.M, self.H):

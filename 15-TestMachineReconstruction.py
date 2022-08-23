@@ -4,7 +4,6 @@ show = True
 check_limited = True
 np.set_printoptions(threshold=np.inf)
 
-
 # Creating an equilibrium
 def generate_Measurements(tokamak, alpha_m, alpha_n, Rmin=0.1, Rmax=2, Zmin=-1,
                           Zmax=1, nx=65, ny=65, x_z1=0.6, x_z2=-0.6, x_r1=1.1,
@@ -87,7 +86,7 @@ x_r2 = 1.1
 
 tokamak = machine.EfitTestMachine(createVessel=True)
 
-eq = generate_Measurements(tokamak, alpha_m, alpha_n)
+eq = generate_Measurements(tokamak, alpha_m, alpha_n, x_z1=x_z1, x_z2=x_z2)
 
 measurement_dict = {}
 sigma_dict = {}

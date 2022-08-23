@@ -881,35 +881,6 @@ class Machine:
 
         return pgreen
 
-    def takeMeasurements(self, equilibrium=None):
-        """
-        Method calling the measure method of each sensor on the machine
-        """
-        for sensor in self.sensors:
-            sensor.get_measure(self, equilibrium=equilibrium)
-        return
-
-    def printMeasurements(self, equilibrium=None):
-        """
-        Method for calling the takeMeasurements method, then printing the results
-        """
-        print("==========================")
-        self.takeMeasurements(equilibrium=equilibrium)
-        for sensor in self.sensors:
-            if isinstance(sensor, RogowskiSensor):
-                print('Rogowski Sensor ' + str(sensor) + " current= " + str(
-                    sensor.measurement))
-
-            elif isinstance(sensor, PoloidalFieldSensor):
-                print('Poloidal Field Sensor ' + str(sensor) + " theta=" + str(
-                    sensor.theta) + " field=" + str(sensor.measurement))
-
-            elif isinstance(sensor, FluxLoopSensor):
-                print('Flux Loop Sensor ' + str(sensor) + " flux=" + str(
-                    sensor.measurement))
-        print("==========================")
-        return
-
     def calcPsiFromGreens(self, pgreen):
         """
         Uses the object returned by createPsiGreens to quickly
@@ -1028,10 +999,10 @@ class Machine:
         self.takeMeasurements(equilibrium=equilibrium)
         for sensor in self.sensors:
             if sensor.name != None:
-                print(sensor.name + str(sensor) + " Measurement = " + str(
+                print(sensor.name + ' '+ str(sensor) + ", Measurement=" + str(
                     sensor.measurement))
             else:
-                print(str(type(sensor)) + str(sensor) + " Measurement = " + str(
+                print(str(type(sensor)) + str(sensor) + " Measurement=" + str(
                     sensor.measurement))
         print("==========================")
         return
