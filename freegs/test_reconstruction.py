@@ -23,37 +23,37 @@ def test_reconstruction():
     nx = 65
     ny = 65
     alpha_m=1
-    alpha_n = 2
 
-    tokamak = machine.EfitTestMachine(createVessel=True)
-    eq = equilibrium.Equilibrium(tokamak, Rmin=Rmin, Rmax=Rmax, Zmin=Zmin,Zmax=Zmax, nx=nx, ny=ny)
-    Recon = reconstruction.Reconstruction(tokamak,0,0, eq=eq)
-    Recon.generate_Greens()
-    show = True
+    tokamak = machine.EfitTestMachine()
+    Recon = reconstruction.Reconstruction(tokamak,0,0, show=False, tolerance=1e-15, CurrentInitialisation=False)
 
     for alpha_n, pprime_order, ffprime_order, x_z1, x_z2 in zip(alpha_n_list,pprime_order_list,ffprime_order_list,x_point_list1,x_point_list2):
-
+        Recon.tokamak = machine.EfitTestMachine()
         Recon.pprime_order = pprime_order
         Recon.ffprime_order = ffprime_order
 
-        Recon.generate_Measurements(alpha_m=alpha_m, alpha_n=alpha_n, x_z1=x_z1, x_z2=x_z2)
-        psi1 = Recon.eq.psi()
+        reconstruction.generate_Measurements(tokamak=tokamak, alpha_m=alpha_m, alpha_n=alpha_n, x_z1=x_z1, x_z2=x_z2, show=False)
 
-        opt, xpt = critical.find_critical(Recon.eq.R, Recon.eq.Z, psi1)
+        measurement_dict = {}
+        sigma_dict = {}
+        for sensor in tokamak.sensors:
+            measurement_dict[sensor.name]=sensor.measurement
+            sigma_dict[sensor.name]=sensor.measurement/sensor.weight
 
-        Recon.take_Measurements_from_tokamak()
-        Recon.solve()
-        psi2 = Recon.eq.psi()
-        recon_opt, recon_xpt = critical.find_critical(Recon.eq.R, Recon.eq.Z, psi2)
+        for name,coil in tokamak.coils:
+            measurement_dict[name]=coil.current
+            sigma_dict[name]=1e-5
 
-        assert Recon.chi <=1
-        assert math.isclose(opt[0][2], recon_opt[0][2], abs_tol=0.01)
-        assert math.isclose(xpt[0][2],recon_xpt[0][2], abs_tol=0.01)
+        Recon.solve_from_dictionary(measurement_dict,sigma_dict)
+
+        assert Recon.chi <=1e-3
+        # add isoflucx condition
+
 
 
 def test_vessel_eigenmode():
     np.set_printoptions(threshold=np.inf)
-    show = True
+    show = False
     check_limited = False
     import matplotlib.pyplot as plt
 
@@ -77,18 +77,8 @@ def test_vessel_eigenmode():
 
 
     # Creating Machine
-    tokamak = machine.EfitTestMachine(createVessel=True)
-
-
-    eq = equilibrium.Equilibrium(tokamak)
-
-    for i in range(tokamak.eigenbasis.shape[1]):
-        for j in range(tokamak.eigenbasis.shape[1]):
-            if i == j :
-                assert np.dot(tokamak.eigenbasis[:, i],tokamak.eigenbasis[:, j]) == 1
-            else:
-                assert np.dot(tokamak.eigenbasis[:, i],tokamak.eigenbasis[:, j]) == 0 # use math is close
-
+    tokamak = machine.EfitTestMachine()
+    i = 4
     eigenfunction = tokamak.eigenbasis[:, i]
 
     fil_num = 0
@@ -107,41 +97,28 @@ def test_vessel_eigenmode():
                 fil_num += 1
 
     # Making up some measurements
-    sensors, coils, eq1 = recon_tools.get_values(tokamak,
-                                                                 alpha_m,
-                                                                 alpha_n,
-                                                                 Rmin=Rmin,
-                                                                 Rmax=Rmax,
-                                                                 Zmin=Zmin,
-                                                                 Zmax=Zmax,
-                                                                 nx=nx, ny=ny,
-                                                                 x_z1=x_z1,
-                                                                 x_z2=x_z2,
-                                                                 x_r1=x_r1,
-                                                                 x_r2=x_r2,
-                                                                 show=show,
-                                                                 check_limited=check_limited)
+    eq = reconstruction.generate_Measurements(tokamak=tokamak, alpha_m=alpha_m,
+                                         alpha_n=alpha_n, x_z1=x_z1, x_z2=x_z2,
+                                         show=show)
+
+    measurement_dict = {}
+    sigma_dict = {}
+    for sensor in tokamak.sensors:
+        measurement_dict[sensor.name] = sensor.measurement
+        sigma_dict[sensor.name] = sensor.measurement / sensor.weight
+
+    for name, coil in tokamak.coils:
+        measurement_dict[name] = coil.current
+        sigma_dict[name] = 1e-5
 
     # Reconstruction
-    tokamak = machine.EfitTestMachine(createVessel=True)
+    tokamak = machine.EfitTestMachine()
+    Recon = reconstruction.Reconstruction(tokamak, pprime_order, ffprime_order, show=show)
+    Recon.solve_from_dictionary(measurement_dict=measurement_dict, sigma_dict=sigma_dict)
 
-    M, sigma = recon_tools.give_values(tokamak, sensors, coils)
+    eig_coef = Recon.c[-tokamak.eigenbasis.shape[1]+i]
+    print(Recon.c)
+    assert abs(Recon.c[-tokamak.eigenbasis.shape[1]+i]) > 50*abs(Recon.c[-tokamak.eigenbasis.shape[1]+i+1]) and abs(Recon.c[-tokamak.eigenbasis.shape[1]+i]) > 50*abs(Recon.c[-tokamak.eigenbasis.shape[1]+i-1])
 
-    # Creating Equilibrium
-    eq = equilibrium.Equilibrium(tokamak, Rmin=Rmin, Rmax=Rmax, Zmin=Zmin,
-                                 Zmax=Zmax, nx=nx, ny=ny)
-
-    # Performing Reconstruction
-    chi, eq, c = reconstruction.solve(tokamak, eq, M, sigma, pprime_order,
-                                    ffprime_order, tolerance=1e-9, FittingWeight=True,
-                                    VerticalControl=True, show=show, CurrentInitialisation=True,
-                                    returnChi=True,
-                                    check_limited=check_limited,
-                                    VesselCurrents=True)
-
-    eig_coef = c[-tokamak.eigenbasis.shape[1]+i]
-    print(c)
-    assert abs(c[-tokamak.eigenbasis.shape[1]+i]) > 50*abs(c[-tokamak.eigenbasis.shape[1]+i+1]) and abs(c[-tokamak.eigenbasis.shape[1]+i]) > 50*abs(c[-tokamak.eigenbasis.shape[1]+i-1])
-
-test_reconstruction()
+#test_reconstruction()
 test_vessel_eigenmode()

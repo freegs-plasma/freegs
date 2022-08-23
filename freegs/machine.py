@@ -467,7 +467,7 @@ class Sensor:
         self.measurement = measurement
 
     def __repr__(self):
-        return "R={R},Z={Z}".format(R=self.R, Z=self.Z)
+        return "R={R}, Z={Z}".format(R=self.R, Z=self.Z)
 
     def __eq__(self, other):
         return np.allclose(self.R, other.R) and np.allclose(self.Z, other.Z)
@@ -579,7 +579,7 @@ class PoloidalFieldSensor(Sensor):
         self.theta = theta
 
     def __repr__(self):
-        return "R={R},Z={Z}, Theta={Theta}".format(R=self.R, Z=self.Z, Theta=self.theta)
+        return "R={R}, Z={Z}, Theta={Theta}".format(R=self.R, Z=self.Z, Theta=self.theta)
 
     def get_measure(self, tokamak, equilibrium=None):
         """
@@ -630,7 +630,10 @@ class Filament(Coil):
         self.dZ = dZ
         self.resistance = 2 * np.pi * self.R * resistivity / (self.dR * self.dZ)
         self.eigenbasis = self.calcEigenbasis()
-        # need to add an option for this to add an angle
+
+    def updateFilamentCurrent(self, current):
+        self.current = current[0][0]
+        current.pop(0)
 
     def calcEigenbasis(self):
         return [[1]]
@@ -639,18 +642,16 @@ class Filament(Coil):
 class Filament_Group:
     def __init__(self, filaments, name, Nbasis=10):
         self.filaments = filaments
-        self.N = Nbasis
-        self.eigenbasis = self.calcEigenbasis()
         self.name = name
+        self.Nfils = len(self.filaments)
+        self.Nbasis = Nbasis
+        self.eigenbasis = self.calcEigenbasis()
 
     def psi(self, R, Z):
         """
         Calculate poloidal flux at (R,Z)
         """
-        psival = 0.0
-        for filament in self.filaments:
-            psival += filament.psi(R, Z)
-        return psival
+        return sum([filament.psi(R,Z) for filament in self.filaments])
 
     def createPsiGreens(self, R, Z):
         """
@@ -664,35 +665,30 @@ class Filament_Group:
     def calcPsiFromGreens(self, pgreen):
         """
         Calculate psi from Greens functions
-
         """
-        psival = 0.0
-        for filament in self.filaments:
-            psival += filament.calcPsiFromGreens(pgreen[filament.name])
-        return psival
+        return sum([filament.calcPsiFromGreens(pgreen[filament.name]) for filament in self.filaments])
 
     def Br(self, R, Z):
         """
         Calculate radial magnetic field Br at (R,Z)
         """
-        result = 0.0
-        for filament in self.filaments:
-            result += filament.Br(R, Z)
-        return result
+        return sum([filament.Br(R, Z) for filament in self.filaments])
 
     def Bz(self, R, Z):
         """
         Calculate vertical magnetic field Bz at (R,Z)
         """
-        result = 0.0
-        for filament in self.filaments:
-            result += filament.Bz(R, Z)
-        return result
+        return sum([filament.Bz(R, Z) for filament in self.filaments])
+
+    def updateFilamentCurrent(self, currents):
+        for i, filament in enumerate(self.filaments):
+            filament.updateFilamentCurrent(currents)
 
     def calcEigenbasis(self):
-        R = np.zeros((len(self.filaments), len(self.filaments)))
-        M = np.zeros((len(self.filaments), len(self.filaments)))
+        R = np.zeros((self.Nfils, self.Nfils))
+        M = np.zeros((self.Nfils, self.Nfils))
 
+        # Ppopulating Mutual inductance matrix
         for i, fil in enumerate(self.filaments):
             R[i, i] = fil.resistance
 
@@ -701,20 +697,18 @@ class Filament_Group:
 
                 R1, R2, Z1, Z2 = fil.R, fil2.R, fil.Z, fil2.Z
 
-                k = 2 * (R1 * R2) ** 0.5 / (
-                            (R1 + R2) ** 2 + (Z1 - Z2) ** 2) ** 0.5
-                M12 = mu0 * (R1 * R2) ** 0.5 * (
-                            (2 / k - k) * ellipk(k ** 2) - 2 / k * ellipe(
-                        k ** 2))
+                # Calculating Mutual Inductance between filaments
+                k = 2 * (R1 * R2) ** 0.5 / ((R1 + R2) ** 2 + (Z1 - Z2) ** 2) ** 0.5
+                M12 = mu0 * (R1 * R2) ** 0.5 * ((2 / k - k) * ellipk(k ** 2) - 2 / k * ellipe(k ** 2))
 
+                # Calcluating self inductance
                 if i == j:
-                    M12 = mu0 * R1 * (
-                                np.log(8 * R1 / (fil.dR + fil.dZ)) - 1 / 2)
+                    M12 = mu0 * R1 * (np.log(8 * R1 / (fil.dR + fil.dZ)) - 1 / 2)
 
                 M[i, j] = M12
                 M[j, i] = M12
 
-        J = scipy.linalg.solve_sylvester(M, np.zeros(M.shape), R)
+        J = scipy.linalg.lstsq(M,R)[0]
 
         eigvals, eigvecs = np.linalg.eig(J)
 
@@ -722,8 +716,9 @@ class Filament_Group:
                           sorted(zip(eigvals, np.transpose(eigvecs)),
                                  reverse=False)]
 
-        vessel_basis = np.zeros((len(self.filaments), self.N))
-        for n in range(self.N):
+        # Creating a matrix with each column representing an eigenvector of the vessel
+        vessel_basis = np.zeros((len(self.filaments), self.Nbasis))
+        for n in range(self.Nbasis):
             for i, val in enumerate(sorted_eigvecs[n]):
                 vessel_basis[i, n] = val
 
@@ -743,8 +738,7 @@ class Machine:
 
     """
 
-    def __init__(self, coils, wall=None, sensors=None, vessel=None,
-                 createVessel=False, groupFilaments=True, Nfils=250, nlimit=500):
+    def __init__(self, coils, wall=None, sensors=None, vessel=None, nlimit=500):
 
         """
         coils - A list of coils [(label, Coil|Circuit|Solenoid)]
@@ -755,20 +749,19 @@ class Machine:
 
         self.coils = coils
         self.wall = wall
-        self.vessel = vessel
         self.sensors = sensors
 
-        if createVessel and vessel is None:
-            self.createVesselFilaments(Nfils, groupFilaments=groupFilaments)
-            self.getVesselEigenbasis()
-        else:
-            self.vessel = vessel
-            if self.vessel is not None:
-                self.getVesselEigenbasis()
         self.limit_points_R = None
         self.limit_points_Z = None
         if self.wall is not None:
             self.limit_points_R, self.limit_points_Z = self.generate_limit_points(nlimit)
+
+
+        # Procedure for creating a tokamak Vessel
+        self.vessel = vessel
+        if vessel is not None:
+            self.getVesselEigenbasis()
+
 
     def __repr__(self):
         return "Machine(coils={coils}, wall={wall})".format(
@@ -790,47 +783,6 @@ class Machine:
                 return coil
         raise KeyError(
             "Machine does not contain coil with label '{0}'".format(name))
-
-    def createVesselFilaments(self, Nfils, groupFilaments):
-        wall = self.wall
-        wallRZ = [[R, Z] for R, Z in zip(wall.R, wall.Z)]
-
-        # Generating filament points
-        R0 = wallRZ[0]
-        wallRZ.append(R0)
-        innerline = LineString(wallRZ)
-        distances = np.linspace(0, innerline.length, Nfils + 1)
-        points = [innerline.interpolate(distance).xy for distance in distances]
-        rfils = [point[0][0] for point in points[:-1]]
-        zfils = [point[1][0] for point in points[:-1]]
-
-        vessel = []
-        for R, Z in zip(rfils, zfils):
-            vessel.append(Filament(R, Z, 0.025, 0.025, 1, name='fil' + str(
-                round(10000 * R ** 2 + 100 * Z))))
-
-        if groupFilaments:
-            vessel = [Filament_Group(vessel, 'ivc', Nbasis=6)]
-
-        self.vessel = vessel
-
-    def updateVesselCurrents(self, currents):
-        fil_num = 0
-        for fil in self.vessel:
-            if isinstance(fil, Filament):
-                fil.current = currents[fil_num]
-                fil_num += 1
-
-            if isinstance(fil, Filament_Group):
-                for sub_fil in fil.filaments:
-                    sub_fil.current = currents[fil_num]
-                    fil_num += 1
-
-    def getVesselEigenbasis(self):
-        eigenbasis_list = (filament.eigenbasis for filament in self.vessel)
-        eigenbasis = scipy.linalg.block_diag(*eigenbasis_list)
-        self.eigenbasis = eigenbasis
-
 
     def generate_limit_points(self,nlimit):
         '''
@@ -1012,7 +964,6 @@ class Machine:
         print("==========================")
         return
 
-
     def getForces(self, equilibrium=None):
         """
         Calculate forces on the coils, given the plasma equilibrium.
@@ -1038,6 +989,30 @@ class Machine:
         for label, coil in self.coils:
             currents[label] = coil.current
         return currents
+
+    def updateVesselCurrents(self, currents):
+        """
+        Loops through filaments in vessel, assigns them each the corresponding
+        given value of current
+
+        Parameters
+        ----------
+        currents - ordered array of currents
+
+        """
+        ## put these in filaments and filament group
+        currents = currents.tolist()
+        print(type(currents))
+        for filament in self.vessel:
+            filament.updateFilamentCurrent(currents)
+
+    def getVesselEigenbasis(self):
+        """
+        Builds the eigenbasis of the tokamak
+        """
+        eigenbasis_list = (filament.eigenbasis for filament in self.vessel)
+        eigenbasis = scipy.linalg.block_diag(*eigenbasis_list)
+        self.eigenbasis = eigenbasis
 
     def plot(self, axis=None, show=True):
         """
@@ -1126,34 +1101,56 @@ def TestTokamakSensor():
         ("P2U", Coil(1.75, 0.6)),
     ]
 
-    wall = Wall(
-        [0.75, 0.75, 1.5, 1.8, 1.8, 1.5],
-
-        [-0.85, 0.85, 0.85, 0.25, -0.25, -0.85])
+    wall = Wall([0.75, 0.75, 1.5, 1.8, 1.8, 1.5],[-0.85, 0.85, 0.85, 0.25, -0.25, -0.85])
 
     sensors = [RogowskiSensor([0.77, 0.77, 1.48, 1.78, 1.78, 1.48],
-                              [-0.83, 0.83, 0.83, 0.23, -0.23, -0.83], name=Rog1)
-        , PoloidalFieldSensor(1.8, 0.14, 2.2, name=BP1)
-        , PoloidalFieldSensor(1.8, -0.14, -2.2, name=BP2)
-        , PoloidalFieldSensor(1.7, 0.475, 2.2, name=BP3)
-        , PoloidalFieldSensor(1.7, -0.475, -2.2, name=BP4)
-        , PoloidalFieldSensor(1.5, 0.85, 2.2, name=BP5)
-        , PoloidalFieldSensor(1.5, -0.85, -2.2, name=BP6)
-        , FluxLoopSensor(1.8, 0.2, name=FL1)
-        , FluxLoopSensor(1.8, -0.2, name=FL2)
-        , FluxLoopSensor(1.65, 0.52, name=FL3)
-        , FluxLoopSensor(1.65, -0.52, name=FL4)
-        , FluxLoopSensor(1.1, 0.85, name=FL5)
-        , FluxLoopSensor(1.1, -0.85, name=FL6)
+                              [-0.83, 0.83, 0.83, 0.23, -0.23, -0.83], name='Rog1')
+        , PoloidalFieldSensor(1.8, 0.14, 2.2, name='BP1')
+        , PoloidalFieldSensor(1.8, -0.14, -2.2, name='BP2')
+        , PoloidalFieldSensor(1.7, 0.475, 2.2, name='BP3')
+        , PoloidalFieldSensor(1.7, -0.475, -2.2, name='BP4')
+        , PoloidalFieldSensor(1.5, 0.85, 2.2, name='BP5')
+        , PoloidalFieldSensor(1.5, -0.85, -2.2, name='BP6')
+        , FluxLoopSensor(1.8, 0.2, name='FL1')
+        , FluxLoopSensor(1.8, -0.2, name='FL2')
+        , FluxLoopSensor(1.65, 0.52, name='FL3')
+        , FluxLoopSensor(1.65, -0.52, name='FL4')
+        , FluxLoopSensor(1.1, 0.85, name='FL5')
+        , FluxLoopSensor(1.1, -0.85, name='FL6')
                ]
 
     return Machine(coils, wall, sensors)
 
 
-def EfitTestMachine(vessel=None, createVessel=False, group=True, Nfils=100):
+def EfitTestMachine():
     """
-    Creating a simple tokamak with sensors along the boundary
+    Creating a simple tokamak
+    Option to add vessel filaments
+    Used for reconstruction
     """
+
+    def createVesselFilaments(wall, Nfils=100, groupFilaments=True):
+        wallRZ = [[R, Z] for R, Z in zip(wall.R, wall.Z)]
+
+        # Generating filament points
+        R0 = wallRZ[0]
+        wallRZ.append(R0)
+        innerline = LineString(wallRZ)
+        distances = np.linspace(0, innerline.length, Nfils + 1)
+        points = [innerline.interpolate(distance).xy for distance in distances]
+        rfils = [point[0][0] for point in points[:-1]]
+        zfils = [point[1][0] for point in points[:-1]]
+
+        # Populating vessel with filaments
+        vessel = []
+        for R, Z in zip(rfils, zfils):
+            vessel.append(Filament(R, Z, 0.025, 0.025, 1, name='fil' + str(
+                round(10000 * R ** 2 + 100 * Z))))
+
+        if groupFilaments:
+            vessel = [Filament_Group(vessel, 'ivc', Nbasis=6)]
+
+        return vessel
 
     coils = [
         (
@@ -1167,9 +1164,6 @@ def EfitTestMachine(vessel=None, createVessel=False, group=True, Nfils=100):
     ]
 
     wall = Wall([0.75, 0.75, 1.5, 1.8, 1.8, 1.5,0.75],[0, 0.85, 0.85, 0.25, -0.25, -0.85,-0.85])
-
-
-    # wall = Wall([0.75,0.9,0.9, 0.75, 1.5, 1.8, 1.8, 1.5], [-0.85,-0.4,0.4, 0.85, 0.85, 0.25, -0.25, -0.85])
 
     sensors = [RogowskiSensor([0.77, 0.77, 1.48, 1.78, 1.78, 1.48],
                               [-0.83, 0.83, 0.83, 0.23, -0.23, -0.83], name='Rog1')
@@ -1207,9 +1201,10 @@ def EfitTestMachine(vessel=None, createVessel=False, group=True, Nfils=100):
                          [0.59, 0.61, 0.61, 0.59], name='Rog5')
                ]
 
-    return Machine(coils, wall, sensors, vessel=vessel,
-                   createVessel=createVessel, groupFilaments=group,
-                   Nfils=Nfils)
+    vessel = createVesselFilaments(wall)
+
+    return Machine(coils, wall, sensors, vessel=vessel)
+
 
 def DIIID():
     """

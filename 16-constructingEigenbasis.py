@@ -5,7 +5,7 @@ import pickle
 np.set_printoptions(threshold=np.inf)
 
 # Loading Machine
-tokamak = freegs.machine.EfitTestMachine(createVessel=True, Nfils=100)
+tokamak = freegs.machine.EfitTestMachine()
 
 fig = plt.figure()
 ax = fig.add_subplot(111)

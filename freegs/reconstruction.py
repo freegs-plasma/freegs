@@ -19,6 +19,7 @@ class Reconstruction(Equilibrium):
         self.VesselCurrents = VesselCurrents
         self.VerticalControl = VerticalControl
         self.CurrentInitialisation = CurrentInitialisation
+        self.tolerance = tolerance
         self.show=show
 
         # Creating Reconstruction Grid and Greens functions
@@ -31,6 +32,7 @@ class Reconstruction(Equilibrium):
     # Methods for solving
     def solve_from_tokamak(self):
         self.take_Measurements_from_tokamak()
+        self.initialise_coil_current()
         self.reconstruct()
         self.print_reconstruction()
         self.plot()
@@ -118,6 +120,9 @@ class Reconstruction(Equilibrium):
 
     # Pass the coil current sto the equilibrium object
     def initialise_coil_current(self):
+        """
+        Method for giving the tokamak object the correct currents for reconstruction
+        """
         for index, (name, coil) in enumerate(self.tokamak.coils):
             coil.current = self.M[-len(self.tokamak.coils) + index][0]
 
@@ -128,9 +133,8 @@ class Reconstruction(Equilibrium):
 
         Parameters
         ----------
-        G - greens matrix
+        Gplasma - greens matrix
         M_plasma - plasma contribution to measurements
-        eq - equilibrium object
         T - Initialisation basis matrix
 
         Returns
@@ -193,7 +197,7 @@ class Reconstruction(Equilibrium):
         if self.it == 0 and new_chi <= tolerance:
             convergence = True
 
-        elif self.it>0 and (new_chi <= tolerance or float('%.4g' % new_chi) == float('%.4g' % self.chi)):
+        elif self.it>0 and (new_chi <= tolerance or float('%.3g' % new_chi) == float('%.3g' % self.chi)):
             convergence = True
 
         elif self.it>50:
@@ -211,7 +215,8 @@ class Reconstruction(Equilibrium):
 
         Parameters
         ----------
-        self.grid - self.griduilibrium object
+        tokamak - location of sensors
+
 
         Returns
         -------
@@ -275,6 +280,19 @@ class Reconstruction(Equilibrium):
         self.Gplasma = PlasmaGreens
 
     def get_CoilGreens(self):
+        """
+        Calculating the Coil Greens Matrix
+
+        Parameters
+        ------
+        tokamak - machine with location of coils
+
+
+        Returns
+        -------
+        Gcoil - Coil response matrix
+
+        """
         n_coils = len(self.tokamak.coils)
         CoilGreens = np.zeros((len(self.tokamak.sensors), n_coils))
         dR = self.R[1, 0] - self.R[0, 0]
@@ -338,6 +356,19 @@ class Reconstruction(Equilibrium):
         self.Gcoil = CoilGreens
 
     def get_FilamentGreens(self):
+        """
+        Calculating the Filaments Greens Matrix
+
+        Parameters
+        ------
+        tokamak - machine with location of filaments
+
+
+        Returns
+        -------
+        Gfil - filament response matrix
+
+        """
         n_fils = 0
         for fil in self.tokamak.vessel:
             if isinstance(fil, Filament):
@@ -416,6 +447,9 @@ class Reconstruction(Equilibrium):
         self.Gfil = FilamentGreens
 
     def generate_Greens(self):
+        """
+        Method for calling the greens function methods
+        """
         self.get_PlasmaGreens()
         self.get_CoilGreens()
         if self.VesselCurrents:
@@ -429,12 +463,9 @@ class Reconstruction(Equilibrium):
         Parameters
         ----------
         x - normalised psi
-        eq - equilibrium object
-        R - matrix of radial values
         pprime_order - number of polynomial coefficients for pprime model
         ffprime_order - number of polynomial coefficients for ffprime model
         c - coefficients matrix
-        VC - Vertical Control Option
 
         Returns
         -------
@@ -491,6 +522,17 @@ class Reconstruction(Equilibrium):
 
     # Finding total operator matrix E (nm+n_coils + nc+n_coils+1)
     def get_E(self, A):
+        """
+        Find the matrix to perform least squares on
+
+        Parameters
+        ----------
+        A - Plasma respoonse Matrix
+
+        Returns
+        -------
+        E - operator matrix
+        """
         B = np.identity(self.Gcoil.shape[1])
         C = np.zeros((self.Gcoil.shape[1], A.shape[1]))
         if self.VesselCurrents:
@@ -507,13 +549,12 @@ class Reconstruction(Equilibrium):
 
         Parameters
         ----------
-        eq - equilibrium object
         jtor - 2d current density matrix
-        psi_bndry - a predetermined value of psi on the boundary
 
         Returns
         -------
-
+        x - normalised psi
+        mask - mask generated form xpoints
         """
 
         self.check_limited = True
@@ -599,17 +640,13 @@ class Reconstruction(Equilibrium):
     # Calculate T
     def get_T(self, m, n):
         """
-
         Parameters
         ----------
-        eq - equilibrium object
         m - number of radial finite elements
         n - number of vertical finite elements
-        inside - option to include finite elements on boundary
-
         Returns
         -------
-        T - basis matrix for current initialisation
+        T - finite element basis matrix for current initialisation
         """
         m += 2
         n += 2
@@ -638,28 +675,25 @@ class Reconstruction(Equilibrium):
         return T
 
     # Reconstruction Algorithm
-    def reconstruct(self, pause=0.01, tolerance=1e-7, ):
+    def reconstruct(self, pause=0.01):
         """
         Parameters
         ----------
         tokamak - tokamak object
-        eq - equilibrium object
         M - measurements
         sigma - measurement uncertainties
         pprime_order - number of polynomial coefficients for pprime model
         ffprime_order - number of polynomial coefficients for ffprime model
         tolerance - value beneath which the chi squared value will stop the iteration
-        G - Greens matrix
-        Gdz - vertical control greens matrix
-        blend - blending coefficient
+        Gplasma - Plasma Response Greens matrix
+        Gcoil - Coil Greens matrix
+        Gvessel - Eigenbasis response Greens matrix
         show - option to display psi through the iterations
         pause - time to wait between iterations
-        axis - axis to plot iterations on
-        VerticalControl - option for ferron's vertical control
-        CI - option for current initialisation
+        VesselCurrents - Used when tokamak has vessel filaments. Allows calculation of induced currents in tokamak wall
+        VerticalControl - option for use of the vertical control found in ferron's paper
+        CurrentInitialisation - option for using finite element method to optimise initial guess for jtor
         FittingWeight - option to apply a fitting weight vector to scale lstsq calculation
-        returnChi - option to return the final value of chi squared
-
         """
 
         # start iterative loop
@@ -756,10 +790,14 @@ class Reconstruction(Equilibrium):
 
             # Take Diagnostics and Perform Convergence Test
             self.H = E @ self.c
-            convergence = self.convergence_test(tolerance)
+            convergence = self.convergence_test(self.tolerance)
             self.it += 1
 
     def print_reconstruction(self):
+        """
+        Print data from reconstruction
+        """
+
         print('Completed in ', self.it, 'iterations, with Chi Squared =', self.chi)
 
         if self.VesselCurrents:
@@ -782,4 +820,67 @@ class Reconstruction(Equilibrium):
 
         for sensor, val1, val2 in zip(self.tokamak.sensors, self.M, self.H):
             print(sensor.name, val1, val2, sensor.measurement)
+
+
+
+# Creating an equilibrium
+def generate_Measurements(tokamak, alpha_m, alpha_n, Rmin=0.1, Rmax=2, Zmin=-1,
+                          Zmax=1, nx=65, ny=65, x_z1=0.6, x_z2=-0.6, x_r1=1.1,
+                          x_r2=1.1, show=True):
+    """
+    Function for running the forward simulation
+
+    Parameters
+    ----------
+    tokamak - tokamak machine
+    alpha_m - coefficients to model the forward equilibrium
+    alpha_n - more info found in FreeGS documentation
+    Rmin - Minimum position for R grid
+    Rmax - Maximum position for R grid
+    Zmin - Minimum position for Z grid
+    Zmax - Maximum position for Z grid
+    nx - number of points in radial direction
+    ny - number of points in vertical direction
+    x_z1 - z position of upper x point
+    x_z2 - z position of lower x point
+    x_r1 - r position of upper x point
+    x_r2 - r position of lower x point
+    show - Option for plotting the function
+
+    Returns
+    -------
+    eq - equilibrium object
+
+    """
+
+    eq = Equilibrium(tokamak=tokamak,
+                                 Rmin=Rmin, Rmax=Rmax,  # Radial domain
+                                 Zmin=Zmin, Zmax=Zmax,  # Height range
+                                 nx=nx, ny=ny,  # Number of grid points
+                                 boundary=boundary.freeBoundary)  # Boundary condition
+
+    profiles = jtor.ConstrainPaxisIp(eq, 1e3,
+                                     2e5,
+                                     2.0,
+                                     alpha_m=alpha_m,
+                                     alpha_n=alpha_n
+                                     )
+
+    xpoints = [(x_r1, x_z2),  # (R,Z) locations of X-points
+               (x_r2, x_z1)]
+    isoflux = [(x_r1, x_z2, x_r2, x_z1)]  # (R1,Z1, R2,Z2) pair of locations
+
+    constrain = control.constrain(xpoints=xpoints, isoflux=isoflux)
+
+    picard.solve(eq,  # The equilibrium to adjust
+                 profiles,  # The toroidal current profile function
+                 constrain,
+                 show=show,
+                 check_limited=True)
+
+    print('Construction Diagnostics')
+    tokamak.printMeasurements(equilibrium=eq)
+    tokamak.printCurrents()
+    return eq
+
 
