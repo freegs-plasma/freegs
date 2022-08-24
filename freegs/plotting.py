@@ -77,12 +77,7 @@ def plotEquilibrium(eq, axis=None, show=True, oxpoints=True, wall=True, sensors 
     show     - Call matplotlib.pyplot.show() before returning
     oxpoints - Plot X points as red circles, O points as green circles
     wall     - Plot the wall (limiter)
-<<<<<<< HEAD
     sensors  - Plot the sensors
-=======
-    sensors - Plot the sensors
->>>>>>> full_sensors
-
     """
 
     import matplotlib.pyplot as plt

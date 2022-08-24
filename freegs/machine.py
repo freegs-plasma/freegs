@@ -525,9 +525,6 @@ class RogowskiSensor(Sensor):
                         coil_current += self.find_coil_currents(sub_coil, polygon)
 
             # plasma current
-
-            # lets stop testing the points and start testing the squares, diving through by intersection area instead of R,Z
-            # switch to sum as opposed to trapz
             plasma_current = 0
             if equilibrium != None:
                 dR = equilibrium.R[1, 0] - equilibrium.R[0, 0]
@@ -744,8 +741,6 @@ class Machine:
         coils - A list of coils [(label, Coil|Circuit|Solenoid)]
         sensors - A list of sensors
         """
-
-        # add a dictionary kwargs
 
         self.coils = coils
         self.wall = wall
