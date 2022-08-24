@@ -183,6 +183,33 @@ def test_rog_around_Shapedcoil():
         assert math.isclose(sensor.measurement, current / 2, abs_tol=1)
 
 
+def test_rog_around_Filamentcoil():
+
+    tokamak = freegs.machine.EmptyTokamak()
+    total_current = 300
+
+    tokamak.coils = [('FILCOIL1',freegs.machine.FilamentCoil((0.5,0.5,0.5),(0.9,1,1.1), current=total_current)),('FILCOIL2',freegs.machine.FilamentCoil((0.5,0.5,0.5),(-0.9,-1,-1.1), current=total_current))]
+    tokamak.sensors = [freegs.machine.RogowskiSensor([0.4,0.4,0.6,0.6], [0.8,1.2,1.2,0.8], name='UPPERCOIL'),freegs.machine.RogowskiSensor([0.4,0.4,0.6,0.6], [0.95,1.05,1.05,0.95], name='UPPERFIL')]
+
+    tokamak.takeMeasurements()
+
+    assert tokamak.sensors[0].measurement == total_current and tokamak.sensors[1].measurement == total_current / 3
+
+
+def test_rog_around_circuit():
+
+    tokamak = freegs.machine.EmptyTokamak()
+    circuit_current = 100
+    npoints = 3
+
+    tokamak.coils = [('CIRCUIT', freegs.machine.Circuit([('FILCOIL1',freegs.machine.FilamentCoil((0.5,0.5,0.5),(0.9,1,1.1)), npoints),('FILCOIL2',freegs.machine.FilamentCoil((0.5,0.5,0.5),(-0.9,-1,-1.1)), npoints)], current=circuit_current))]
+    tokamak.sensors = [freegs.machine.RogowskiSensor([0.4,0.4,0.6,0.6], [0.8,1.2,1.2,0.8], name='UPPERCOIL'),freegs.machine.RogowskiSensor([0.4,0.4,0.6,0.6], [0.95,1.05,1.05,0.95], name='UPPERFIL')]
+
+    tokamak.takeMeasurements()
+
+    assert tokamak.sensors[0].measurement == circuit_current * npoints and tokamak.sensors[1].measurement == circuit_current
+
+
 def test_rog_with_plasma():
     """
     Testing Rog around a plasma profile
@@ -210,8 +237,12 @@ def test_rog_with_plasma():
 
 test_flux()
 test_iso_flux()
+test_offaxis_Bfield()
+test_xpoint_field()
+
 test_rog_around_coil()
 test_rog_with_plasma()
 test_rog_around_Shapedcoil()
-test_offaxis_Bfield()
-test_xpoint_field()
+test_rog_around_Filamentcoil()
+test_rog_around_circuit()
+
