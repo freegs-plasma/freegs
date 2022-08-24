@@ -513,7 +513,7 @@ class RogowskiSensor(Sensor):
                 elif isinstance(coil, Circuit):
                     for name, sub_coil, multiplier in coil.coils:
                         sub_coil.current = coil.current * multiplier
-                        coil_current += self.find_coil_currents(coil, polygon)
+                        coil_current += self.find_coil_currents(sub_coil, polygon)
 
             # plasma current
 
@@ -544,7 +544,7 @@ class RogowskiSensor(Sensor):
         coil_current = 0
         if isinstance(coil, FilamentCoil):
             for r, z in coil.points:
-                if polygon.contains(Point(r,z) for r, z in coil.points):
+                if polygon.contains(Point(r,z)):
                     coil_current += coil.current / coil.npoints
 
         elif isinstance(coil, ShapedCoil):
