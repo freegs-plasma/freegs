@@ -19,26 +19,26 @@ alpha_n = 2
 pprime_order = 3
 ffprime_order = 3
 x_z1 = -0.6
-x_z2 = 0.6
-x_r1 = 1.1
-x_r2 = 1.1
+x_z2 = 0.7
+x_r1 = 1
+x_r2 = 1
 
 tokamak = machine.EfitTestMachine()
 
-eq = reconstruction.generate_Measurements(tokamak, alpha_m, alpha_n, x_z1=x_z1, x_z2=x_z2)
-
-measurement_dict = {}
-sigma_dict = {}
-for sensor in tokamak.sensors:
-    measurement_dict[sensor.name]=sensor.measurement
-    sigma_dict[sensor.name]=sensor.measurement/sensor.weight
-
-for name,coil in tokamak.coils:
-    measurement_dict[name]=coil.current
-    sigma_dict[name]=1e-5
+eq = reconstruction.generate_Measurements(tokamak, alpha_m, alpha_n, x_z1=x_z1, x_z2=x_z2,x_r1=x_r1,x_r2=x_r2)
+#
+# measurement_dict = {}
+# sigma_dict = {}
+# for sensor in tokamak.sensors:
+#     measurement_dict[sensor.name]=sensor.measurement
+#     sigma_dict[sensor.name]=sensor.measurement/sensor.weight
+#
+# for name,coil in tokamak.coils:
+#     measurement_dict[name]=coil.current
+#     sigma_dict[name]=1e-5
 
 # Performing Reconstruction
 print('Starting Reconstruction')
-Recon = reconstruction.Reconstruction(tokamak, pprime_order, ffprime_order)
-Recon.solve_from_dictionary(measurement_dict, sigma_dict)
+Recon = reconstruction.Reconstruction(tokamak, pprime_order, ffprime_order, VesselCurrents=False)
+Recon.solve_from_tokamak()
 
