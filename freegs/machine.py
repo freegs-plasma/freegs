@@ -524,6 +524,20 @@ class RogowskiSensor(Sensor):
                         sub_coil.current = coil.current * multiplier
                         coil_current += self.find_coil_currents(sub_coil, polygon)
 
+
+            if tokamak.vessel is not None:
+                for filament in tokamak.vessel:
+                    if isinstance(filament, Filament):
+                        point = Point(filament.R, filament.Z)
+                        if polygon.contains(point):
+                            coil_current += filament.current
+
+                    if isinstance(filament, Filament_Group):
+                        for subfil in filament.filaments:
+                            point = Point(subfil.R, subfil.Z)
+                            if polygon.contains(point):
+                                coil_current += subfil.current
+
             # plasma current
             plasma_current = 0
             if equilibrium != None:
