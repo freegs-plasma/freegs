@@ -23,12 +23,11 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 from .gradshafranov import Greens, GreensBr, GreensBz
-
-from numpy import linspace
 import numpy as np
-import scipy
+import scipy.linalg
 from scipy.interpolate import interp1d
 from scipy.special import ellipk, ellipe
+from scipy.constants import mu_0
 
 from .coil import Coil, AreaCurrentLimit
 from .shaped_coil import ShapedCoil
@@ -38,7 +37,6 @@ from scipy.integrate import romb, trapz  # Romberg integration
 from shapely.geometry import Point, LinearRing, LineString
 from shapely.geometry.polygon import Polygon
 
-mu0 = 4e-7 * np.pi
 
 # We need this for the `label` part of the Circuit dtype for writing
 # to HDF5 files. See the following for information:
@@ -194,9 +192,9 @@ class Circuit:
 
     def __eq__(self, other):
         return (
-                self.coils == other.coils
-                and self.current == other.current
-                and self.control == other.control
+            self.coils == other.coils
+            and self.current == other.current
+            and self.control == other.control
         )
 
     def __ne__(self, other):
@@ -226,8 +224,7 @@ class Circuit:
         # HDF5 reads strings as bytes by default, so convert to string
         def toString(s):
             try:
-                return str(s,
-                           "utf-8")  # Convert bytes to string, using encoding
+                return str(s, "utf-8")  # Convert bytes to string, using encoding
             except TypeError:
                 return s  # Probably already a string
 
@@ -257,8 +254,7 @@ class Circuit:
 
 
 def MirroredCoil(
-        R, Z, current=0.0, turns=1, control=True, area=AreaCurrentLimit(),
-        symmetric=True
+    R, Z, current=0.0, turns=1, control=True, area=AreaCurrentLimit(), symmetric=True
 ):
     """
     Create a pair of coils, at +/- Z
@@ -269,14 +265,12 @@ def MirroredCoil(
         [
             (
                 "U",
-                Coil(R, Z, current=current, turns=turns, control=control,
-                     area=area),
+                Coil(R, Z, current=current, turns=turns, control=control, area=area),
                 1.0,
             ),
             (
                 "L",
-                Coil(R, Z, current=current, turns=turns, control=control,
-                     area=area),
+                Coil(R, Z, current=current, turns=turns, control=control, area=area),
                 1.0 if symmetric else -1.0,
             ),
         ]
@@ -362,7 +356,7 @@ class Solenoid:
         Return should have the same shape
         """
         result = 0.0
-        for Zs in linspace(self.Zsmin, self.Zsmax, self.Ns):
+        for Zs in np.linspace(self.Zsmin, self.Zsmax, self.Ns):
             result += Greens(self.Rs, Zs, R, Z)
         return result
 
@@ -371,7 +365,7 @@ class Solenoid:
         Calculate radial magnetic field Br at (R,Z) due to a unit current
         """
         result = 0.0
-        for Zs in linspace(self.Zsmin, self.Zsmax, self.Ns):
+        for Zs in np.linspace(self.Zsmin, self.Zsmax, self.Ns):
             result += GreensBr(self.Rs, Zs, R, Z)
         return result
 
@@ -380,7 +374,7 @@ class Solenoid:
         Calculate vertical magnetic field Bz at (R,Z) due to a unit current
         """
         result = 0.0
-        for Zs in linspace(self.Zsmin, self.Zsmax, self.Ns):
+        for Zs in np.linspace(self.Zsmin, self.Zsmax, self.Ns):
             result += GreensBz(self.Rs, Zs, R, Z)
         return result
 
@@ -393,18 +387,17 @@ class Solenoid:
 
     def __repr__(self):
         return "Solenoid(Rs={0}, Zsmin={1}, Zsmax={2}, current={3}, Ns={4}, control={5})".format(
-            self.Rs, self.Zsmin, self.Zsmax, self.current, self.Ns,
-            self.control
+            self.Rs, self.Zsmin, self.Zsmax, self.current, self.Ns, self.control
         )
 
     def __eq__(self, other):
         return (
-                self.Rs == other.Rs
-                and self.Zsmin == other.Zsmin
-                and self.Zsmax == other.Zsmax
-                and self.Ns == other.Ns
-                and self.current == other.current
-                and self.control == other.control
+            self.Rs == other.Rs
+            and self.Zsmin == other.Zsmin
+            and self.Zsmax == other.Zsmax
+            and self.Ns == other.Ns
+            and self.current == other.current
+            and self.control == other.control
         )
 
     def __ne__(self, other):
@@ -415,8 +408,7 @@ class Solenoid:
         Helper method for writing output
         """
         return np.array(
-            (self.Rs, self.Zsmin, self.Zsmax, self.Ns, self.current,
-             self.control),
+            (self.Rs, self.Zsmin, self.Zsmax, self.Ns, self.current, self.control),
             dtype=self.dtype,
         )
 
@@ -456,6 +448,10 @@ class Wall:
 
 
 class Sensor:
+    """
+    Parent class for the sensors
+    Contains general attributes that apply to all sensors
+    """
     def __init__(self, R, Z, name=None, weight=1, status=True,
                  measurement=None):
 
@@ -465,6 +461,7 @@ class Sensor:
         self.name = name
         self.weight = weight
         self.measurement = measurement
+
 
     def __repr__(self):
         return "R={R}, Z={Z}".format(R=self.R, Z=self.Z)
@@ -488,11 +485,8 @@ class RogowskiSensor(Sensor):
         Sensor.__init__(self, R, Z, name=name, weight=weight, status=status,
                         measurement=measurement)
 
-    def to_numpy(self):
-        """
-        Helper method for writing output
-        """
-        return np.array((self.R, self.Z))
+        polygonlist = [(r, z) for r, z in zip(self.R, self.Z)]
+        self.polygon = Polygon(polygonlist)
 
     def get_measure(self, tokamak, equilibrium=None):
         """
@@ -502,40 +496,31 @@ class RogowskiSensor(Sensor):
         """
 
         if self.status:
-            sensor_loc = self.to_numpy()
-            Rs = sensor_loc[0]
-            Zs = sensor_loc[1]
-
-            polygon_list = []
             coil_current = 0
-
-            polygon_list = [(r, z) for r, z in zip(Rs, Zs)]
-
-            polygon = Polygon(polygon_list)
 
             # coil current
             for label, coil in tokamak.coils:
 
                 if isinstance(coil, Coil):
-                    coil_current += self.find_coil_currents(coil, polygon)
+                    coil_current += self.find_coil_currents(coil, self.polygon)
 
                 elif isinstance(coil, Circuit):
                     for name, sub_coil, multiplier in coil.coils:
                         sub_coil.current = coil.current * multiplier
-                        coil_current += self.find_coil_currents(sub_coil, polygon)
+                        coil_current += self.find_coil_currents(sub_coil, self.polygon)
 
 
             if tokamak.vessel is not None:
                 for filament in tokamak.vessel:
                     if isinstance(filament, Filament):
                         point = Point(filament.R, filament.Z)
-                        if polygon.contains(point):
+                        if self.polygon.contains(point):
                             coil_current += filament.current
 
                     if isinstance(filament, Filament_Group):
                         for subfil in filament.filaments:
                             point = Point(subfil.R, subfil.Z)
-                            if polygon.contains(point):
+                            if self.polygon.contains(point):
                                 coil_current += subfil.current
 
             # plasma current
@@ -556,7 +541,7 @@ class RogowskiSensor(Sensor):
                                             equilibrium.R[i, j] - dR / 2,
                                             equilibrium.Z[i, j] - dZ / 2)])
 
-                        plasma_current += equilibrium.Jtor[i, j] * polygon.intersection(gridpoint).area
+                        plasma_current += equilibrium.Jtor[i, j] * self.polygon.intersection(gridpoint).area
 
             self.measurement = plasma_current + coil_current
 
@@ -692,7 +677,7 @@ class Filament_Group:
         return sum([filament.Bz(R, Z) for filament in self.filaments])
 
     def updateFilamentCurrent(self, currents):
-        for i, filament in enumerate(self.filaments):
+        for filament in self.filaments:
             filament.updateFilamentCurrent(currents)
 
     def calcEigenbasis(self):
@@ -708,13 +693,14 @@ class Filament_Group:
 
                 R1, R2, Z1, Z2 = fil.R, fil2.R, fil.Z, fil2.Z
 
-                # Calculating Mutual Inductance between filaments
-                k = 2 * (R1 * R2) ** 0.5 / ((R1 + R2) ** 2 + (Z1 - Z2) ** 2) ** 0.5
-                M12 = mu0 * (R1 * R2) ** 0.5 * ((2 / k - k) * ellipk(k ** 2) - 2 / k * ellipe(k ** 2))
-
                 # Calcluating self inductance
                 if i == j:
-                    M12 = mu0 * R1 * (np.log(8 * R1 / (fil.dR + fil.dZ)) - 1 / 2)
+                    M12 = mu_0 * R1 * (np.log(8 * R1 / (fil.dR + fil.dZ)) - 1 / 2)
+
+                # Calculating Mutual Inductance between filaments
+                else:
+                    k = 2 * (R1 * R2) ** 0.5 / ((R1 + R2) ** 2 + (Z1 - Z2) ** 2) ** 0.5
+                    M12 = mu_0 * (R1 * R2) ** 0.5 * ((2 / k - k) * ellipk(k ** 2) - 2 / k * ellipe(k ** 2))
 
                 M[i, j] = M12
                 M[j, i] = M12
@@ -728,7 +714,7 @@ class Filament_Group:
                                  reverse=False)]
 
         # Creating a matrix with each column representing an eigenvector of the vessel
-        vessel_basis = np.zeros((len(self.filaments), self.Nbasis))
+        vessel_basis = np.zeros((self.Nfils, self.Nbasis))
         for n in range(self.Nbasis):
             for i, val in enumerate(sorted_eigvecs[n]):
                 vessel_basis[i, n] = val
@@ -762,6 +748,7 @@ class Machine:
 
         self.limit_points_R = None
         self.limit_points_Z = None
+
         if self.wall is not None:
             self.limit_points_R, self.limit_points_Z = self.generate_limit_points(nlimit)
 
@@ -780,8 +767,7 @@ class Machine:
     def __eq__(self, other):
         # Other Machine might be equivalent except for order of
         # coils. Assume this doesn't actually matter
-        return sorted(self.coils) == sorted(
-            other.coils) and self.wall == other.wall
+        return sorted(self.coils) == sorted(other.coils) and self.wall == other.wall
 
     def __ne__(self, other):
         return not self == other
@@ -790,8 +776,7 @@ class Machine:
         for label, coil in self.coils:
             if label == name:
                 return coil
-        raise KeyError(
-            "Machine does not contain coil with label '{0}'".format(name))
+        raise KeyError("Machine does not contain coil with label '{0}'".format(name))
 
     def generate_limit_points(self,nlimit):
         '''
@@ -802,18 +787,17 @@ class Machine:
         # Interpolate wall limit points.
         # Make an interpolator for point location as function of normalised distance
         # along the wall
-        points = np.array([self.wall.R, self.wall.Z]).T
-        distance = np.cumsum(
-            np.sqrt(np.sum(np.diff(points, axis=0) ** 2, axis=1)))
-        distance = np.insert(distance, 0, 0) / distance[-1]
+        points = np.array([self.wall.R,self.wall.Z]).T
+        distance = np.cumsum(np.sqrt(np.sum(np.diff(points,axis=0)**2,axis=1)))
+        distance = np.insert(distance,0,0)/distance[-1]
 
 
         interpolator = interp1d(distance,points,kind='linear',axis=0)
         new_distances = np.linspace(0,1,nlimit,endpoint=True)
         interpolated_points = interpolator(new_distances)
 
-        R = np.asarray(interpolated_points[:, 0])
-        Z = np.asarray(interpolated_points[:, 1])
+        R = np.asarray(interpolated_points[:,0])
+        Z = np.asarray(interpolated_points[:,1])
 
         return R, Z
 
@@ -895,24 +879,21 @@ class Machine:
         Returns a list of control responses for Br
         at the given (R,Z) location(s).
         """
-        return [coil.controlBr(R, Z) for label, coil in self.coils if
-                coil.control]
+        return [coil.controlBr(R, Z) for label, coil in self.coils if coil.control]
 
     def controlBz(self, R, Z):
         """
         Returns a list of control responses for Bz
         at the given (R,Z) location(s)
         """
-        return [coil.controlBz(R, Z) for label, coil in self.coils if
-                coil.control]
+        return [coil.controlBz(R, Z) for label, coil in self.coils if coil.control]
 
     def controlPsi(self, R, Z):
         """
         Returns a list of control responses for psi
         at the given (R,Z) location(s)
         """
-        return [coil.controlPsi(R, Z) for label, coil in self.coils if
-                coil.control]
+        return [coil.controlPsi(R, Z) for label, coil in self.coils if coil.control]
 
     def controlAdjust(self, current_change):
         """
@@ -1051,22 +1032,18 @@ def TestTokamak():
     coils = [
         (
             "P1L",
-            ShapedCoil(
-                [(0.95, -1.15), (0.95, -1.05), (1.05, -1.05), (1.05, -1.15)]),
+            ShapedCoil([(0.95, -1.15), (0.95, -1.05), (1.05, -1.05), (1.05, -1.15)]),
         ),
-        ("P1U",
-         ShapedCoil([(0.95, 1.15), (0.95, 1.05), (1.05, 1.05), (1.05, 1.15)])),
+        ("P1U",ShapedCoil([(0.95, 1.15), (0.95, 1.05), (1.05, 1.05), (1.05, 1.15)])),
         ("P2L", Coil(1.75, -0.6)),
         ("P2U", Coil(1.75, 0.6)),
     ]
 
     wall = Wall(
-        [0.75, 0.75, 1.5, 1.8, 1.8, 1.5],
-        [-0.85, 0.85, 0.85, 0.25, -0.25, -0.85]  # R
+        [0.75, 0.75, 1.5, 1.8, 1.8, 1.5], [-0.85, 0.85, 0.85, 0.25, -0.25, -0.85]  # R
     )  # Z
 
     return Machine(coils, wall)
-
 
 def TestTokamakLimited():
     """
@@ -1076,18 +1053,15 @@ def TestTokamakLimited():
     coils = [
         (
             "P1L",
-            ShapedCoil(
-                [(0.95, -1.15), (0.95, -1.05), (1.05, -1.05), (1.05, -1.15)]),
+            ShapedCoil([(0.95, -1.15), (0.95, -1.05), (1.05, -1.05), (1.05, -1.15)]),
         ),
-        ("P1U",
-         ShapedCoil([(0.95, 1.15), (0.95, 1.05), (1.05, 1.05), (1.05, 1.15)])),
+        ("P1U", ShapedCoil([(0.95, 1.15), (0.95, 1.05), (1.05, 1.05), (1.05, 1.15)])),
         ("P2L", Coil(1.75, -0.6)),
         ("P2U", Coil(1.75, 0.6)),
     ]
 
     wall = Wall(
-        [0.93, 0.93, 1.5, 1.8, 1.8, 1.5],
-        [-0.85, 0.85, 0.85, 0.25, -0.25, -0.85]  # R
+        [0.93, 0.93, 1.5, 1.8, 1.8, 1.5], [-0.85, 0.85, 0.85, 0.25, -0.25, -0.85]  # R
     )  # Z
 
     return Machine(coils, wall)
@@ -1276,25 +1250,20 @@ def MAST_sym():
     coils = [
         (
             "P2",
-            Circuit([("P2U", Coil(0.49, 1.76), 1.0),
-                     ("P2L", Coil(0.49, -1.76), 1.0)]),
+            Circuit([("P2U", Coil(0.49, 1.76), 1.0), ("P2L", Coil(0.49, -1.76), 1.0)]),
         ),
-        ("P3", Circuit(
-            [("P3U", Coil(1.1, 1.1), 1.0), ("P3L", Coil(1.1, -1.1), 1.0)])),
+        ("P3", Circuit([("P3U", Coil(1.1, 1.1), 1.0), ("P3L", Coil(1.1, -1.1), 1.0)])),
         (
             "P4",
             Circuit(
-                [("P4U", Coil(1.51, 1.095), 1.0),
-                 ("P4L", Coil(1.51, -1.095), 1.0)]
+                [("P4U", Coil(1.51, 1.095), 1.0), ("P4L", Coil(1.51, -1.095), 1.0)]
             ),
         ),
         (
             "P5",
-            Circuit([("P5U", Coil(1.66, 0.52), 1.0),
-                     ("P5L", Coil(1.66, -0.52), 1.0)]),
+            Circuit([("P5U", Coil(1.66, 0.52), 1.0), ("P5L", Coil(1.66, -0.52), 1.0)]),
         ),
-        ("P6", Circuit(
-            [("P6U", Coil(1.5, 0.9), 1.0), ("P6L", Coil(1.5, -0.9), -1.0)])),
+        ("P6", Circuit([("P6U", Coil(1.5, 0.9), 1.0), ("P6L", Coil(1.5, -0.9), -1.0)])),
         ("P1", Solenoid(0.15, -1.45, 1.45, 100)),
     ]
 

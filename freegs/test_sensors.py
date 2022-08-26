@@ -1,9 +1,7 @@
 import freegs
 import numpy as np
-import math
 from scipy.special import ellipk, ellipe
-
-mu0 = 4e-7 * np.pi
+from scipy.constants import mu_0
 
 def test_offaxis_Bfield():
     """
@@ -24,7 +22,7 @@ def test_offaxis_Bfield():
 
     # first want to write a calc for the analytical B field (with elliptical integrals)
     # defining the constants
-    B0 = (current * mu0) / (
+    B0 = (current * mu_0) / (
             2 * Rcoil)  # this is the field on axis centre of coil plane
     a = r / Rcoil
     b = (z - zcoil) / Rcoil
@@ -43,7 +41,7 @@ def test_offaxis_Bfield():
     for sensor in tokamak.sensors:
         if isinstance(sensor, freegs.machine.PoloidalFieldSensor):
             sensor.get_measure(tokamak)
-            assert math.isclose(sensor.measurement, B, abs_tol=1e-8)
+            assert np.isclose(sensor.measurement, B, atol=1e-8)
 
 
 def test_xpoint_field():
@@ -81,7 +79,7 @@ def test_xpoint_field():
     tokamak.takeMeasurements(eq)
 
     for sensor in tokamak.sensors:
-        assert math.isclose(sensor.measurement, 0.0, abs_tol=1e-5)
+        assert np.isclose(sensor.measurement, 0.0, atol=1e-5)
 
 
 def test_iso_flux():
@@ -115,8 +113,8 @@ def test_iso_flux():
 
     tokamak.takeMeasurements(eq)
 
-    assert math.isclose(tokamak.sensors[0].measurement, tokamak.sensors[1].measurement,
-                        abs_tol=1e-8)
+    assert np.isclose(tokamak.sensors[0].measurement, tokamak.sensors[1].measurement,
+                        atol=1e-8)
 
 
 def test_flux():
@@ -140,7 +138,7 @@ def test_flux():
     for sensor in tokamak.sensors:
         if isinstance(sensor, freegs.machine.FluxLoopSensor):
             sensor.get_measure(tokamak)
-            assert math.isclose(sensor.measurement, psi, abs_tol=1e-8)
+            assert np.isclose(sensor.measurement, psi, atol=1e-8)
 
 
 def test_rog_around_coil():
@@ -160,7 +158,7 @@ def test_rog_around_coil():
 
     tokamak.takeMeasurements()
 
-    assert math.isclose(tokamak.sensors[0].measurement, current, abs_tol=1)
+    assert np.isclose(tokamak.sensors[0].measurement, current, atol=1)
 
 
 def test_rog_around_Shapedcoil():
@@ -180,7 +178,7 @@ def test_rog_around_Shapedcoil():
 
     tokamak.takeMeasurements()
     for sensor in tokamak.sensors:
-        assert math.isclose(sensor.measurement, current / 2, abs_tol=1)
+        assert np.isclose(sensor.measurement, current / 2, atol=1)
 
 
 def test_rog_around_Filamentcoil():
@@ -233,7 +231,7 @@ def test_rog_with_plasma():
 
     eq.solve(profiles)
     tokamak.takeMeasurements(eq)
-    assert math.isclose(tokamak.sensors[0].measurement, plasmacurrent,abs_tol=1000)
+    assert np.isclose(tokamak.sensors[0].measurement, plasmacurrent,atol=1000)
 
 test_flux()
 test_iso_flux()
