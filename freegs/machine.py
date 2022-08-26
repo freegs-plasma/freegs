@@ -179,6 +179,14 @@ class Circuit:
             forces[label] = coil.getForces(equilibrium)
         return forces
 
+    def currentInShape(self, polygon):
+        coil_current = 0
+        for label, coil, multiplier in self.coils:
+            coil.current = self.current * multiplier
+            coil_current += coil.currentInShape(polygon)
+
+        return coil_current
+
     def __repr__(self):
         result = "Circuit(["
         coils = [
@@ -496,32 +504,15 @@ class RogowskiSensor(Sensor):
         """
 
         if self.status:
-            coil_current = 0
 
             # coil current
+            coil_current = 0
             for label, coil in tokamak.coils:
-
-                if isinstance(coil, Coil):
-                    coil_current += self.find_coil_currents(coil, self.polygon)
-
-                elif isinstance(coil, Circuit):
-                    for name, sub_coil, multiplier in coil.coils:
-                        sub_coil.current = coil.current * multiplier
-                        coil_current += self.find_coil_currents(sub_coil, self.polygon)
-
+                coil_current += coil.currentInShape(self.polygon)
 
             if tokamak.vessel is not None:
                 for filament in tokamak.vessel:
-                    if isinstance(filament, Filament):
-                        point = Point(filament.R, filament.Z)
-                        if self.polygon.contains(point):
-                            coil_current += filament.current
-
-                    if isinstance(filament, Filament_Group):
-                        for subfil in filament.filaments:
-                            point = Point(subfil.R, subfil.Z)
-                            if self.polygon.contains(point):
-                                coil_current += subfil.current
+                    coil_current += filament.currentInShape(self.polygon)
 
             # plasma current
             plasma_current = 0
@@ -544,24 +535,6 @@ class RogowskiSensor(Sensor):
                         plasma_current += equilibrium.Jtor[i, j] * self.polygon.intersection(gridpoint).area
 
             self.measurement = plasma_current + coil_current
-
-    def find_coil_currents(self, coil, polygon):
-        coil_current = 0
-        if isinstance(coil, FilamentCoil):
-            for r, z in coil.points:
-                if polygon.contains(Point(r,z)):
-                    coil_current += coil.current / coil.npoints
-
-        elif isinstance(coil, ShapedCoil):
-            Shaped_Coil = Polygon([shape for shape in coil.shape])
-            coil_current += (polygon.intersection(Shaped_Coil).area) / (coil._area) * coil.current
-
-        else:
-            if polygon.contains(Point(coil.R, coil.Z)):
-                coil_current += coil.current
-
-        return coil_current
-
 
 
 class PoloidalFieldSensor(Sensor):
@@ -675,6 +648,9 @@ class Filament_Group:
         Calculate vertical magnetic field Bz at (R,Z)
         """
         return sum([filament.Bz(R, Z) for filament in self.filaments])
+
+    def currentInShape(self,polygon):
+        return sum(filament.currentInShape(polygon) for filament in self.filaments)
 
     def updateFilamentCurrent(self, currents):
         for filament in self.filaments:

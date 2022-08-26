@@ -118,28 +118,50 @@ def test_vessel_eigenmode():
     assert abs(Recon.c[-tokamak.eigenbasis.shape[1]+i]) > 50*abs(Recon.c[-tokamak.eigenbasis.shape[1]+i+1]) and abs(Recon.c[-tokamak.eigenbasis.shape[1]+i]) > 50*abs(Recon.c[-tokamak.eigenbasis.shape[1]+i-1])
 
 
-def advanced_reconstruction_test():
+def advanced_reconstruction_test_novessel():
     import pickle
-    Recon = reconstruction.Reconstruction(machine.EfitTestMachine(), 3,3, test=True, show=True)#, CurrentInitialisation=False)
+    Recon = reconstruction.Reconstruction(machine.EfitTestMachine(), 3,3, test=True, show=True)
     tokamaklist = ['DD.pkl', 'DS.pkl', 'LD.pkl', 'LS.pkl']
-    for status in [False, True]:
-        Recon.VesselCurrents = status
-        for tokamakfile in tokamaklist:
-            with open(tokamakfile, 'rb') as inp:
-                tokamakfordict = pickle.load(inp)
+    Recon.VesselCurrents = False
+    for tokamakfile in tokamaklist:
+        with open(tokamakfile, 'rb') as inp:
+            tokamakfordict = pickle.load(inp)
 
-            measurement_dict = {}
-            sigma_dict = {}
-            for sensor in tokamakfordict.sensors:
-                measurement_dict[sensor.name] = sensor.measurement
-                sigma_dict[sensor.name] = sensor.measurement / sensor.weight
+        measurement_dict = {}
+        sigma_dict = {}
+        for sensor in tokamakfordict.sensors:
+            measurement_dict[sensor.name] = sensor.measurement
+            sigma_dict[sensor.name] = sensor.measurement / sensor.weight
 
-            for coil_name, coil in tokamakfordict.coils:
-                measurement_dict[coil_name] = coil.current
-                sigma_dict[coil_name] = 1e-5
+        for coil_name, coil in tokamakfordict.coils:
+            measurement_dict[coil_name] = coil.current
+            sigma_dict[coil_name] = 1e-5
 
-            Recon.solve_from_dictionary(measurement_dict,sigma_dict)
-            print('Passed')
+        Recon.solve_from_dictionary(measurement_dict,sigma_dict)
+        print('Passed')
+    Recon.plot()
+
+def advanced_reconstruction_test_vessel():
+    import pickle
+    Recon = reconstruction.Reconstruction(machine.EfitTestMachine(), 3,3, test=True, show=True)
+    tokamaklist = ['DD.pkl', 'DS.pkl', 'LD.pkl', 'LS.pkl']
+    Recon.VesselCurrents = True
+    for tokamakfile in tokamaklist:
+        with open(tokamakfile, 'rb') as inp:
+            tokamakfordict = pickle.load(inp)
+
+        measurement_dict = {}
+        sigma_dict = {}
+        for sensor in tokamakfordict.sensors:
+            measurement_dict[sensor.name] = sensor.measurement
+            sigma_dict[sensor.name] = sensor.measurement / sensor.weight
+
+        for coil_name, coil in tokamakfordict.coils:
+            measurement_dict[coil_name] = coil.current
+            sigma_dict[coil_name] = 1e-5
+
+        Recon.solve_from_dictionary(measurement_dict,sigma_dict)
+        print('Passed')
     Recon.plot()
 
 def advanced_reconstruction_eigenmode():
@@ -165,6 +187,7 @@ def advanced_reconstruction_eigenmode():
         print('Passed')
     Recon.plot()
 
-advanced_reconstruction_test()
+advanced_reconstruction_test_novessel()
+advanced_reconstruction_test_vessel()
 advanced_reconstruction_eigenmode()
 #test_vessel_eigenmode()
