@@ -179,13 +179,12 @@ class Circuit:
             forces[label] = coil.getForces(equilibrium)
         return forces
 
-    def currentInShape(self, polygon):
-        coil_current = 0
+    def inShape(self, polygon):
+        counter = 0
         for label, coil, multiplier in self.coils:
-            coil.current = self.current * multiplier
-            coil_current += coil.currentInShape(polygon)
+            counter += coil.inShape(polygon) * multiplier
 
-        return coil_current
+        return counter
 
     def __repr__(self):
         result = "Circuit(["
@@ -508,7 +507,7 @@ class RogowskiSensor(Sensor):
             # coil current
             coil_current = 0
             for label, coil in tokamak.coils:
-                coil_current += coil.currentInShape(self.polygon)
+                coil_current += coil.inShape(self.polygon) * coil.current
 
             if tokamak.vessel is not None:
                 for filament in tokamak.vessel:
@@ -536,6 +535,20 @@ class RogowskiSensor(Sensor):
 
             self.measurement = plasma_current + coil_current
 
+    def get_PlasmaGreensRow(self, eq):
+        greens_matrix = np.zeros((eq.nx, eq.ny))
+        for i in range(eq.nx):
+            for j in range(eq.ny):
+                if self.polygon.contains(Point(eq.R[i, j], eq.Z[i, j])):
+                    greens_matrix[i, j] = eq.dR * eq.dZ
+        return greens_matrix
+
+    def get_CoilGreensRow(self, coil):
+        return coil.inShape(self.polygon)
+
+    def get_VesselGreensRow(self, passive):
+        return passive.inShape(self.polygon)
+
 
 class PoloidalFieldSensor(Sensor):
     """
@@ -561,7 +574,16 @@ class PoloidalFieldSensor(Sensor):
             if equilibrium != None:
                 field += equilibrium.plasmaBr(self.R, self.Z) * np.cos(self.theta) + equilibrium.plasmaBz(self.R,self.Z) * np.sin(self.theta)
 
-            self.measurement = float(field)
+            self.measurement = field
+
+    def get_PlasmaGreensRow(self, eq):
+        return eq.dR * eq.dZ * (GreensBr(eq.R, eq.Z, self.R,self.Z) * np.cos(self.theta) + GreensBz(eq.R,eq.Z, self.R,self.Z) * np.sin(self.theta))
+
+    def get_CoilGreensRow(self, coil):
+        return np.cos(self.theta) * coil.controlBr(self.R,self.Z) + np.sin(self.theta) * coil.controlBz(self.R, self.Z)
+
+    def get_VesselGreensRow(self, passive):
+        return np.cos(self.theta) * passive.controlBr(self.R,self.Z) + np.sin(self.theta) * passive.controlBz(self.R, self.Z)
 
 
 class FluxLoopSensor(Sensor):
@@ -584,7 +606,16 @@ class FluxLoopSensor(Sensor):
                 psi = equilibrium.psiRZ(self.R, self.Z)
             else:
                 psi = tokamak.psi(self.R, self.Z)
-            self.measurement = float(psi)
+            self.measurement = psi
+
+    def get_PlasmaGreensRow(self, eq):
+        return eq.dR * eq.dZ * Greens(eq.R, eq.Z, self.R,self.Z)
+
+    def get_CoilGreensRow(self, coil):
+        return coil.controlPsi(self.R,self.Z)
+
+    def get_VesselGreensRow(self, passive):
+        return passive.controlPsi(self.R,self.Z)
 
 
 class Filament(Coil):
@@ -650,7 +681,10 @@ class Filament_Group:
         return sum([filament.Bz(R, Z) for filament in self.filaments])
 
     def currentInShape(self,polygon):
-        return sum(filament.currentInShape(polygon) for filament in self.filaments)
+        return sum(filament.inShape(polygon)*filament.current for filament in self.filaments)
+
+    def inShape(self,polygon):
+        return sum(filament.inShape(polygon) for filament in self.filaments)
 
     def updateFilamentCurrent(self, currents):
         for filament in self.filaments:

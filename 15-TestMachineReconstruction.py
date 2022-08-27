@@ -1,9 +1,5 @@
-from freegs import machine, equilibrium, reconstruction, plotting, boundary, jtor, control, picard
+from freegs import machine, reconstruction
 import numpy as np
-show = True
-check_limited = True
-np.set_printoptions(threshold=np.inf)
-
 
 # Defining equilibrium grid
 Rmin = 0.1
@@ -29,5 +25,5 @@ eq = reconstruction.generate_Measurements(tokamak, alpha_m, alpha_n, x_z1=x_z1, 
 
 # Performing Reconstruction
 print('Starting Reconstruction')
-Recon = reconstruction.Reconstruction(tokamak, pprime_order, ffprime_order, tolerance=1e-20, VesselCurrents=False)
+Recon = reconstruction.Reconstruction(tokamak, pprime_order, ffprime_order, tolerance=1e-20, use_VesselCurrents=False)
 Recon.solve_from_tokamak()

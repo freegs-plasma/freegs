@@ -23,7 +23,7 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 from .gradshafranov import Greens
 from numpy import concatenate, sqrt
 
-from scipy.integrate import romb  # Romberg integration
+from scipy.integrate import trapz  # trapezoidal integration
 
 
 def fixedBoundary(eq, Jtor, psi):
@@ -96,7 +96,7 @@ def freeBoundary(eq, Jtor, psi):
         greenfunc[x, y] = 0.0
 
         # Integrate over the domain
-        psi[x, y] = romb(romb(greenfunc * Jtor)) * dR * dZ
+        psi[x, y] = trapz(trapz(greenfunc * Jtor)) * dR * dZ
 
 
 def freeBoundaryHagenow(eq, Jtor, psi):

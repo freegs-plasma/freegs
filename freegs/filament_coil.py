@@ -269,13 +269,12 @@ class FilamentCoil(Coil):
         result = result / float(self.npoints)
         return result
 
-    def currentInShape(self,polygon):
-        current = 0
+    def inShape(self,polygon):
+        counter = 0
         for r, z in self.points:
             if polygon.contains(geometry.Point(r, z)):
-                current += self.current / self.npoints
-
-        return current
+                counter += 1 / self.npoints
+        return counter
 
     def __repr__(self):
         return ("FilamentCoil({0}, current={1:.1f}, turns={2}, control={3})"

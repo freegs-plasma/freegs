@@ -206,9 +206,9 @@ class Coil:
             ]
         )  # Jphi x Br = - Fz
 
-    def currentInShape(self,polygon):
+    def inShape(self,polygon):
         if polygon.contains(Point(self.R, self.Z)):
-            return self.current
+            return 1
         else:
             return 0
 

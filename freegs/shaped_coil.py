@@ -123,9 +123,9 @@ class ShapedCoil(Coil):
             self.shape, self.current, self.turns, self.control
         )
 
-    def currentInShape(self,polygon):
+    def inShape(self,polygon):
         Shaped_Coil = Polygon([shape for shape in self.shape])
-        return (polygon.intersection(Shaped_Coil).area) / (self._area) * self.current
+        return (polygon.intersection(Shaped_Coil).area) / (self._area)
 
     @property
     def R(self):

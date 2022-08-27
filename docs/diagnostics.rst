@@ -147,6 +147,22 @@ This can be changed e.g::
 
 would set the current limit for coil "P1L" to 1e9 Amps per square meter.
 
+Sensor Measurements
+---------------------------
+For a machine populated with sensors, to run the ``get_Measure(equilibrium)``
+method of each sensor, ``tokamak.takeMeasurments(equilibrium)`` is used. The measurement
+atrribute of each sensor is then updated with the measured values. If no equilibrium object
+is passed, then the sensors will find the coil contribution (and in a future update, vessel current contribution)
+to each of the measurements.
+
+To measure and print the values, the following method is used::
+
+tokamak.printMeasurements(equilibrium)
+
+The Rogowski Coils uses
+
+
+
 Field line connection length
 ----------------------------
 

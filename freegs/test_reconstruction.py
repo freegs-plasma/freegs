@@ -120,7 +120,7 @@ def test_vessel_eigenmode():
 
 def advanced_reconstruction_test_novessel():
     import pickle
-    Recon = reconstruction.Reconstruction(machine.EfitTestMachine(), 3,3, test=True, show=True)
+    Recon = reconstruction.Reconstruction(machine.EfitTestMachine(), 3,3, test=True, show=False)
     tokamaklist = ['DD.pkl', 'DS.pkl', 'LD.pkl', 'LS.pkl']
     Recon.VesselCurrents = False
     for tokamakfile in tokamaklist:
@@ -143,7 +143,7 @@ def advanced_reconstruction_test_novessel():
 
 def advanced_reconstruction_test_vessel():
     import pickle
-    Recon = reconstruction.Reconstruction(machine.EfitTestMachine(), 3,3, test=True, show=True)
+    Recon = reconstruction.Reconstruction(machine.EfitTestMachine(), 3,3, test=True, show=False)
     tokamaklist = ['DD.pkl', 'DS.pkl', 'LD.pkl', 'LS.pkl']
     Recon.VesselCurrents = True
     for tokamakfile in tokamaklist:
@@ -166,7 +166,7 @@ def advanced_reconstruction_test_vessel():
 
 def advanced_reconstruction_eigenmode():
     import pickle
-    Recon = reconstruction.Reconstruction(machine.EfitTestMachine(), 3,3, test=True, show=True)
+    Recon = reconstruction.Reconstruction(machine.EfitTestMachine(), 3,3, test=True, show=False)
     tokamaklist2 = ['DDV.pkl', 'DSV.pkl', 'LDV.pkl', 'LSV.pkl']
 
     for tokamakfile in tokamaklist2:
@@ -190,4 +190,4 @@ def advanced_reconstruction_eigenmode():
 advanced_reconstruction_test_novessel()
 advanced_reconstruction_test_vessel()
 advanced_reconstruction_eigenmode()
-#test_vessel_eigenmode()
+test_vessel_eigenmode()
