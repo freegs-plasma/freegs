@@ -1,14 +1,12 @@
 from freegs import machine, equilibrium, reconstruction, plotting, critical
 import numpy as np
 import math
-np.set_printoptions(threshold=np.inf)
-
-"""
-Test script running through 11 different equilibria
-Ensures that each converges, and that psi at isoflux's are the same
-"""
 
 def test_reconstruction():
+    """
+    Test script running through 11 different equilibria
+    Ensures that each converges, and that psi at isoflux's are the same
+    """
     alpha_n_list = [1,1,1,1,2,2,2,2,2,2,2]
     pprime_order_list = [2,2,2,2,3,3,3,3,3,3,3]
     ffprime_order_list = pprime_order_list
@@ -16,11 +14,12 @@ def test_reconstruction():
     x_point_list2 = [-0.6,-0.6,-0.6,-0.8,-0.6,-0.6,-0.6,-0.7,-0.7,-0.7,-0.8]
 
     # Defining equilibrium grid
-    kwargs = {'tokamak': tokamak, 'Rmin': 0.1, 'Rmax': 2, 'Zmin': -1, 'Zmax': 1, 'nx': 65, 'ny': 65}
+    tokamak = machine.EfitTestMachine()
+
+    eq_setup = {'tokamak': tokamak, 'Rmin': 0.1, 'Rmax': 2, 'Zmin': -1, 'Zmax': 1, 'nx': 65, 'ny': 65}
     alpha_m=1
 
-    tokamak = machine.EfitTestMachine()
-    Recon = reconstruction.Reconstruction(0,0, show=False, tolerance=1e-15, VesselCurrents=False, **kwargs)
+    Recon = reconstruction.Reconstruction(0,0, show=False, tolerance=1e-8, **eq_setup)
 
     for alpha_n, pprime_order, ffprime_order, x_z1, x_z2 in zip(alpha_n_list,pprime_order_list,ffprime_order_list,x_point_list1,x_point_list2):
         Recon.tokamak = machine.EfitTestMachine()
@@ -44,10 +43,14 @@ def test_reconstruction():
         assert Recon.chi <=1e-3
 
 def test_vessel_eigenmode():
+    """
+    Test script that creates an equilibrium with a specific vessel mode excited, then tests
+    the reonctsurctions ability to isolate the mode
+    """
     np.set_printoptions(threshold=np.inf)
     show = True
     import matplotlib.pyplot as plt
-    kwargs = {'tokamak': machine.EfitTestMachine(), 'Rmin': 0.1, 'Rmax': 2, 'Zmin': -1, 'Zmax': 1, 'nx': 65, 'ny': 65}
+    eq_setup = {'tokamak': machine.EfitTestMachine(), 'Rmin': 0.1, 'Rmax': 2, 'Zmin': -1, 'Zmax': 1, 'nx': 65, 'ny': 65}
 
     # Defining initial model and reconstruction parameters
     pprime_order = 3
@@ -95,7 +98,7 @@ def test_vessel_eigenmode():
 
     # Reconstruction
     tokamak = machine.EfitTestMachine()
-    Recon = reconstruction.Reconstruction(pprime_order, ffprime_order, show=show, **kwargs)
+    Recon = reconstruction.Reconstruction(pprime_order, ffprime_order, show=show, **eq_setup)
     Recon.solve_from_dictionary(measurement_dict=measurement_dict, sigma_dict=sigma_dict)
 
     eig_coef = Recon.c[-tokamak.eigenbasis.shape[1]+i]
@@ -103,11 +106,17 @@ def test_vessel_eigenmode():
     assert abs(Recon.c[-tokamak.eigenbasis.shape[1]+i]) > 50*abs(Recon.c[-tokamak.eigenbasis.shape[1]+i+1]) and abs(Recon.c[-tokamak.eigenbasis.shape[1]+i]) > 50*abs(Recon.c[-tokamak.eigenbasis.shape[1]+i-1])
 
 def advanced_reconstruction_test_novessel():
-    import pickle
-    kwargs = {'tokamak': machine.EfitTestMachine(), 'Rmin': 0.1, 'Rmax': 2, 'Zmin': -1, 'Zmax': 1, 'nx': 65, 'ny': 65}
-    Recon = reconstruction.Reconstruction(3,3, test=True, show=True, **kwargs)
+    """
+    Test script running through 4 different equilibria
+    Vessel currents turned off
+    Tests for convergence and all correct sensors
+    """
+    eq_setup = {'tokamak': machine.EfitTestMachine(), 'Rmin': 0.1, 'Rmax': 2, 'Zmin': -1, 'Zmax': 1, 'nx': 65, 'ny': 65}
+
+    Recon = reconstruction.Reconstruction(3,3, test=True, show=True, **eq_setup)
     tokamaklist = ['DD.pkl', 'DS.pkl', 'LD.pkl', 'LS.pkl']
     Recon.use_VesselCurrents = False
+
     for tokamakfile in tokamaklist:
         with open(tokamakfile, 'rb') as inp:
             tokamakfordict = pickle.load(inp)
@@ -128,9 +137,13 @@ def advanced_reconstruction_test_novessel():
     Recon.plot()
 
 def advanced_reconstruction_test_vessel():
-    import pickle
-    kwargs = {'tokamak': machine.EfitTestMachine(), 'Rmin': 0.1, 'Rmax': 2, 'Zmin': -1, 'Zmax': 1, 'nx': 65, 'ny': 65}
-    Recon = reconstruction.Reconstruction(3,3, test=True, show=False, **kwargs)
+    """
+    Test script running through 4 different equilibria
+    Vessel currents on
+    Tests for convergence and all correct sensors
+    """
+    eq_setup = {'tokamak': machine.EfitTestMachine(), 'Rmin': 0.1, 'Rmax': 2, 'Zmin': -1, 'Zmax': 1, 'nx': 65, 'ny': 65}
+    Recon = reconstruction.Reconstruction(3,3, test=True, show=False, **eq_setup)
     tokamaklist = ['DD.pkl', 'DS.pkl', 'LD.pkl', 'LS.pkl']
     Recon.use_VesselCurrents = True
     for tokamakfile in tokamaklist:
@@ -152,9 +165,13 @@ def advanced_reconstruction_test_vessel():
     Recon.plot()
 
 def advanced_reconstruction_eigenmode():
-    import pickle
-    kwargs = {'tokamak': machine.EfitTestMachine(), 'Rmin': 0.1, 'Rmax': 2, 'Zmin': -1, 'Zmax': 1, 'nx': 65, 'ny': 65}
-    Recon = reconstruction.Reconstruction(3,3, test=True, show=False, **kwargs)
+    """
+    Test script running through 4 different equilibria
+    Vessel currents excited
+    Tests for convergence and all correct sensors
+    """
+    eq_setup = {'tokamak': machine.EfitTestMachine(), 'Rmin': 0.1, 'Rmax': 2, 'Zmin': -1, 'Zmax': 1, 'nx': 65, 'ny': 65}
+    Recon = reconstruction.Reconstruction(3,3, test=True, show=False, **eq_setup)
     tokamaklist2 = ['DDV.pkl', 'DSV.pkl', 'LDV.pkl', 'LSV.pkl']
 
     for tokamakfile in tokamaklist2:
@@ -176,6 +193,7 @@ def advanced_reconstruction_eigenmode():
 
     Recon.plot()
 
+test_reconstruction()
 advanced_reconstruction_test_novessel()
 advanced_reconstruction_test_vessel()
 advanced_reconstruction_eigenmode()

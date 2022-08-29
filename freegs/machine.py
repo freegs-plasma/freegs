@@ -491,20 +491,30 @@ class RogowskiSensor(Sensor):
 
     def __init__(self, R, Z, current=0, name=None, weight=1, status=True,
                  measurement=None):
-        Sensor.__init__(self, R, Z, name=name, weight=weight, status=status,
-                        measurement=measurement)
+
+        Sensor.__init__(self, R, Z, name=name, weight=weight, status=status, measurement=measurement)
 
         polygonlist = [(r, z) for r, z in zip(self.R, self.Z)]
         self.polygon = Polygon(polygonlist)
 
-    def get_measure(self, tokamak, equilibrium=None):
+    def get_measure(self, thing):
         """
         Method to update the current attribute of the sensor
         with whatever current is contained within the sensor
         if sensor is on (status == True)
+
+        Input type is either Machine class or Equilibrium class
         """
 
         if self.status:
+
+            if isinstance(thing, Machine):
+                tokamak = thing
+                equilibrium = None
+
+            else:
+                tokamak = thing.tokamak
+                equilibrium = thing
 
             # coil current
             coil_current = 0
@@ -537,6 +547,8 @@ class RogowskiSensor(Sensor):
 
             self.measurement = plasma_current + coil_current
 
+
+    # Methods used in Reconstruction for generating the Greens matrices
     def get_PlasmaGreensRow(self, eq):
         greens_matrix = np.zeros((eq.nx, eq.ny))
         for i in range(eq.nx):
@@ -565,19 +577,26 @@ class PoloidalFieldSensor(Sensor):
     def __repr__(self):
         return "R={R}, Z={Z}, Theta={Theta}".format(R=self.R, Z=self.Z, Theta=self.theta)
 
-    def get_measure(self, tokamak, equilibrium=None):
+    def get_measure(self, thing):
         """
         Updates field attribute of sensor with measured field at that
         point/direction if sensor is on
-        """
-        if self.status:
-            field = (tokamak.Br(self.R, self.Z)) * np.cos(self.theta) + (tokamak.Bz(self.R, self.Z)) * np.sin(self.theta)
 
-            if equilibrium != None:
-                field += equilibrium.plasmaBr(self.R, self.Z) * np.cos(self.theta) + equilibrium.plasmaBz(self.R,self.Z) * np.sin(self.theta)
+        Input type is either Machine class or Equilibrium class
+        """
+
+        if self.status:
+            if isinstance(thing, Machine):
+                field = (thing.Br(self.R, self.Z)) * np.cos(self.theta) + (thing.Bz(self.R, self.Z)) * np.sin(self.theta)
+
+            else:
+                tokamak = thing.tokamak
+                field = (tokamak.Br(self.R, self.Z)) * np.cos(self.theta) + (tokamak.Bz(self.R, self.Z)) * np.sin(self.theta)
+                field += thing.plasmaBr(self.R, self.Z) * np.cos(self.theta) + thing.plasmaBz(self.R,self.Z) * np.sin(self.theta)
 
             self.measurement = field
 
+    # Methods used in Reconstruction for generating the Greens matrices
     def get_PlasmaGreensRow(self, eq):
         return eq.dR * eq.dZ * (GreensBr(eq.R, eq.Z, self.R,self.Z) * np.cos(self.theta) + GreensBz(eq.R,eq.Z, self.R,self.Z) * np.sin(self.theta))
 
@@ -597,19 +616,24 @@ class FluxLoopSensor(Sensor):
     def __init__(self, R, Z, flux=0, name=None, weight=1, status=True, measurement=None):
         Sensor.__init__(self, R, Z, name=name, weight=weight, status=status, measurement=measurement)
 
-    def get_measure(self, tokamak, equilibrium=None):
+    def get_measure(self, thing):
         """
             Updates flux attribute with
             poloidal flux at the point of measurement
             if sensor is on
+
+        Input type is either Machine class or Equilibrium class
         """
         if self.status:
-            if equilibrium != None:
-                psi = equilibrium.psiRZ(self.R, self.Z)
+            if isinstance(thing, Machine):
+                psi = thing.psi(self.R, self.Z)
+
             else:
-                psi = tokamak.psi(self.R, self.Z)
+                psi = thing.psiRZ(self.R, self.Z)
+
             self.measurement = psi
 
+    # Methods used in Reconstruction for generating the Greens matrices
     def get_PlasmaGreensRow(self, eq):
         return eq.dR * eq.dZ * Greens(eq.R, eq.Z, self.R,self.Z)
 
@@ -644,7 +668,7 @@ class Filament(Coil):
         return [[1]]
 
 
-class Filament_Group:
+class Passive:
     def __init__(self, filaments, name, n_basis=10):
         self.filaments = filaments
         self.name = name
@@ -962,8 +986,11 @@ class Machine:
         Method calling the measure method of each sensor on the machine
         """
         for sensor in self.sensors:
-            sensor.get_measure(self, equilibrium=equilibrium)
-        return
+            if equilibrium is not None:
+                sensor.get_measure(equilibrium)
+            else:
+                sensor.get_measure(self)
+
 
     def printMeasurements(self, equilibrium=None):
         """
@@ -1064,7 +1091,7 @@ def TestTokamak():
             "P1L",
             ShapedCoil([(0.95, -1.15), (0.95, -1.05), (1.05, -1.05), (1.05, -1.15)]),
         ),
-        ("P1U",ShapedCoil([(0.95, 1.15), (0.95, 1.05), (1.05, 1.05), (1.05, 1.15)])),
+        ("P1U", ShapedCoil([(0.95, 1.15), (0.95, 1.05), (1.05, 1.05), (1.05, 1.15)])),
         ("P2L", Coil(1.75, -0.6)),
         ("P2U", Coil(1.75, 0.6)),
     ]
@@ -1161,7 +1188,7 @@ def EfitTestMachine():
                 round(10000 * R ** 2 + 100 * Z))))
 
         if groupFilaments:
-            vessel = [Filament_Group(vessel, 'ivc', n_basis=6)]
+            vessel = [Passive(vessel, 'ivc', n_basis=6)]
 
         return vessel
 

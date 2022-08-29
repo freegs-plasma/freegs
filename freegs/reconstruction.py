@@ -1,19 +1,43 @@
+"""
+Classes and routines to reconstruct magnetic profiles from sensor data
+
+License
+-------
+
+Copyright 2022 Angus Gibby,  Email: angus.gibby@new.ox.ac.uk
+
+This file is part of FreeGS.
+
+FreeGS is free software: you can redistribute it and/or modify
+it under the terms of the GNU Lesser General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+FreeGS is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public License
+along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
+"""
+
 import numpy as np
 import scipy
-import math.comb
+import math
 from . import critical, plotting, jtor, control, picard, boundary, filament_coil, machine
 from .equilibrium import Equilibrium
-from .machine import Coil, ShapedCoil, FilamentCoil, RogowskiSensor, PoloidalFieldSensor, FluxLoopSensor, Filament, Filament_Group, Wall, Circuit, Machine
+from .machine import Coil, ShapedCoil, FilamentCoil, RogowskiSensor, PoloidalFieldSensor, FluxLoopSensor, Filament, Passive, Wall, Circuit, Machine
 from .gradshafranov import Greens, GreensBr, GreensBz
 from shapely.geometry import Point, Polygon, LineString, LinearRing
 from scipy.special import ellipk, ellipe
 from scipy.constants import mu_0
 import matplotlib.pyplot as plt
+import pickle
 
 class Reconstruction(Equilibrium):
     def __init__(self, pprime_order, ffprime_order, tolerance=1e-8, coil_weight=50, use_VesselCurrents=True, use_VerticalControl=True, use_CurrentInitialisation=True, show=True, test=False, **kwargs):
-        Equilibrium.__init__(self, tokamak=kwargs['tokamak'], Rmin=kwargs['Rmin'], Rmax=kwargs['Rmax'], Zmin=kwargs['Zmin'], Zmax=kwargs['Zmax'], nx=kwargs['nx'], ny=kwargs['ny'])
-        self.equilibrium_reset = kwargs
+        Equilibrium.__init__(self, **kwargs)
         self.test = test
 
         # Defining Reconstruction Parameters
@@ -47,8 +71,8 @@ class Reconstruction(Equilibrium):
         Parameters
         ----------
         tokamak - tokamak object
-        sensors - tokamak sensors from forward simulation
-        coils - tokamak coils from forward simulation
+        measurement_dict - dictionary containing measurements
+        sigma_dict - dictionry containing uncertainty values
 
         Returns
         -------
@@ -59,12 +83,12 @@ class Reconstruction(Equilibrium):
         M = []
         sigma = []
 
-
+        # Giving sensor measurements to M
         for sensor in self.tokamak.sensors:
             M.append([measurement_dict[sensor.name]])
             sigma.append([sigma_dict[sensor.name]])
 
-
+        # Giving coil currents to M
         for name, coil in self.tokamak.coils:
             M.append([measurement_dict[name]])
             sigma.append([sigma_dict[name]])
@@ -79,9 +103,8 @@ class Reconstruction(Equilibrium):
 
         Parameters
         ----------
-        tokamak - tokamak object
-        sensors - tokamak sensors from forward simulation
-        coils - tokamak coils from forward simulation
+        tokamak - tokamak object, contained within are sensors and coils
+                  which are preloaded with the measurement values for reconstruction
 
         Returns
         -------
@@ -92,11 +115,12 @@ class Reconstruction(Equilibrium):
         M = []
         sigma = []
 
+        # Adding sensor measurements to M
         for sensor in self.tokamak.sensors:
             M.append([sensor.measurement])
             sigma.append([1 / sensor.weight])
 
-        # Adding Coil Currents To Machine and M
+        # Adding Coil Currents to M
         for name, coil in self.tokamak.coils:
             M.append([coil.current])
             sigma.append([1/self.coil_weight])
@@ -120,17 +144,22 @@ class Reconstruction(Equilibrium):
 
         Parameters
         ----------
-        Gplasma - greens matrix
+        Gplasma - greens plasma response matrix
         M_plasma - plasma contribution to measurements
-        T - Initialisation basis matrix
+        FEmatrix - Finite Element basis matrix
 
         Returns
         -------
         jtor - current density matrix
         """
 
+        #Finding plasma dependence of measurements
         M_plasma = self.get_M_plasma()
+
+        # Creates finite element grid
         FEmatrix = self.get_FiniteElements(m=m,n=n)
+
+        #Uses least squares solver to find coefficients and subsequently jtor
         coefs = scipy.linalg.lstsq(self.Gplasma @ FEmatrix, M_plasma)[0]
         jtor = FEmatrix @ coefs
         return jtor
@@ -150,7 +179,11 @@ class Reconstruction(Equilibrium):
         M_plasma
         """
         M_plasma = []
+
+        # Finds the coil contirbution to the measurements
         self.tokamak.takeMeasurements()
+
+        # Finds the plasma (+vessel) contribution to measurements
         for i, sensor in enumerate(self.tokamak.sensors):
             M_plasma.append(self.M[i][0] - sensor.measurement)
 
@@ -166,13 +199,16 @@ class Reconstruction(Equilibrium):
     # Updating vessel and filament currents
     def update_currents(self):
 
+        # Loops through coils, updating the current with the new calculated values
+        coil_currents = self.get_index(self.c, 'coils')
+        for i, (name, circuit) in enumerate(self.tokamak.coils):
+            circuit.current = coil_currents[i][0]
+
+        # Updates filament currents if they are being used
         if self.use_VesselCurrents:
             fil_currents = self.tokamak.eigenbasis @ self.get_index(self.c, 'vessel')
             self.tokamak.updateVesselCurrents(fil_currents)
 
-        coil_currents = self.get_index(self.c, 'coils')
-        for i, (name, circuit) in enumerate(self.tokamak.coils):
-            circuit.current = coil_currents[i][0]
 
     #Perform a Chi Squared test
     def convergence_test(self):
@@ -190,17 +226,21 @@ class Reconstruction(Equilibrium):
         cs - chi squared value
         """
 
+        # Chi Squared Test
         new_chi = 0
         for i in range(len(self.M)):
             new_chi += ((self.M[i] - self.H[i]) / self.sigma[i]) ** 2
 
         print('Chi Squared =', new_chi)
 
+        # Convergence Conditions
         convergence = False
 
+        # Convergence must occur after at least 2 iterations, and the chi squared must be same as previous up to 4 sig fig
         if self.it>2 and (new_chi <= self.tolerance or float('%.3g' % new_chi) == float('%.3g' % self.chi)):
             convergence = True
 
+        # Break due to runtime
         elif self.it>50:
             print('Finished due to runtime')
             convergence = True
@@ -235,7 +275,8 @@ class Reconstruction(Equilibrium):
 
     def get_CoilGreens(self):
         """
-        Calculating the Coil Greens Matrix
+        Function for calculating greens matrix for the coil contribution to sensor measurements.
+        Runs on initialisation only
 
         Parameters
         ------
@@ -258,7 +299,8 @@ class Reconstruction(Equilibrium):
 
     def get_VesselGreens(self):
         """
-        Calculating the Filaments Greens Matrix
+        Function for calculating greens matrix for the vessel current contribution to sensor measurements.
+        Runs on initialisation only
 
         Parameters
         ------
@@ -298,7 +340,7 @@ class Reconstruction(Equilibrium):
 
         Parameters
         ----------
-        x - normalised psi
+        psi_norm - normalised psi
         pprime_order - number of polynomial coefficients for pprime model
         ffprime_order - number of polynomial coefficients for ffprime model
         c - coefficients matrix
@@ -312,7 +354,7 @@ class Reconstruction(Equilibrium):
         R = self.R.flatten(order='F')
         nc = self.pprime_order + self.ffprime_order
 
-        if self.use_VerticalControl and self.c is not None:
+        if self.use_VerticalControl and self.it>0:
             B = np.zeros((N, nc + 1))
             # p' Coefficients
             for i in range(self.pprime_order):
@@ -354,11 +396,11 @@ class Reconstruction(Equilibrium):
     # Finding total operator matrix
     def get_SystemMatrix(self, A):
         """
-        Find the matrix to perform least squares on
+        Find the matrix E upon which Ec = M (the one characterising the system)
 
         Parameters
         ----------
-        A - Plasma respoonse Matrix
+        A - Plasma response Matrix
 
         Returns
         -------
@@ -387,8 +429,6 @@ class Reconstruction(Equilibrium):
         x - normalised psi
         mask - mask generated form xpoints
         """
-
-        self.check_limited = True
 
         if self.Jtor is not None:
             self.solve(Jtor=self.Jtor)
@@ -420,6 +460,7 @@ class Reconstruction(Equilibrium):
     def get_fittingWeightVector(self):
         """
         Uses the inputted sigma vector to create the diagonal fitted weight matrix
+        Weighting = 1 / sigma
 
         Parameters
         ----------
@@ -467,6 +508,8 @@ class Reconstruction(Equilibrium):
 
     # Indexing function
     def get_index(self, Vector, indexing):
+
+        # Finding the corresponding index for the string
         if indexing == 'plasma':
             if self.use_VerticalControl and self.it>1:
                 return Vector[:(self.pprime_order+self.ffprime_order+1)]
@@ -563,6 +606,8 @@ class Reconstruction(Equilibrium):
 
     # Methods for checking performance
     def check_incorrect_sensors(self):
+
+        # Runs through sensors, ensures that the value generated by H is within 2% of what the sensor measures
         if self.it>1:
             self.tokamak.takeMeasurements(self)
             sensors_measure = []
@@ -583,8 +628,9 @@ class Reconstruction(Equilibrium):
                         assert np.isclose(plasma_response + coil_response + vessel_response,sensors_measure[i], rtol=0.02)
 
     def plot_filaments(self):
-        plt.figure()
 
+        # Plots the eigenbasis for the machine
+        plt.figure()
         for filament in self.tokamak.vessel:
             for subfil in filament.filaments:
                 if subfil.current >= 0:

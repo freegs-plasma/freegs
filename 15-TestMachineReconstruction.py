@@ -1,3 +1,7 @@
+"""
+This script simuates an equilibrium using the forward solver in freegs,
+then uses the sensor measurments and coil currents to reconstruct the data
+"""
 from freegs import machine, reconstruction
 import numpy as np
 
@@ -26,6 +30,7 @@ eq = reconstruction.generate_Measurements(tokamak, alpha_m, alpha_n, x_z1=x_z1, 
 # Performing Reconstruction
 print('Starting Reconstruction')
 
-kwargs = {'tokamak': tokamak, 'Rmin': Rmin, 'Rmax': Rmax, 'Zmin': Zmin, 'Zmax': Zmax, 'nx': nx, 'ny': ny}
-Recon = reconstruction.Reconstruction(pprime_order, ffprime_order, use_VesselCurrents=True, test=True, **kwargs)
+eq_setup = {'tokamak': tokamak, 'Rmin': Rmin, 'Rmax': Rmax, 'Zmin': Zmin, 'Zmax': Zmax, 'nx': nx, 'ny': ny}
+Recon = reconstruction.Reconstruction(pprime_order, ffprime_order,use_VesselCurrents=True, test=True, tolerance=1e-10,  **eq_setup)
 Recon.solve_from_tokamak()
+Recon.plot()
