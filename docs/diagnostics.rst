@@ -157,7 +157,10 @@ to each of the measurements.
 
 To measure and print the values, the following method is used::
 
-tokamak.printMeasurements(equilibrium)
+    from freegs import machine
+    tokamak = machine.TestTokamakSensor()
+
+    tokamak.printMeasurements(equilibrium)
 
 The Rogowski Coils uses a nearest neighbour interpolation method. The following diagram illustrates
 this. The points correspond to each grid point on the equilibrium grid. A shapely square object

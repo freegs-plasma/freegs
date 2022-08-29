@@ -4,7 +4,6 @@
 *.geqdsk
 *.pdf
 *.h5
-*.png
 *.svg
 *.jpg
 FreeGS.egg-info/
