@@ -467,7 +467,9 @@ class Sensor:
         self.status = status
         self.name = name
         self.weight = weight
-        self.measurement = measurement
+
+        if self.status:
+            self.measurement = measurement
 
 
     def __repr__(self):
@@ -629,22 +631,25 @@ class Filament(Coil):
         self.dR = dR
         self.dZ = dZ
         self.resistance = 2 * np.pi * self.R * resistivity / (self.dR * self.dZ)
+
+        self.n_fils = 1
+        self.n_basis = 1
+        self.filaments = [self]
         self.eigenbasis = self.calcEigenbasis()
 
     def updateFilamentCurrent(self, current):
-        self.current = current[0][0]
-        current.pop(0)
+        self.current = current
 
     def calcEigenbasis(self):
         return [[1]]
 
 
 class Filament_Group:
-    def __init__(self, filaments, name, Nbasis=10):
+    def __init__(self, filaments, name, n_basis=10):
         self.filaments = filaments
         self.name = name
-        self.Nfils = len(self.filaments)
-        self.Nbasis = Nbasis
+        self.n_fils = len(self.filaments)
+        self.n_basis = n_basis
         self.eigenbasis = self.calcEigenbasis()
 
     def psi(self, R, Z):
@@ -686,13 +691,14 @@ class Filament_Group:
     def inShape(self,polygon):
         return sum(filament.inShape(polygon) for filament in self.filaments)
 
-    def updateFilamentCurrent(self, currents):
-        for filament in self.filaments:
-            filament.updateFilamentCurrent(currents)
+    def updateFilamentCurrent(self, currents, filament_index):
+        currents = currents[filament_index:]
+        for index, filament in enumerate(self.filaments):
+            filament.updateFilamentCurrent(currents[index])
 
     def calcEigenbasis(self):
-        R = np.zeros((self.Nfils, self.Nfils))
-        M = np.zeros((self.Nfils, self.Nfils))
+        R = np.zeros((self.n_fils, self.n_fils))
+        M = np.zeros((self.n_fils, self.n_fils))
 
         # Ppopulating Mutual inductance matrix
         for i, fil in enumerate(self.filaments):
@@ -719,17 +725,10 @@ class Filament_Group:
 
         eigvals, eigvecs = np.linalg.eig(J)
 
-        sorted_eigvecs = [x for _, x in
-                          sorted(zip(eigvals, np.transpose(eigvecs)),
-                                 reverse=False)]
+        sorted_eigvecs = [x for _, x in sorted(zip(eigvals, np.transpose(eigvecs)), reverse=False)]
 
-        # Creating a matrix with each column representing an eigenvector of the vessel
-        vessel_basis = np.zeros((self.Nfils, self.Nbasis))
-        for n in range(self.Nbasis):
-            for i, val in enumerate(sorted_eigvecs[n]):
-                vessel_basis[i, n] = val
+        return np.asarray(sorted_eigvecs[:self.n_basis]).T
 
-        return vessel_basis
 
 
 class Machine:
@@ -755,6 +754,7 @@ class Machine:
         self.coils = coils
         self.wall = wall
         self.sensors = sensors
+        self.vessel = vessel
 
         self.limit_points_R = None
         self.limit_points_Z = None
@@ -762,11 +762,10 @@ class Machine:
         if self.wall is not None:
             self.limit_points_R, self.limit_points_Z = self.generate_limit_points(nlimit)
 
-
-        # Procedure for creating a tokamak Vessel
-        self.vessel = vessel
-        if vessel is not None:
+        if self.vessel is not None:
             self.getVesselEigenbasis()
+
+        self.generate_n_attributes()
 
 
     def __repr__(self):
@@ -787,6 +786,24 @@ class Machine:
             if label == name:
                 return coil
         raise KeyError("Machine does not contain coil with label '{0}'".format(name))
+
+    def generate_n_attributes(self):
+        if self.coils is not None:
+            self.n_coils = len(self.coils)
+        else:
+            self.n_coils = 0
+
+
+        if self.sensors is not None:
+            self.n_sensors = len(self.sensors)
+        else:
+            self.n_sensors = 0
+
+        if self.vessel is not None: # i know i need to change the is not None
+            self.n_fils, self.n_basis = sum(fil.n_fils for fil in self.vessel), sum(fil.n_basis for fil in self.vessel)
+        else:
+            self.n_fils, self.n_basis = 0, 0
+
 
     def generate_limit_points(self,nlimit):
         '''
@@ -990,6 +1007,10 @@ class Machine:
             currents[label] = coil.current
         return currents
 
+    def updateCoilCurrents(self, currents):
+        for index, (name, coil) in enumerate(self.coils):
+            coil.current = currents[index][0]
+
     def updateVesselCurrents(self, currents):
         """
         Loops through filaments in vessel, assigns them each the corresponding
@@ -1000,11 +1021,10 @@ class Machine:
         currents - ordered array of currents
 
         """
-        ## put these in filaments and filament group
-        currents = currents.tolist()
-        print(type(currents))
-        for filament in self.vessel:
-            filament.updateFilamentCurrent(currents)
+        filament_index = 0
+        for index, filament in enumerate(self.vessel):
+            filament.updateFilamentCurrent(currents, filament_index)
+            filament_index += index * filament.n_basis
 
     def getVesselEigenbasis(self):
         """
@@ -1122,14 +1142,14 @@ def EfitTestMachine():
     Used for reconstruction
     """
 
-    def createVesselFilaments(wall, Nfils=100, groupFilaments=True):
+    def createVesselFilaments(wall, n_fils=100, groupFilaments=True):
         wallRZ = [[R, Z] for R, Z in zip(wall.R, wall.Z)]
 
         # Generating filament points
         R0 = wallRZ[0]
         wallRZ.append(R0)
         innerline = LineString(wallRZ)
-        distances = np.linspace(0, innerline.length, Nfils + 1)
+        distances = np.linspace(0, innerline.length, n_fils + 1)
         points = [innerline.interpolate(distance).xy for distance in distances]
         rfils = [point[0][0] for point in points[:-1]]
         zfils = [point[1][0] for point in points[:-1]]
@@ -1141,7 +1161,7 @@ def EfitTestMachine():
                 round(10000 * R ** 2 + 100 * Z))))
 
         if groupFilaments:
-            vessel = [Filament_Group(vessel, 'ivc', Nbasis=6)]
+            vessel = [Filament_Group(vessel, 'ivc', n_basis=6)]
 
         return vessel
 

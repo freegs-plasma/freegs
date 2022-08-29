@@ -25,5 +25,7 @@ eq = reconstruction.generate_Measurements(tokamak, alpha_m, alpha_n, x_z1=x_z1, 
 
 # Performing Reconstruction
 print('Starting Reconstruction')
-Recon = reconstruction.Reconstruction(tokamak, pprime_order, ffprime_order, tolerance=1e-20, use_VesselCurrents=False)
+
+kwargs = {'tokamak': tokamak, 'Rmin': Rmin, 'Rmax': Rmax, 'Zmin': Zmin, 'Zmax': Zmax, 'nx': nx, 'ny': ny}
+Recon = reconstruction.Reconstruction(pprime_order, ffprime_order, use_VesselCurrents=True, test=True, **kwargs)
 Recon.solve_from_tokamak()

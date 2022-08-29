@@ -1,6 +1,6 @@
 import numpy as np
 import scipy
-import math
+import math.comb
 from . import critical, plotting, jtor, control, picard, boundary, filament_coil, machine
 from .equilibrium import Equilibrium
 from .machine import Coil, ShapedCoil, FilamentCoil, RogowskiSensor, PoloidalFieldSensor, FluxLoopSensor, Filament, Filament_Group, Wall, Circuit, Machine
@@ -11,9 +11,10 @@ from scipy.constants import mu_0
 import matplotlib.pyplot as plt
 
 class Reconstruction(Equilibrium):
-    def __init__(self, tokamak, pprime_order, ffprime_order,  nx=65, ny=65, Rmin=0.1, Rmax=2, Zmin=-1, Zmax=1, tolerance=1e-7, coil_weight=50, use_VesselCurrents=True, use_VerticalControl=True, use_CurrentInitialisation=True, show=True, test=False):
-        Equilibrium.__init__(self, tokamak=tokamak, Rmin=Rmin, Rmax=Rmax, Zmin=Zmin, Zmax=Zmax, nx=nx, ny=ny)
-        self.test=test
+    def __init__(self, pprime_order, ffprime_order, tolerance=1e-8, coil_weight=50, use_VesselCurrents=True, use_VerticalControl=True, use_CurrentInitialisation=True, show=True, test=False, **kwargs):
+        Equilibrium.__init__(self, tokamak=kwargs['tokamak'], Rmin=kwargs['Rmin'], Rmax=kwargs['Rmax'], Zmin=kwargs['Zmin'], Zmax=kwargs['Zmax'], nx=kwargs['nx'], ny=kwargs['ny'])
+        self.equilibrium_reset = kwargs
+        self.test = test
 
         # Defining Reconstruction Parameters
         self.pprime_order = pprime_order
@@ -22,6 +23,7 @@ class Reconstruction(Equilibrium):
         self.use_VerticalControl = use_VerticalControl
         self.use_CurrentInitialisation = use_CurrentInitialisation
         self.tolerance = tolerance
+        self.coil_weight = coil_weight
         self.show=show
 
         self.dR = self.R[1, 0] - self.R[0, 0]
@@ -34,6 +36,7 @@ class Reconstruction(Equilibrium):
         self.psi_norm = None # normalised psi
         self.c = None # coefficients
         self.check_limited = True
+        self.pause = 0.0001
 
     # Methods for building measurment and uncertainty matrices
     def take_Measurements_from_dictionary(self, measurement_dict, sigma_dict):
@@ -96,7 +99,7 @@ class Reconstruction(Equilibrium):
         # Adding Coil Currents To Machine and M
         for name, coil in self.tokamak.coils:
             M.append([coil.current])
-            sigma.append([1/coil_weight])
+            sigma.append([1/self.coil_weight])
 
         self.M = M
         self.sigma = sigma
@@ -106,8 +109,9 @@ class Reconstruction(Equilibrium):
         """
         Method for giving the tokamak object the correct currents for reconstruction
         """
+        coil_currents = self.M[-self.tokamak.n_coils:]
         for index, (name, coil) in enumerate(self.tokamak.coils):
-            coil.current = self.M[-len(self.tokamak.coils) + index][0]
+            coil.current = coil_currents[index][0]
 
     # Calculate the Current initialisation T matrix
     def initialise_plasma_current(self, m=5, n=5):
@@ -127,7 +131,6 @@ class Reconstruction(Equilibrium):
 
         M_plasma = self.get_M_plasma()
         FEmatrix = self.get_FiniteElements(m=m,n=n)
-
         coefs = scipy.linalg.lstsq(self.Gplasma @ FEmatrix, M_plasma)[0]
         jtor = FEmatrix @ coefs
         return jtor
@@ -149,7 +152,7 @@ class Reconstruction(Equilibrium):
         M_plasma = []
         self.tokamak.takeMeasurements()
         for i, sensor in enumerate(self.tokamak.sensors):
-            M_plasma.append([self.M[i][0] - sensor.measurement])
+            M_plasma.append(self.M[i][0] - sensor.measurement)
 
         return M_plasma
 
@@ -162,16 +165,14 @@ class Reconstruction(Equilibrium):
 
     # Updating vessel and filament currents
     def update_currents(self):
+
         if self.use_VesselCurrents:
-            fil_currents = self.tokamak.eigenbasis @ self.c[-(
-            self.tokamak.eigenbasis.shape[1]):]
+            fil_currents = self.tokamak.eigenbasis @ self.get_index(self.c, 'vessel')
             self.tokamak.updateVesselCurrents(fil_currents)
 
+        coil_currents = self.get_index(self.c, 'coils')
         for i, (name, circuit) in enumerate(self.tokamak.coils):
-            if self.it == 0 or not self.use_VerticalControl:
-                circuit.current = self.c[self.pprime_order + self.ffprime_order + i][0]
-            else:
-                circuit.current = self.c[self.pprime_order + self.ffprime_order + 1 + i][0]
+            circuit.current = coil_currents[i][0]
 
     #Perform a Chi Squared test
     def convergence_test(self):
@@ -197,10 +198,7 @@ class Reconstruction(Equilibrium):
 
         convergence = False
 
-        if self.it == 0 and new_chi <= self.tolerance:
-            convergence = True
-
-        elif self.it>0 and (new_chi <= self.tolerance or float('%.3g' % new_chi) == float('%.3g' % self.chi)):
+        if self.it>2 and (new_chi <= self.tolerance or float('%.3g' % new_chi) == float('%.3g' % self.chi)):
             convergence = True
 
         elif self.it>50:
@@ -227,7 +225,7 @@ class Reconstruction(Equilibrium):
         """
 
         # Creating Grid
-        PlasmaGreens = np.zeros((len(self.tokamak.sensors), self.nx*self.ny))
+        PlasmaGreens = np.zeros((self.tokamak.n_sensors, self.nx*self.ny))
 
         for w, sensor in enumerate(self.tokamak.sensors):
             greens_matrix = sensor.get_PlasmaGreensRow(self)
@@ -249,8 +247,7 @@ class Reconstruction(Equilibrium):
         Gcoil - Coil response matrix
 
         """
-        n_coils = len(self.tokamak.coils)
-        CoilGreens = np.zeros((len(self.tokamak.sensors), n_coils))
+        CoilGreens = np.zeros((self.tokamak.n_sensors, self.tokamak.n_coils))
 
 
         for w, sensor in enumerate(self.tokamak.sensors):
@@ -273,29 +270,17 @@ class Reconstruction(Equilibrium):
         Gfil - filament response matrix
 
         """
-        n_fils = 0
-        for fil in self.tokamak.vessel:
-            if isinstance(fil, Filament):
-                n_fils += 1
-            if isinstance(fil, Filament_Group):
-                n_fils += len(fil.filaments)
 
-        FilamentGreens = np.zeros((len(self.tokamak.sensors), n_fils))
+        FilamentGreens = np.zeros((self.tokamak.n_sensors, self.tokamak.n_fils))
 
         for w, sensor in enumerate(self.tokamak.sensors):
-            fil_num = 0
-            for fil in self.tokamak.vessel:
-                if isinstance(fil, Filament):
-                    FilamentGreens[w, fil_num] = sensor.get_VesselGreensRow(fil)
-                    fil_num += 1
-
-                if isinstance(fil, Filament_Group):
-                    for sub_fil in fil.filaments:
-                        FilamentGreens[w, fil_num] = sensor.get_VesselGreensRow(sub_fil)
-                        fil_num += 1
+            fil_index = 0
+            for passive in self.tokamak.vessel:
+                for fil in passive.filaments:
+                        FilamentGreens[w, fil_index] = sensor.get_VesselGreensRow(fil)
+                        fil_index += 1
 
         self.Gvessel = FilamentGreens @ self.tokamak.eigenbasis
-
 
     def generate_Greens(self):
         """
@@ -329,40 +314,44 @@ class Reconstruction(Equilibrium):
 
         if self.use_VerticalControl and self.c is not None:
             B = np.zeros((N, nc + 1))
+            # p' Coefficients
             for i in range(self.pprime_order):
-                for j in range(N):
-                    B[j, i] = R[j] * (self.psi_norm[j]) ** i
+                B[:, i] = R * self.psi_norm ** i
 
             # ff' relations
             for i in range(self.ffprime_order):
-                for j in range(N):
-                    B[j, i + self.pprime_order] = (1 / (mu_0 * R[j])) * (self.psi_norm[j]) ** i
+                B[:, i + self.pprime_order] = (1 / (
+                            mu_0 * R)) * self.psi_norm ** i
 
+
+            # This next section corresponds to the vertical contorl
+            # The derivative of psi_norm wrt to Z is taken
+            # Then as per Ferron, the linear dependence of the modified free functions is taken
             x_z = np.gradient(np.reshape(self.psi_norm, (self.nx, self.ny), order='F'), self.dR, self.dZ)[1].flatten(order='F')
-            for j in range(N):
-                psum = 0
-                ffsum = 0
-                for i in range(1,self.pprime_order):
-                    psum += self.c[i] * math.comb(i, 1) * self.psi_norm[j] ** (i - 1)
+            psum = 0
+            ffsum = 0
 
-                for i in range(1,self.ffprime_order):
-                    ffsum += self.c[i + self.pprime_order] * math.comb(i, 1) * self.psi_norm[j] ** (i - 1)
-                B[j, nc] = x_z[j] * (R[j] * psum + 1 / (mu_0 * R[j]) * ffsum)
+            for i in range(1,self.pprime_order):
+                psum += self.c[i] * math.comb(i, 1) * self.psi_norm ** (i - 1)
+
+            for i in range(1,self.ffprime_order):
+                ffsum += self.c[i + self.pprime_order] * math.comb(i, 1) * self.psi_norm ** (i - 1)
+
+                B[:, nc] = x_z * (R * psum + 1 / (mu_0 * R) * ffsum)
 
         else:
             B = np.zeros((N, nc))
             # p' Coefficients
             for i in range(self.pprime_order):
-                for j in range(N):
-                    B[j, i] = R[j] * self.psi_norm[j] ** i
+                    B[:, i] = R * self.psi_norm ** i
 
             # ff' relations
             for i in range(self.ffprime_order):
-                for j in range(N):
-                    B[j, i + self.pprime_order] = (1 / (mu_0 * R[j])) * self.psi_norm[j] ** i
+                    B[:, i + self.pprime_order] = (1 / (mu_0 * R)) * self.psi_norm ** i
+
         return B
 
-    # Finding total operator matrix E (nm+n_coils + nc+n_coils+1)
+    # Finding total operator matrix
     def get_SystemMatrix(self, A):
         """
         Find the matrix to perform least squares on
@@ -476,8 +465,24 @@ class Reconstruction(Equilibrium):
 
         return T
 
+    # Indexing function
+    def get_index(self, Vector, indexing):
+        if indexing == 'plasma':
+            if self.use_VerticalControl and self.it>1:
+                return Vector[:(self.pprime_order+self.ffprime_order+1)]
+            else:
+                return Vector[:(self.pprime_order+self.ffprime_order)]
+        if indexing == 'coils':
+            if self.use_VesselCurrents:
+                return Vector[-(self.tokamak.n_coils+self.tokamak.n_basis):-self.tokamak.n_basis]
+            else:
+                return Vector[-self.tokamak.n_coils:]
+
+        if indexing == 'vessel':
+            return Vector[-self.tokamak.n_basis:]
+
     # Reconstruction Algorithm
-    def reconstruct(self, pause=0.0001):
+    def reconstruct(self):
         """
         Parameters
         ----------
@@ -510,7 +515,7 @@ class Reconstruction(Equilibrium):
                     import matplotlib.pyplot as plt
                     from .plotting import plotEquilibrium
 
-                    if pause > 0.0:
+                    if self.pause > 0.0:
                         # No axis specified, so create a new figure
                         fig, axs = plt.subplots(1,2, sharex=True, sharey=True)
 
@@ -524,37 +529,10 @@ class Reconstruction(Equilibrium):
             else:
 
                 if self.show:
-                    # Plot state of plasma equilibrium
-                    if pause < 0:
-                        fig = plt.figure()
-                        axis = fig.add_subplot(111)
-                    else:
-                        axs[0].clear()
-                        axs[1].clear()
-
-                    plotEquilibrium(self, axis=axs[0], show=False)
-                    if self.Jtor is not None:
-                        axs[1].imshow(np.rot90(self.Jtor), extent=(0.1,2,-1,1), cmap=plt.get_cmap('jet'))
-
-                    if pause < 0:
-                        # Wait for user to close the window
-                        plt.show()
-                    else:
-                        # Update the canvas and pause
-                        # Note, a short pause is needed to force drawing update
-                        axs[0].figure.canvas.draw()
-                        axs[1].figure.canvas.draw()
-                        plt.pause(pause)
+                    self.plot_equilibria(fig, axs)
 
                 # Use B & C to calculate Jtor matrix
-                #assumes vertical control is on
-                if self.is_limited:
-                    Basis = self.apply_mask(Basis, mask)
-                if self.use_VesselCurrents:
-                    jtor_1d = Basis @ self.c[:-(len(self.tokamak.coils) + self.Gvessel.shape[1])]
-                else:
-                    jtor_1d = Basis @ self.c[:-(len(self.tokamak.coils))]
-
+                jtor_1d = Basis @ self.get_index(self.c, 'plasma')
                 self.Jtor = np.reshape(jtor_1d, (self.nx, self.ny),order='F')
 
             # Calculate Psi values with elliptical solver
@@ -563,8 +541,7 @@ class Reconstruction(Equilibrium):
 
             # Calculate B and apply mask
             Basis = self.get_BasisMatrix()
-            if not self.is_limited:
-                Basis = self.apply_mask(Basis, mask)
+            Basis = self.apply_mask(Basis, mask)
 
             # Calculating operator matrix A
             A = self.Gplasma @ Basis
@@ -589,36 +566,21 @@ class Reconstruction(Equilibrium):
         if self.it>1:
             self.tokamak.takeMeasurements(self)
             sensors_measure = []
-            for i in range(self.Gplasma.shape[0]):
+            for i in range(self.tokamak.n_sensors):
                 sensors_measure.append(self.tokamak.sensors[i].measurement)
 
-            for i in range(self.Gplasma.shape[0]):
+            for i in range(self.tokamak.n_sensors):
                 plasma_response = np.dot(self.Gplasma[i], self.Jtor.flatten('F'))
+                coil_response = np.dot(self.Gcoil[i], self.get_index(self.c, 'coils'))
                 if self.use_VesselCurrents:
-                    coil_response = np.dot(self.Gcoil[i], self.c[-(
-                                self.Gvessel.shape[1] + self.Gcoil.shape[1]):-
-                                                                 self.Gvessel.shape[
-                                                                     1]])
-                    vessel_response = np.dot(self.Gvessel[i],
-                                             self.c[-self.Gvessel.shape[1]:])
-                    if not np.isclose(
-                            plasma_response + coil_response + vessel_response,
-                            sensors_measure[i], rtol=0.02):
-                        print(self.tokamak.sensors[i].name, 'Incorrect', self.H[i],
-                              plasma_response + coil_response + vessel_response,
-                              sensors_measure[i])
-                        if self.test:
-                            assert 1==2
-
+                    vessel_response = np.dot(self.Gvessel[i], self.get_index(self.c, 'vessel'))
                 else:
-                    coil_response = np.dot(self.Gcoil[i],
-                                           self.c[-(self.Gcoil.shape[1]):])
+                    vessel_response = 0
 
-                    if not np.isclose(plasma_response + coil_response,
-                                      sensors_measure[i], rtol=0.02):
-                        print(self.tokamak.sensors[i].name, 'Incorrect',plasma_response + coil_response,sensors_measure[i])
-                        if self.test:
-                            assert 1==2
+                if not np.isclose(plasma_response + coil_response + vessel_response,sensors_measure[i], rtol=0.02):
+                    print(self.tokamak.sensors[i].name, 'Incorrect', self.H[i],plasma_response + coil_response + vessel_response, sensors_measure[i])
+                    if self.test:
+                        assert np.isclose(plasma_response + coil_response + vessel_response,sensors_measure[i], rtol=0.02)
 
     def plot_filaments(self):
         plt.figure()
@@ -634,6 +596,30 @@ class Reconstruction(Equilibrium):
 
         plt.show()
 
+    def plot_equilibria(self, fig, axs):
+        # Plot state of plasma equilibrium
+        if self.pause < 0:
+            fig = plt.figure()
+            axis = fig.add_subplot(111)
+        else:
+            axs[0].clear()
+            axs[1].clear()
+
+        plotting.plotEquilibrium(self, axis=axs[0], show=False)
+        if self.Jtor is not None:
+            axs[1].imshow(np.rot90(self.Jtor), extent=(0.1, 2, -1, 1),
+                          cmap=plt.get_cmap('jet'))
+
+        if self.pause < 0:
+            # Wait for user to close the window
+            plt.show()
+        else:
+            # Update the canvas and pause
+            # Note, a short pause is needed to force drawing update
+            axs[0].figure.canvas.draw()
+            axs[1].figure.canvas.draw()
+            plt.pause(self.pause)
+
     def print_reconstruction(self):
         """
         Print data from reconstruction
@@ -641,10 +627,8 @@ class Reconstruction(Equilibrium):
 
         print('Completed in ', self.it, 'iterations, with Chi Squared =', self.chi)
 
-        if self.use_VesselCurrents:
-            self.dz = self.c[-len(self.tokamak.coils) - 1 - self.Gvessel.shape[1]]
-        else:
-            self.dz = self.c[-len(self.tokamak.coils) - 1]
+        if self.use_VerticalControl:
+            self.dz = self.get_index(self.c, 'plasma')[-1]
 
         print('Vertical Control Parameter: dz = ', self.dz)
 
@@ -661,7 +645,7 @@ class Reconstruction(Equilibrium):
         for sensor, val1, val2 in zip(self.tokamak.sensors, self.M, self.H):
             print(sensor.name, val1, val2, sensor.measurement)
 
-        for (name, coil), val1, val2 in zip(self.tokamak.coils, self.M[-len(self.tokamak.coils):], self.H[-len(self.tokamak.coils):]):
+        for (name, coil), val1, val2 in zip(self.tokamak.coils, self.M[-self.tokamak.n_coils:], self.H[-self.tokamak.n_coils:]):
             print(name, val1, val2, coil.current)
 
     # Methods for solving
@@ -680,7 +664,12 @@ class Reconstruction(Equilibrium):
             self.sigma=None
             self.psi_norm=None
             self.c=None
+            self.it=0
             self.is_limited = False
+            self.psi_norm = None
+            self.psi_axis = None
+            self.psi_bndry = None
+            self.psi_limit = None
 
     def solve_from_dictionary(self, measurement_dict, sigma_dict):
         self.take_Measurements_from_dictionary(measurement_dict, sigma_dict)
@@ -698,7 +687,12 @@ class Reconstruction(Equilibrium):
             self.sigma=None
             self.psi_norm=None
             self.c=None
+            self.it=0
             self.is_limited = False
+            self.psi_norm = None
+            self.psi_axis = None
+            self.psi_bndry = None
+            self.psi_limit = None
 
 
 # Creating an equilibrium

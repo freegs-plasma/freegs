@@ -16,16 +16,11 @@ def test_reconstruction():
     x_point_list2 = [-0.6,-0.6,-0.6,-0.8,-0.6,-0.6,-0.6,-0.7,-0.7,-0.7,-0.8]
 
     # Defining equilibrium grid
-    Rmin = 0.1
-    Rmax = 2
-    Zmin = -1
-    Zmax = 1
-    nx = 65
-    ny = 65
+    kwargs = {'tokamak': tokamak, 'Rmin': 0.1, 'Rmax': 2, 'Zmin': -1, 'Zmax': 1, 'nx': 65, 'ny': 65}
     alpha_m=1
 
     tokamak = machine.EfitTestMachine()
-    Recon = reconstruction.Reconstruction(tokamak,0,0, show=False, tolerance=1e-15, VesselCurrents=False)
+    Recon = reconstruction.Reconstruction(0,0, show=False, tolerance=1e-15, VesselCurrents=False, **kwargs)
 
     for alpha_n, pprime_order, ffprime_order, x_z1, x_z2 in zip(alpha_n_list,pprime_order_list,ffprime_order_list,x_point_list1,x_point_list2):
         Recon.tokamak = machine.EfitTestMachine()
@@ -48,29 +43,19 @@ def test_reconstruction():
 
         assert Recon.chi <=1e-3
 
-
 def test_vessel_eigenmode():
     np.set_printoptions(threshold=np.inf)
     show = True
     import matplotlib.pyplot as plt
-
-    # Defining equilibrium grid
-    Rmin = 0.1
-    Rmax = 2
-    Zmin = -1
-    Zmax = 1
-    nx = 65
-    ny = 65
+    kwargs = {'tokamak': machine.EfitTestMachine(), 'Rmin': 0.1, 'Rmax': 2, 'Zmin': -1, 'Zmax': 1, 'nx': 65, 'ny': 65}
 
     # Defining initial model and reconstruction parameters
-    alpha_m = 1
-    alpha_n = 2
     pprime_order = 3
     ffprime_order = 3
     x_z1 = 0.6
     x_z2 = -0.6
-    x_r1 = 1.1
-    x_r2 = 1.1
+    x_r1 = 1
+    x_r2 = 1
 
     # Creating Machine
     tokamak = machine.EfitTestMachine()
@@ -94,8 +79,8 @@ def test_vessel_eigenmode():
                 fil_num += 1
 
     # Making up some measurements
-    eq = reconstruction.generate_Measurements(tokamak=tokamak, alpha_m=alpha_m,
-                                         alpha_n=alpha_n, x_z1=x_z1, x_z2=x_z2, x_r1=x_r1, x_r2=x_r2,
+    eq = reconstruction.generate_Measurements(tokamak=tokamak, alpha_m=1,
+                                         alpha_n=2, x_z1=x_z1, x_z2=x_z2, x_r1=x_r1, x_r2=x_r2,
                                          show=show)
 
     measurement_dict = {}
@@ -110,19 +95,19 @@ def test_vessel_eigenmode():
 
     # Reconstruction
     tokamak = machine.EfitTestMachine()
-    Recon = reconstruction.Reconstruction(tokamak, pprime_order, ffprime_order, show=show)
+    Recon = reconstruction.Reconstruction(pprime_order, ffprime_order, show=show, **kwargs)
     Recon.solve_from_dictionary(measurement_dict=measurement_dict, sigma_dict=sigma_dict)
 
     eig_coef = Recon.c[-tokamak.eigenbasis.shape[1]+i]
     print(Recon.c)
     assert abs(Recon.c[-tokamak.eigenbasis.shape[1]+i]) > 50*abs(Recon.c[-tokamak.eigenbasis.shape[1]+i+1]) and abs(Recon.c[-tokamak.eigenbasis.shape[1]+i]) > 50*abs(Recon.c[-tokamak.eigenbasis.shape[1]+i-1])
 
-
 def advanced_reconstruction_test_novessel():
     import pickle
-    Recon = reconstruction.Reconstruction(machine.EfitTestMachine(), 3,3, test=True, show=False)
+    kwargs = {'tokamak': machine.EfitTestMachine(), 'Rmin': 0.1, 'Rmax': 2, 'Zmin': -1, 'Zmax': 1, 'nx': 65, 'ny': 65}
+    Recon = reconstruction.Reconstruction(3,3, test=True, show=True, **kwargs)
     tokamaklist = ['DD.pkl', 'DS.pkl', 'LD.pkl', 'LS.pkl']
-    Recon.VesselCurrents = False
+    Recon.use_VesselCurrents = False
     for tokamakfile in tokamaklist:
         with open(tokamakfile, 'rb') as inp:
             tokamakfordict = pickle.load(inp)
@@ -139,13 +124,15 @@ def advanced_reconstruction_test_novessel():
 
         Recon.solve_from_dictionary(measurement_dict,sigma_dict)
         print('Passed')
+
     Recon.plot()
 
 def advanced_reconstruction_test_vessel():
     import pickle
-    Recon = reconstruction.Reconstruction(machine.EfitTestMachine(), 3,3, test=True, show=False)
+    kwargs = {'tokamak': machine.EfitTestMachine(), 'Rmin': 0.1, 'Rmax': 2, 'Zmin': -1, 'Zmax': 1, 'nx': 65, 'ny': 65}
+    Recon = reconstruction.Reconstruction(3,3, test=True, show=False, **kwargs)
     tokamaklist = ['DD.pkl', 'DS.pkl', 'LD.pkl', 'LS.pkl']
-    Recon.VesselCurrents = True
+    Recon.use_VesselCurrents = True
     for tokamakfile in tokamaklist:
         with open(tokamakfile, 'rb') as inp:
             tokamakfordict = pickle.load(inp)
@@ -161,12 +148,13 @@ def advanced_reconstruction_test_vessel():
             sigma_dict[coil_name] = 1e-5
 
         Recon.solve_from_dictionary(measurement_dict,sigma_dict)
-        print('Passed')
+
     Recon.plot()
 
 def advanced_reconstruction_eigenmode():
     import pickle
-    Recon = reconstruction.Reconstruction(machine.EfitTestMachine(), 3,3, test=True, show=False)
+    kwargs = {'tokamak': machine.EfitTestMachine(), 'Rmin': 0.1, 'Rmax': 2, 'Zmin': -1, 'Zmax': 1, 'nx': 65, 'ny': 65}
+    Recon = reconstruction.Reconstruction(3,3, test=True, show=False, **kwargs)
     tokamaklist2 = ['DDV.pkl', 'DSV.pkl', 'LDV.pkl', 'LSV.pkl']
 
     for tokamakfile in tokamaklist2:
@@ -185,6 +173,7 @@ def advanced_reconstruction_eigenmode():
 
         Recon.solve_from_dictionary(measurement_dict, sigma_dict)
         print('Passed')
+
     Recon.plot()
 
 advanced_reconstruction_test_novessel()
