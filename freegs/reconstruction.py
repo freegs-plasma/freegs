@@ -23,17 +23,16 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import numpy as np
-import scipy
 import math
-from . import critical, plotting, jtor, control, picard, boundary, filament_coil, machine
+from . import critical, plotting, jtor, control, picard, boundary
 from .equilibrium import Equilibrium
 from .machine import Coil, ShapedCoil, FilamentCoil, RogowskiSensor, PoloidalFieldSensor, FluxLoopSensor, Filament, Passive, Wall, Circuit, Machine
 from .gradshafranov import Greens, GreensBr, GreensBz
 from shapely.geometry import Point, Polygon, LineString, LinearRing
 from scipy.special import ellipk, ellipe
 from scipy.constants import mu_0
+from scipy.linalg import lstsq
 import matplotlib.pyplot as plt
-import pickle
 
 class Reconstruction(Equilibrium):
     def __init__(self, pprime_order, ffprime_order, tolerance=1e-8, coil_weight=50, use_VesselCurrents=True, use_VerticalControl=True, use_CurrentInitialisation=True, show=True, test=False, **kwargs):
@@ -160,7 +159,7 @@ class Reconstruction(Equilibrium):
         FEmatrix = self.get_FiniteElements(m=m,n=n)
 
         #Uses least squares solver to find coefficients and subsequently jtor
-        coefs = scipy.linalg.lstsq(self.Gplasma @ FEmatrix, M_plasma)[0]
+        coefs = lstsq(self.Gplasma @ FEmatrix, M_plasma)[0]
         jtor = FEmatrix @ coefs
         return jtor
 
@@ -456,7 +455,7 @@ class Reconstruction(Equilibrium):
 
         return psi_norm, mask
 
-    # Calculate te fitting weight vector
+    # Calculate the fitting weight vector
     def get_fittingWeightVector(self):
         """
         Uses the inputted sigma vector to create the diagonal fitted weight matrix
@@ -469,7 +468,7 @@ class Reconstruction(Equilibrium):
         """
         return np.diag([val[0]**(-1) for val in self.sigma])
 
-    # Calculate T
+    # Calculate Finite Elements Grid
     def get_FiniteElements(self, m, n):
         """
         Parameters
@@ -591,7 +590,7 @@ class Reconstruction(Equilibrium):
             SystemMatrix = self.get_SystemMatrix(A)
 
             # Performing least squares calculation for c
-            self.c = scipy.linalg.lstsq(F @ SystemMatrix, F @ self.M)[0]
+            self.c = lstsq(F @ SystemMatrix, F @ self.M)[0]
 
             # Updating the Coil Currents and Vessel Currents
             self.update_currents()

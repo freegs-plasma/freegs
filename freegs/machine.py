@@ -459,8 +459,7 @@ class Sensor:
     Parent class for the sensors
     Contains general attributes that apply to all sensors
     """
-    def __init__(self, R, Z, name=None, weight=1, status=True,
-                 measurement=None):
+    def __init__(self, R, Z, name=None, weight=1, status=True, measurement=None):
 
         self.R = R
         self.Z = Z
@@ -497,24 +496,14 @@ class RogowskiSensor(Sensor):
         polygonlist = [(r, z) for r, z in zip(self.R, self.Z)]
         self.polygon = Polygon(polygonlist)
 
-    def get_measure(self, thing):
+    def get_measure(self, tokamak, equilibrium):
         """
         Method to update the current attribute of the sensor
         with whatever current is contained within the sensor
         if sensor is on (status == True)
-
-        Input type is either Machine class or Equilibrium class
         """
 
         if self.status:
-
-            if isinstance(thing, Machine):
-                tokamak = thing
-                equilibrium = None
-
-            else:
-                tokamak = thing.tokamak
-                equilibrium = thing
 
             # coil current
             coil_current = 0
@@ -527,7 +516,7 @@ class RogowskiSensor(Sensor):
 
             # plasma current
             plasma_current = 0
-            if equilibrium != None:
+            if equilibrium is not None:
                 dR = equilibrium.R[1, 0] - equilibrium.R[0, 0]
                 dZ = equilibrium.Z[0, 1] - equilibrium.Z[0, 0]
                 dim = (equilibrium.nx, equilibrium.ny)
@@ -549,12 +538,12 @@ class RogowskiSensor(Sensor):
 
 
     # Methods used in Reconstruction for generating the Greens matrices
-    def get_PlasmaGreensRow(self, eq):
-        greens_matrix = np.zeros((eq.nx, eq.ny))
-        for i in range(eq.nx):
-            for j in range(eq.ny):
-                if self.polygon.contains(Point(eq.R[i, j], eq.Z[i, j])):
-                    greens_matrix[i, j] = eq.dR * eq.dZ
+    def get_PlasmaGreensRow(self, equilibrium):
+        greens_matrix = np.zeros((equilibrium.nx, equilibrium.ny))
+        for i in range(equilibrium.nx):
+            for j in range(equilibrium.ny):
+                if self.polygon.contains(Point(equilibrium.R[i, j], equilibrium.Z[i, j])):
+                    greens_matrix[i, j] = equilibrium.dR * equilibrium.dZ
         return greens_matrix
 
     def get_CoilGreensRow(self, coil):
@@ -577,28 +566,24 @@ class PoloidalFieldSensor(Sensor):
     def __repr__(self):
         return "R={R}, Z={Z}, Theta={Theta}".format(R=self.R, Z=self.Z, Theta=self.theta)
 
-    def get_measure(self, thing):
+    def get_measure(self, tokamak, equilibrium):
         """
         Updates field attribute of sensor with measured field at that
         point/direction if sensor is on
-
-        Input type is either Machine class or Equilibrium class
         """
 
         if self.status:
-            if isinstance(thing, Machine):
-                field = (thing.Br(self.R, self.Z)) * np.cos(self.theta) + (thing.Bz(self.R, self.Z)) * np.sin(self.theta)
 
-            else:
-                tokamak = thing.tokamak
-                field = (tokamak.Br(self.R, self.Z)) * np.cos(self.theta) + (tokamak.Bz(self.R, self.Z)) * np.sin(self.theta)
-                field += thing.plasmaBr(self.R, self.Z) * np.cos(self.theta) + thing.plasmaBz(self.R,self.Z) * np.sin(self.theta)
+            field = (tokamak.Br(self.R, self.Z)) * np.cos(self.theta) + (tokamak.Bz(self.R, self.Z)) * np.sin(self.theta)
+
+            if equilibrium is not None:
+                field += (equilibrium.plasmaBr(self.R, self.Z)) * np.cos(self.theta) + (equilibrium.plasmaBz(self.R, self.Z)) * np.sin(self.theta)
 
             self.measurement = field
 
     # Methods used in Reconstruction for generating the Greens matrices
-    def get_PlasmaGreensRow(self, eq):
-        return eq.dR * eq.dZ * (GreensBr(eq.R, eq.Z, self.R,self.Z) * np.cos(self.theta) + GreensBz(eq.R,eq.Z, self.R,self.Z) * np.sin(self.theta))
+    def get_PlasmaGreensRow(self, equilibrium):
+        return equilibrium.dR * equilibrium.dZ * (GreensBr(equilibrium.R, equilibrium.Z, self.R,self.Z) * np.cos(self.theta) + GreensBz(equilibrium.R,equilibrium.Z, self.R,self.Z) * np.sin(self.theta))
 
     def get_CoilGreensRow(self, coil):
         return np.cos(self.theta) * coil.controlBr(self.R,self.Z) + np.sin(self.theta) * coil.controlBz(self.R, self.Z)
@@ -616,26 +601,23 @@ class FluxLoopSensor(Sensor):
     def __init__(self, R, Z, flux=0, name=None, weight=1, status=True, measurement=None):
         Sensor.__init__(self, R, Z, name=name, weight=weight, status=status, measurement=measurement)
 
-    def get_measure(self, thing):
+    def get_measure(self, tokamak, equilibrium):
         """
             Updates flux attribute with
             poloidal flux at the point of measurement
             if sensor is on
-
-        Input type is either Machine class or Equilibrium class
         """
         if self.status:
-            if isinstance(thing, Machine):
-                psi = thing.psi(self.R, self.Z)
-
+            if equilibrium is not None:
+                psi = equilibrium.psiRZ(self.R,self.Z)
             else:
-                psi = thing.psiRZ(self.R, self.Z)
+                psi = tokamak.psi(self.R, self.Z)
 
             self.measurement = psi
 
     # Methods used in Reconstruction for generating the Greens matrices
-    def get_PlasmaGreensRow(self, eq):
-        return eq.dR * eq.dZ * Greens(eq.R, eq.Z, self.R,self.Z)
+    def get_PlasmaGreensRow(self, equilibrium):
+        return equilibrium.dR * equilibrium.dZ * Greens(equilibrium.R, equilibrium.Z, self.R,self.Z)
 
     def get_CoilGreensRow(self, coil):
         return coil.controlPsi(self.R,self.Z)
@@ -986,10 +968,7 @@ class Machine:
         Method calling the measure method of each sensor on the machine
         """
         for sensor in self.sensors:
-            if equilibrium is not None:
-                sensor.get_measure(equilibrium)
-            else:
-                sensor.get_measure(self)
+            sensor.get_measure(self, equilibrium)
 
 
     def printMeasurements(self, equilibrium=None):

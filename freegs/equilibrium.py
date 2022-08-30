@@ -437,7 +437,7 @@ class Equilibrium:
         psi_bndry  - Poloidal flux to use as the separatrix (plasma boundary)
                      If not given then X-point locations are used.
         """
-        if profiles is not None: # i know i need to get rid of the double negative
+        if profiles is not None:
             self._profiles = profiles
 
         self._updateBoundaryPsi()

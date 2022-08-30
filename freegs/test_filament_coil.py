@@ -18,7 +18,6 @@ def test_single():
     assert np.isclose(coil.controlBr(0.3, 0.1), fcoil.controlBr(0.3, 0.1))
 
 
-
 def test_two_turns():
     """
     FilamentCoil with two turns same as circuit with two coils at half current

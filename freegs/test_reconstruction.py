@@ -74,7 +74,7 @@ def test_vessel_eigenmode():
             tokamak.coils.append(('fil' + str(fil_num), machine.Coil(r, z, control=False, current=size)))
             fil_num+=1
 
-        if isinstance(fil, machine.Filament_Group):
+        if isinstance(fil, machine.Passive):
             for subfil in fil.filaments:
                 r, z = subfil.R, subfil.Z
                 size = (eigenfunction[fil_num]) * 400

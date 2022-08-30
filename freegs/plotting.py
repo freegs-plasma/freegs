@@ -94,8 +94,8 @@ def plotEquilibrium(eq, axis=None, show=True, oxpoints=True, wall=True, sensors 
 
     axis.contour(R, Z, psi, levels=levels)
     axis.set_aspect("equal")
-    #axis.set_xlabel("Major radius [m]")
-    #axis.set_ylabel("Height [m]")
+    axis.set_xlabel("Major radius [m]")
+    axis.set_ylabel("Height [m]")
 
     if oxpoints:
         # Add O- and X-points
