@@ -1052,6 +1052,28 @@ class Machine:
             plt.show()
         return axis
 
+    def plot_eigenbasis(self):
+        """
+        Plotting the eigenbasis for each passive
+        """
+        import matplotlib.pyplot as plt
+
+        for passive in self.vessel:
+            for i in range(passive.eigenbasis.shape[1]):
+                eigenfunction = self.eigenbasis[:, i]
+                fig = plt.figure()
+                ax = fig.add_subplot(111)
+                ax.set_aspect('equal')
+
+                for j, filament in enumerate(passive.filaments):
+                    size = abs(eigenfunction[j]) * 400
+
+                    if eigenfunction[j] >= 0:
+                        ax.scatter(filament.R, filament.Z, color='red', s=size)
+                    else:
+                        ax.scatter(filament.R, filament.Z, color='black', s=size)
+            plt.show()
+
 
 def EmptyTokamak():
     """
