@@ -161,11 +161,14 @@ class FilamentCoil(Coil):
     filaments, with each filament acting as a point source
     of current.
 
+    Note: Filaments are wired in parallel, so a the current
+    through a single turn is shared between the filaments.
+
     public members
     --------------
 
     R, Z    - Location of the coil
-    current - current in the coil in Amps
+    current - current in each turn of the coil in Amps
     turns   - Number of turns
     control - enable or disable control system
     area    - Cross-section area in m^2
@@ -201,17 +204,19 @@ class FilamentCoil(Coil):
         current - current in each turn of the coil in Amps
         Nfils   - Number of filaments. Only used when Rfil is None.
         turns   - Number of turns in point coil(s) block. Total block current is current * turns
-                  This is only used if R,Z are a single point
         control - enable or disable control system.
+
+        Note: The number of filaments does not equal the number of turns; each turn
+        of the coil might consist of multiple filaments.
 
         """
 
         if shape is None:
-
-            minR = min(Rfil)
-            maxR = max(Rfil)
-            minZ = min(Zfil)
-            maxZ = max(Zfil)
+            # Note: NumPy min/max works with float where builtin doesn't
+            minR = np.min(Rfil)
+            maxR = np.max(Rfil)
+            minZ = np.min(Zfil)
+            maxZ = np.max(Zfil)
 
             shape = [(minR,minZ),(minR,maxZ),(maxR,maxZ),(maxR,minZ),(minR,minZ)]
 
@@ -235,18 +240,23 @@ class FilamentCoil(Coil):
         
         Rfil = np.asarray(Rfil)
         Zfil = np.asarray(Zfil)
-        self.points = np.array(list(zip(Rfil,Zfil)))
-
-        self.npoints = len(Rfil)
+        if Rfil.ndim == 0:
+            self.points = [(Rfil, Zfil)]
+            self.npoints = 1
+        else:
+            self.points = np.array(list(zip(Rfil,Zfil)))
+            self.npoints = len(Rfil)
 
     def controlPsi(self, R, Z):
         """
         Calculate poloidal flux at (R,Z) due to a unit current
+
+        Note: This is multiplied by current to get coil Psi
         """
         result = 0.0
         for R_fil, Z_fil in self.points:
             result += Greens(R_fil, Z_fil, R, Z)
-        result = result / float(self.npoints)
+        result = result * self.turns / float(self.npoints)
         return result
 
     def controlBr(self, R, Z):
@@ -256,7 +266,7 @@ class FilamentCoil(Coil):
         result = 0.0
         for R_fil, Z_fil in self.points:
             result += GreensBr(R_fil, Z_fil, R, Z)
-        result = result / float(self.npoints)
+        result = result * self.turns / float(self.npoints)
         return result
 
     def controlBz(self, R, Z):
@@ -266,7 +276,7 @@ class FilamentCoil(Coil):
         result = 0.0
         for R_fil, Z_fil in self.points:
             result += GreensBz(R_fil, Z_fil, R, Z)
-        result = result / float(self.npoints)
+        result = result * self.turns / float(self.npoints)
         return result
 
     def __repr__(self):
@@ -278,28 +288,28 @@ class FilamentCoil(Coil):
         """
         Major radius of the coil in m
         """
-        return self._R
+        return self._R_centre
 
     @R.setter
     def R(self, Rnew):
         # Need to shift all points
-        Rshift = Rnew - self._R
+        Rshift = Rnew - self._R_centre
         self.points = [(r + Rshift, z) for r,z in self.points]
-        self._R = Rnew
+        self._R_centre = Rnew
 
     @property
     def Z(self):
         """
         Height of the coil in m
         """
-        return self._Z
+        return self._Z_centre
 
     @Z.setter
     def Z(self, Znew):
         # Need to shift all points
-        Zshift = Znew - self._Z
+        Zshift = Znew - self._Z_centre
         self.points = [(r, z + Zshift) for r,z in self.points]
-        self._Z = Znew
+        self._Z_centre = Znew
 
     @property
     def area(self):
