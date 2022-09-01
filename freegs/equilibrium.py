@@ -64,7 +64,7 @@ class Equilibrium:
         psi=None,
         current=0.0,
         order=4,
-        check_limited = False
+        check_limited=False,
     ):
         """Initialises a plasma equilibrium
 
@@ -245,9 +245,9 @@ class Equilibrium:
         """
         Total poloidal magnetic field
         """
-        Br = self.Br(R,Z)
-        Bz = self.Bz(R,Z)
-        return np.sqrt(Br*Br + Bz*Bz)
+        Br = self.Br(R, Z)
+        Bz = self.Bz(R, Z)
+        return np.sqrt(Br * Br + Bz * Bz)
 
     def Btor(self, R, Z):
         """
@@ -271,10 +271,10 @@ class Equilibrium:
         """
         Total magnetic field
         """
-        Br = self.Br(R,Z)
-        Bz = self.Bz(R,Z)
-        Btor = self. Btor(R,Z)
-        return np.sqrt(Br*Br + Bz*Bz + Btor*Btor)       
+        Br = self.Br(R, Z)
+        Bz = self.Bz(R, Z)
+        Btor = self.Btor(R, Z)
+        return np.sqrt(Br * Br + Bz * Bz + Btor * Btor)
 
     def psi(self):
         """
@@ -346,7 +346,7 @@ class Equilibrium:
             return np.asscalar(result)
         return result
 
-    def tor_flux(self, psi = None):
+    def tor_flux(self, psi=None):
         """
         Calculates toroidal flux at specified values of poloidal flux.
         >>> q = drho/dpsi
@@ -356,30 +356,30 @@ class Equilibrium:
         qvals = self.q(psiN)
 
         # Integrate q wrt psi to get rho. rho = 0 @ psiN = 0
-        result = cumtrapz(qvals,psi,initial=0.0)*(-1./(2.*np.pi))
+        result = cumtrapz(qvals, psi, initial=0.0) * (-1.0 / (2.0 * np.pi))
 
         # Convert to a scalar if only one result
         if len(result) == 1:
             return np.asscalar(result)
         return result
 
-    def rhotor(self, psi = None):
+    def rhotor(self, psi=None):
         """
         Calculates normalised toroidal flux at specified values of
         poloidal flux.
          >>> rhotor = sqrt ( tor_flux/max(tor_flux)).
-        
+
         Maximum toroidal flux shoud be at LCFS.
         """
 
         torflux = self.tor_flux(psi)
 
-        psi = np.linspace(self.psi_axis,self.psi_bndry,101,endpoint=True)
+        psi = np.linspace(self.psi_axis, self.psi_bndry, 101, endpoint=True)
         torflux_for_LCFS = self.tor_flux(psi)
 
         max_torflux = np.max(torflux_for_LCFS)
 
-        result = np.sqrt(torflux/max_torflux)
+        result = np.sqrt(torflux / max_torflux)
 
         if len(result) == 1:
             return np.asscalar(result)
@@ -468,7 +468,7 @@ class Equilibrium:
         dZ = self.Z[0, 1] - self.Z[0, 0]
         self._current = romb(romb(Jtor)) * dR * dZ
 
-    def _updateBoundaryPsi(self,psi=None):
+    def _updateBoundaryPsi(self, psi=None):
         """
         For an input psi the magnetic axis and boundary psi are identified along
         with the core mask.
@@ -486,22 +486,22 @@ class Equilibrium:
         psi = psi
 
         if opt:
-        # Magnetic axis flux taken as primary o-point flux
+            # Magnetic axis flux taken as primary o-point flux
             self.psi_axis = opt[0][2]
-            '''
+            """
             Several options depending on if user wishes to check
             if the plasma becomes limited.
-            '''
+            """
 
             # The user wishes to check if the plasma is limited
-            if(self.check_limited and self.tokamak.wall):
+            if self.check_limited and self.tokamak.wall:
                 # A wall has actually been provided, proceed with checking
 
                 # Obtain flux on machine limit points
                 Rlimit = self.tokamak.limit_points_R
                 Zlimit = self.tokamak.limit_points_Z
 
-                '''
+                """
                 If an xpoint is present (plasma is potentianlly diverted)
                 then we must remove any limit points above/below the
                 primary xpoint as the PFR may land on these points,
@@ -509,10 +509,12 @@ class Equilibrium:
                 flux if the plasma were to infact be limited. There is a more advanced
                 version of this alogorithm that is more robust that will be
                 added in the future.
-                '''
+                """
 
                 if xpt:
-                    limit_args = np.ravel(np.argwhere(abs(Zlimit)<abs(0.75*xpt[0][1])))
+                    limit_args = np.ravel(
+                        np.argwhere(abs(Zlimit) < abs(0.75 * xpt[0][1]))
+                    )
                     Rlimit = Rlimit[limit_args]
                     Zlimit = Zlimit[limit_args]
 
@@ -521,16 +523,16 @@ class Equilibrium:
                 Z = np.asarray(self.Z[0, :])
 
                 # psi is transposed due to how FreeGS meshgrids R,Z
-                psi_2d = interpolate.interp2d(x=R,y=Z,z=psi.T)
-                
+                psi_2d = interpolate.interp2d(x=R, y=Z, z=psi.T)
+
                 # Get psi at the limit points
                 psi_limit_points = np.zeros(len(Rlimit))
                 for i in range(len(Rlimit)):
-                    psi_limit_points[i] = psi_2d(Rlimit[i],Zlimit[i])[0]
+                    psi_limit_points[i] = psi_2d(Rlimit[i], Zlimit[i])[0]
 
                 # Get index of maximum psi value
                 indMax = np.argmax(psi_limit_points)
-                
+
                 # Extract R,Z of the contact point
                 self.Rlim = Rlimit[indMax]
                 self.Zlim = Zlimit[indMax]
@@ -544,7 +546,7 @@ class Equilibrium:
                     self.psi_xpt = xpt[0][2]
 
                     # Choose between diverted or limited flux
-                    self.psi_bndry = max(self.psi_xpt,self.psi_limit)
+                    self.psi_bndry = max(self.psi_xpt, self.psi_limit)
 
                     if self.psi_bndry == self.psi_limit:
                         self.is_limited = True
@@ -553,7 +555,9 @@ class Equilibrium:
                         self.is_limited = False
 
                     # Mask the core
-                    self.mask = critical.core_mask(self.R, self.Z, psi, opt, xpt, self.psi_bndry)
+                    self.mask = critical.core_mask(
+                        self.R, self.Z, psi, opt, xpt, self.psi_bndry
+                    )
 
                     # Use interpolation to find if a point is in the core.
                     self.mask_func = interpolate.RectBivariateSpline(
@@ -737,31 +741,29 @@ class Equilibrium:
 
         # Get points along the LCFS
         separatrix = self.separatrix(npoints=npoints)  # Array [:,2]
-        
+
         Rlcfs = np.array([i[0] for i in separatrix])
         Zlcfs = np.array([i[1] for i in separatrix])
 
         ind_P1 = np.argmax(Rlcfs)
         ind_P3 = np.argmin(Rlcfs)
 
-        P1 = np.array([Rlcfs[ind_P1],Zlcfs[ind_P1]])
-        P3 = np.array([Rlcfs[ind_P3],Zlcfs[ind_P3]])
+        P1 = np.array([Rlcfs[ind_P1], Zlcfs[ind_P1]])
+        P3 = np.array([Rlcfs[ind_P3], Zlcfs[ind_P3]])
 
-        R0 = P3[0] + 0.5*(P1[0]-P3[0])
-        z0 = 0.5*(P1[1]+P3[1])
+        R0 = P3[0] + 0.5 * (P1[0] - P3[0])
+        z0 = 0.5 * (P1[1] + P3[1])
 
-        C = np.array([R0,z0])
+        C = np.array([R0, z0])
 
         return C
 
     def Rgeometric(self, npoints=360):
-        """Locates major radius R of the geometric major radius.
-        """
+        """Locates major radius R of the geometric major radius."""
         return self.geometricAxis(npoints=npoints)[0]
 
     def Zgeometric(self, npoints=360):
-        """Locates the height z of the geometric axis.
-        """
+        """Locates the height z of the geometric axis."""
         return self.geometricAxis(npoints=npoints)[1]
 
     def minorRadius(self, npoints=360):
@@ -774,13 +776,13 @@ class Equilibrium:
 
         # Get points along the LCFS
         separatrix = self.separatrix(npoints=npoints)  # Array [:,2]
-        
+
         Rlcfs = np.array([i[0] for i in separatrix])
 
         R_P1 = np.max(Rlcfs)
         R_P3 = np.min(Rlcfs)
 
-        return 0.5*(R_P1 - R_P3)
+        return 0.5 * (R_P1 - R_P3)
 
     def aspectRatio(self, npoints=360):
         """Calculates the plasma aspect ratio.
@@ -810,7 +812,7 @@ class Equilibrium:
 
         # Get points along the LCFS
         separatrix = self.separatrix(npoints=npoints)  # Array [:,2]
-        
+
         Zlcfs = np.array([i[1] for i in separatrix])
 
         Z_P2 = np.max(Zlcfs)
@@ -818,7 +820,7 @@ class Equilibrium:
 
         a = self.minorRadius(npoints=npoints)
 
-        return 0.5*(Z_P2 - Z_P4)/a
+        return 0.5 * (Z_P2 - Z_P4) / a
 
     def elongationUpper(self, npoints=360):
         """Calculates the upper elongation, kappa_u, of the plasma. A large number
@@ -832,7 +834,7 @@ class Equilibrium:
 
         # Get points along the LCFS
         separatrix = self.separatrix(npoints=npoints)  # Array [:,2]
-        
+
         Zlcfs = np.array([i[1] for i in separatrix])
 
         Z_P2 = np.max(Zlcfs)
@@ -840,7 +842,7 @@ class Equilibrium:
         z0 = self.Zgeometric(npoints=npoints)
         a = self.minorRadius(npoints=npoints)
 
-        return (Z_P2 - z0)/a
+        return (Z_P2 - z0) / a
 
     def elongationLower(self, npoints=360):
         """Calculates the lower elongation, kappa_l, of the plasma. A large number
@@ -854,7 +856,7 @@ class Equilibrium:
 
         # Get points along the LCFS
         separatrix = self.separatrix(npoints=npoints)  # Array [:,2]
-        
+
         Zlcfs = np.array([i[1] for i in separatrix])
 
         Z_P4 = np.min(Zlcfs)
@@ -862,7 +864,7 @@ class Equilibrium:
         z0 = self.Zgeometric(npoints=npoints)
         a = self.minorRadius(npoints=npoints)
 
-        return (z0 - Z_P4)/a
+        return (z0 - Z_P4) / a
 
     def effectiveElongation(self, npoints=360):
         """Calculates plasma effective elongation using the plasma volume"""
@@ -893,7 +895,7 @@ class Equilibrium:
         R0 = self.Rgeometric(npoints=npoints)
         a = self.minorRadius(npoints=npoints)
 
-        return (R0 - R_P2)/a
+        return (R0 - R_P2) / a
 
     def triangularityLower(self, npoints=360):
         """Calculates plasma upper triangularity, delta_u.
@@ -914,7 +916,7 @@ class Equilibrium:
         R0 = self.Rgeometric(npoints=npoints)
         a = self.minorRadius(npoints=npoints)
 
-        return (R0 - R_P2)/a
+        return (R0 - R_P2) / a
 
     def triangularity(self, npoints=360):
         """Calculates plasma triangularity, delta.
@@ -926,7 +928,7 @@ class Equilibrium:
         tri_u = self.triangularityUpper(npoints=npoints)
         tri_l = self.triangularityLower(npoints=npoints)
 
-        return 0.5*(tri_u + tri_l)
+        return 0.5 * (tri_u + tri_l)
 
     def shafranovShift(self, npoints=360):
         """Calculates the plasma shafranov shift
@@ -942,7 +944,7 @@ class Equilibrium:
         Rgeo = self.Rgeometric()
         z0 = self.Zgeometric()
 
-        return np.array([Rmag-Rgeo,Zmag-z0])
+        return np.array([Rmag - Rgeo, Zmag - z0])
 
     def internalInductance1(self, npoints=360):
         """Calculates li1 plasma internal inductance"""
@@ -1033,8 +1035,8 @@ class Equilibrium:
         R_geo = self.Rgeometric(npoints=npoints)
 
         integral = romb(romb(B_polvals_2 * dV))
-        return 2 * integral / (mu0*mu0*R_geo*Ip*Ip)
-        
+        return 2 * integral / (mu0 * mu0 * R_geo * Ip * Ip)
+
     def poloidalBeta(self):
         """Calculate plasma poloidal beta by integrating the thermal pressure
         and poloidal magnetic field pressure over the plasma volume."""
@@ -1063,7 +1065,7 @@ class Equilibrium:
         return 2 * mu0 * pressure_integral / field_integral_pol
 
     def poloidalBeta2(self):
-        """ Return the poloidal beta
+        """Return the poloidal beta
         betap = (8pi/mu0) * int(p)dRdZ / Ip^2
         """
 
@@ -1089,30 +1091,29 @@ class Equilibrium:
         )
 
     def poloidalBeta3(self):
-        """Calculates alterantive poloidal beta definition.
-        """
+        """Calculates alterantive poloidal beta definition."""
 
         R = self.R
         Z = self.Z
 
-        dR = R[1,0] - R[0,0]
-        dZ = Z[0,1] - Z[0,0]
-        dV = 2.*np.pi * R * dR * dZ
-        
+        dR = R[1, 0] - R[0, 0]
+        dZ = Z[0, 1] - Z[0, 0]
+        dV = 2.0 * np.pi * R * dR * dZ
+
         # Normalised psi
-        psi_norm = (self.psi() - self.psi_axis)  / (self.psi_bndry - self.psi_axis)
+        psi_norm = (self.psi() - self.psi_axis) / (self.psi_bndry - self.psi_axis)
 
         # Plasma pressure
         pressure = self.pressure(psi_norm)
-        
-        if self.mask is not None: # Only include points in the core
+
+        if self.mask is not None:  # Only include points in the core
             dV *= self.mask
 
         pressure_integral = romb(romb(pressure * dV))
         Ip = self.plasmaCurrent()
         vol = self.plasmaVolume()
         r0 = self.Rgeometric()
-        return 4 * vol * pressure_integral / (mu0 * Ip * Ip * r0 )
+        return 4 * vol * pressure_integral / (mu0 * Ip * Ip * r0)
 
     def toroidalBeta(self):
         """Calculate plasma toroidal beta by integrating the thermal pressure
@@ -1152,12 +1153,16 @@ class Equilibrium:
     def betaN(self, npoints=360):
         """Calculate normalised plasma beta"""
         geo = self.geometricAxis()
-        Bt = self.Btor(geo[0],geo[1])
-        return 100.0*1.0e+06*self.toroidalBeta()*( (self.minorRadius()*Bt) / (self.plasmaCurrent()) )
+        Bt = self.Btor(geo[0], geo[1])
+        return (
+            100.0
+            * 1.0e06
+            * self.toroidalBeta()
+            * ((self.minorRadius() * Bt) / (self.plasmaCurrent()))
+        )
 
     def pressure_ave(self):
-        """Calculate average pressure, Pa.
-        """
+        """Calculate average pressure, Pa."""
 
         R = self.R
         Z = self.Z
@@ -1179,9 +1184,9 @@ class Equilibrium:
             dV *= self.mask
 
         pressure_integral = romb(romb(pressure * dV))
-        plasmaVolume      = romb(romb(dV))
+        plasmaVolume = romb(romb(dV))
 
-        return pressure_integral/plasmaVolume
+        return pressure_integral / plasmaVolume
 
     def w_th(self):
         """
@@ -1191,21 +1196,21 @@ class Equilibrium:
         R = self.R
         Z = self.Z
 
-        dR = R[1,0] - R[0,0]
-        dZ = Z[0,1] - Z[0,0]
-        dV = 2.*np.pi * R * dR * dZ
-        
+        dR = R[1, 0] - R[0, 0]
+        dZ = Z[0, 1] - Z[0, 0]
+        dV = 2.0 * np.pi * R * dR * dZ
+
         # Normalised psi
-        psi_norm = (self.psi() - self.psi_axis)  / (self.psi_bndry - self.psi_axis)
-        
+        psi_norm = (self.psi() - self.psi_axis) / (self.psi_bndry - self.psi_axis)
+
         # Plasma pressure
         pressure = self.pressure(psi_norm)
 
-        if self.mask is not None: # Only include points in the core
+        if self.mask is not None:  # Only include points in the core
             dV *= self.mask
 
         pressure_integral = romb(romb(pressure * dV))
-        thermal_energy = (3./2.)*pressure_integral
+        thermal_energy = (3.0 / 2.0) * pressure_integral
 
         return thermal_energy
 
@@ -1217,12 +1222,12 @@ class Equilibrium:
         eps = self.inverseAspectRatio()
         a = self.minorRadius()
 
-        btor = self.fvac()/self.Rgeometric()
+        btor = self.fvac() / self.Rgeometric()
         Ip = self.plasmaCurrent()
 
         kappa = self.elongation()
 
-        val = 0.5 * (1 + kappa * kappa) * ((2. * np.pi * a * eps * btor) / (mu0 * Ip))
+        val = 0.5 * (1 + kappa * kappa) * ((2.0 * np.pi * a * eps * btor) / (mu0 * Ip))
 
         return val
 

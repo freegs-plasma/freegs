@@ -28,7 +28,8 @@ from shapely import geometry
 from .coil import Coil, AreaCurrentLimit
 from .gradshafranov import Greens, GreensBr, GreensBz
 
-def populate_with_fils(shape,Nfils):
+
+def populate_with_fils(shape, Nfils):
     """
     Takes the 2D cross section of a PF coil, via shape, and populates it
     (somewhat) uniformally with ~Nfils point sources representing filaments.
@@ -36,8 +37,8 @@ def populate_with_fils(shape,Nfils):
 
     Rshape = np.array([i[0] for i in shape])
     Zshape = np.array([i[1] for i in shape])
-    Rshape = np.append(Rshape,Rshape[0])
-    Zshape = np.append(Zshape,Zshape[0])
+    Rshape = np.append(Rshape, Rshape[0])
+    Zshape = np.append(Zshape, Zshape[0])
     rmin = np.min(Rshape)
     rmax = np.max(Rshape)
     zmin = np.min(Zshape)
@@ -45,15 +46,15 @@ def populate_with_fils(shape,Nfils):
 
     my_polygon = geometry.Polygon(shape)
 
-    '''
+    """
     How this works: Start by roughly estimating the d = dR, dZ spacing
     between the points, using the shape area and Nfils.
-    '''
+    """
 
     A = abs(polygons.area(shape))
-    d = np.sqrt(A/Nfils)
+    d = np.sqrt(A / Nfils)
 
-    '''
+    """
     Now we create a (staggered) grid across the bounding box containing
     the supplied shape. We then scan through each point on the grid and
     check if it lies inside the shape. We count the number of points that
@@ -62,21 +63,21 @@ def populate_with_fils(shape,Nfils):
     => Nfils. Once this is obtained, linearly interpolate in dR,dZ to better
     estimate the d(=dR,dZ) that will give as close to Nfils points inside the shape
     as possible.
-    '''
+    """
 
     # Track d vs nInside
     d_data = []
     nInside_data = []
-    
+
     nInside = 0
 
     while nInside < Nfils:
 
         nInside = 0
-        i = 0 # Row counter used for staggering every other row
+        i = 0  # Row counter used for staggering every other row
         # Create the (non-staggered) grid points for the given d(=dR,dZ)
-        Rgrid = np.arange(rmin,rmax,d,dtype=float)
-        Zgrid = np.arange(zmin,zmax,d,dtype=float)
+        Rgrid = np.arange(rmin, rmax, d, dtype=float)
+        Zgrid = np.arange(zmin, zmax, d, dtype=float)
 
         nR = len(Rgrid)
         nZ = len(Zgrid)
@@ -84,21 +85,21 @@ def populate_with_fils(shape,Nfils):
         for i in range(nZ):
 
             zpoint = Zgrid[i]
-            
-            if i % 2: # Every other row, stagger R coords by 0.5*dR
-                offset = 0.5*d
+
+            if i % 2:  # Every other row, stagger R coords by 0.5*dR
+                offset = 0.5 * d
             else:
 
                 offset = 0.0
 
             for j in range(nR):
-                
+
                 rpoint = Rgrid[j] + offset
 
-                point = geometry.Point(rpoint,zpoint)
+                point = geometry.Point(rpoint, zpoint)
                 if my_polygon.contains(point):
                     nInside += 1
-    
+
         # End of looping over points. Note d and nInside
         d_data.append(d)
         nInside_data.append(nInside)
@@ -112,7 +113,7 @@ def populate_with_fils(shape,Nfils):
 
     # Now linearly interpolate to get the d that corresponds
     # to the closest nInside to Nfils
-    d_opt = np.interp([Nfils*1.1],nInside_data,d_data)
+    d_opt = np.interp([Nfils * 1.1], nInside_data, d_data)
 
     # Now get the locations of the filaments for this d = d_opt where nInside ~ Nfils
     rfils = []
@@ -121,10 +122,10 @@ def populate_with_fils(shape,Nfils):
     # Number of filaments landing inside
     nInside = 0
 
-    i = 0 # Row counter used for staggering every other row
+    i = 0  # Row counter used for staggering every other row
     # Create the (non-staggered) grid points for the given d(=dR,dZ)
-    Rgrid = np.arange(rmin,rmax,d_opt,dtype=float)
-    Zgrid = np.arange(zmin,zmax,d_opt,dtype=float)
+    Rgrid = np.arange(rmin, rmax, d_opt, dtype=float)
+    Zgrid = np.arange(zmin, zmax, d_opt, dtype=float)
 
     nR = len(Rgrid)
     nZ = len(Zgrid)
@@ -132,18 +133,18 @@ def populate_with_fils(shape,Nfils):
     for i in range(nZ):
 
         zpoint = Zgrid[i]
-        
-        if i % 2: # Every other row, stagger R coords by 0.5*dR
-            offset = 0.5*d_opt
+
+        if i % 2:  # Every other row, stagger R coords by 0.5*dR
+            offset = 0.5 * d_opt
         else:
 
             offset = 0.0
 
         for j in range(nR):
-            
+
             rpoint = Rgrid[j] + offset
 
-            point = geometry.Point(rpoint,zpoint)
+            point = geometry.Point(rpoint, zpoint)
 
             if my_polygon.contains(point):
                 nInside += 1
@@ -154,7 +155,8 @@ def populate_with_fils(shape,Nfils):
     zfils = np.asarray(zfils)
 
     return rfils, zfils
-                    
+
+
 class FilamentCoil(Coil):
     """
     This class represents a coil broken down into multiple
@@ -185,11 +187,20 @@ class FilamentCoil(Coil):
             (str("current"), np.float64),
             (str("turns"), int),
             (str("control"), bool),
-            (str("npoints"), int)
+            (str("npoints"), int),
         ]
     )
 
-    def __init__(self, Rfil=None, Zfil=None, shape=None, current=0.0, Nfils=50, turns=1, control=True):
+    def __init__(
+        self,
+        Rfil=None,
+        Zfil=None,
+        shape=None,
+        current=0.0,
+        Nfils=50,
+        turns=1,
+        control=True,
+    ):
         """
         Inputs
         ------
@@ -218,7 +229,13 @@ class FilamentCoil(Coil):
             minZ = np.min(Zfil)
             maxZ = np.max(Zfil)
 
-            shape = [(minR,minZ),(minR,maxZ),(maxR,maxZ),(maxR,minZ),(minR,minZ)]
+            shape = [
+                (minR, minZ),
+                (minR, maxZ),
+                (maxR, maxZ),
+                (maxR, minZ),
+                (minR, minZ),
+            ]
 
         assert len(shape) > 2
 
@@ -236,15 +253,15 @@ class FilamentCoil(Coil):
         if Rfil is None:
             # No filaments provided. Need to populate the coil cross
             # section with -Nfils filaments.
-            Rfil, Zfil = populate_with_fils(self.shape,Nfils)
-        
+            Rfil, Zfil = populate_with_fils(self.shape, Nfils)
+
         Rfil = np.asarray(Rfil)
         Zfil = np.asarray(Zfil)
         if Rfil.ndim == 0:
             self.points = [(Rfil, Zfil)]
             self.npoints = 1
         else:
-            self.points = np.array(list(zip(Rfil,Zfil)))
+            self.points = np.array(list(zip(Rfil, Zfil)))
             self.npoints = len(Rfil)
 
     def controlPsi(self, R, Z):
@@ -280,8 +297,9 @@ class FilamentCoil(Coil):
         return result
 
     def __repr__(self):
-        return ("FilamentCoil({0}, current={1:.1f}, turns={2}, control={3})"
-                .format(self.points, self.current, self.turns, self.control))
+        return "FilamentCoil({0}, current={1:.1f}, turns={2}, control={3})".format(
+            self.points, self.current, self.turns, self.control
+        )
 
     @property
     def R(self):
@@ -294,7 +312,7 @@ class FilamentCoil(Coil):
     def R(self, Rnew):
         # Need to shift all points
         Rshift = Rnew - self._R_centre
-        self.points = [(r + Rshift, z) for r,z in self.points]
+        self.points = [(r + Rshift, z) for r, z in self.points]
         self._R_centre = Rnew
 
     @property
@@ -308,13 +326,13 @@ class FilamentCoil(Coil):
     def Z(self, Znew):
         # Need to shift all points
         Zshift = Znew - self._Z_centre
-        self.points = [(r, z + Zshift) for r,z in self.points]
+        self.points = [(r, z + Zshift) for r, z in self.points]
         self._Z_centre = Znew
 
     @property
     def area(self):
         return self._area
-        
+
     @area.setter
     def area(self, area):
         raise ValueError("Area of a FilamentCoil is fixed")
@@ -324,7 +342,7 @@ class FilamentCoil(Coil):
         Plot the coil points, using axis if given
         """
         import matplotlib.pyplot as plt
-        
+
         if axis is None:
             fig = plt.figure()
             axis = fig.add_subplot(111)
@@ -334,13 +352,13 @@ class FilamentCoil(Coil):
         axis.fill(r, z, color="gray")
         axis.plot(r, z, color="black")
 
-        r = [r for r,z in self.points]
-        z = [z for r,z in self.points]
-        axis.plot(r,z,'kx')
-        
+        r = [r for r, z in self.points]
+        z = [z for r, z in self.points]
+        axis.plot(r, z, "kx")
+
         # Quadrature points
-        #rquad = [r for r,z,w in self._points]
-        #zquad = [z for r,z,w in self._points]
-        #axis.plot(rquad, zquad, 'ro')
-        
+        # rquad = [r for r,z,w in self._points]
+        # zquad = [z for r,z,w in self._points]
+        # axis.plot(rquad, zquad, 'ro')
+
         return axis

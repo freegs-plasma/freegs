@@ -23,6 +23,7 @@ from numpy import amin, amax, array
 from . import critical
 import numpy as np
 
+
 def solve(
     eq,
     profiles,
@@ -36,9 +37,9 @@ def solve(
     psi_bndry=None,
     maxits=50,
     convergenceInfo=False,
-    check_limited = False,
-    wait_for_limited = False,
-    limit_it = 0
+    check_limited=False,
+    wait_for_limited=False,
+    limit_it=0,
 ):
     """
     Perform Picard iteration to find solution to the Grad-Shafranov equation
@@ -59,7 +60,7 @@ def solve(
                If this limit is exceeded then a RuntimeError is raised.
 
     convergenceInfo - True/False toggle for outputting convergence data.
-    
+
     check_limited - True/False toggle to control checking for limited plasmas.
     wait_for_limited - True/False toggle to keep iterating until the plasma is limited.
     limit_it - Integer > Sometimes waiting some number of interations before checking if
@@ -120,7 +121,6 @@ def solve(
                 # Note, a short pause is needed to force drawing update
                 axis.figure.canvas.draw()
                 plt.pause(pause)
-        
 
         # Copy psi to compare at the end
         psi_last = psi.copy()
@@ -128,7 +128,7 @@ def solve(
         # Boundary flux can also be used as a convergence criterion, so note it
         bndry_last = bndry
 
-        if((iteration>=limit_it or has_been_limited) and check_limited):
+        if (iteration >= limit_it or has_been_limited) and check_limited:
             # The user wishes to check for a limited plasma.
             # The minimum number or iterations has passed.
             # If it is ever found to be limited, keep checking for
@@ -163,7 +163,7 @@ def solve(
             # Dummy condition to prevent boundary
             # convergence when there is no boundary
             # ie set the change to > rtol
-            bndry_relchange = 2.0*rtol
+            bndry_relchange = 2.0 * rtol
 
         # Get the new psi, including coils
         psi = eq.psi()
@@ -177,11 +177,11 @@ def solve(
         psi_relchange_iterations.append(psi_relchange)
 
         # User has the option to keep converging until limited
-        if(not wait_for_limited):
-			# User does not wish to wait for the plasma to become limited
+        if not wait_for_limited:
+            # User does not wish to wait for the plasma to become limited
             ok_to_break = True
 
-        elif(wait_for_limited and eq.is_limited):
+        elif wait_for_limited and eq.is_limited:
             # User wants to check if plasma limited and it is actually limited
             ok_to_break = True
 
@@ -190,15 +190,17 @@ def solve(
             ok_to_break = False
 
         if show:
-            print('psi_relchange: '+str(psi_relchange))
-            print('bndry_relchange: '+str(bndry_relchange))
-            print('bndry_change: '+str(bndry_change))
-            print('\n')
+            print("psi_relchange: " + str(psi_relchange))
+            print("bndry_relchange: " + str(bndry_relchange))
+            print("bndry_change: " + str(bndry_change))
+            print("\n")
 
         # Check if the changes in psi are small enough and that it is ok to start checking for convergence
-        if(((psi_maxchange < atol) or (psi_relchange < rtol)) and
-           ((bndry_relchange < rtol) or (abs(bndry_change) < atol)) and
-            ok_to_break):
+        if (
+            ((psi_maxchange < atol) or (psi_relchange < rtol))
+            and ((bndry_relchange < rtol) or (abs(bndry_change) < atol))
+            and ok_to_break
+        ):
             break
 
         # Adjust the coil currents
@@ -213,6 +215,5 @@ def solve(
             raise RuntimeError(
                 "Picard iteration failed to converge (too many iterations)"
             )
-    if convergenceInfo: 
-        return array(psi_maxchange_iterations),\
-               array(psi_relchange_iterations)
+    if convergenceInfo:
+        return array(psi_maxchange_iterations), array(psi_relchange_iterations)

@@ -7,12 +7,7 @@ from . import equilibrium
 def test_psinorm_range():
     """Test that the profiles produce finite values outside core"""
 
-    eq = equilibrium.Equilibrium(Rmin = 0.5,
-                                 Rmax = 1.5,
-                                 Zmin = -1.0,
-                                 Zmax = 1.0,
-                                 nx = 33,
-                                 ny = 33)
+    eq = equilibrium.Equilibrium(Rmin=0.5, Rmax=1.5, Zmin=-1.0, Zmax=1.0, nx=33, ny=33)
 
     for profiles in [
         jtor.ConstrainPaxisIp(eq, 1e3, 2e5, 2.0),

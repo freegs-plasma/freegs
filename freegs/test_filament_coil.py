@@ -37,12 +37,13 @@ def test_two_filaments():
     assert np.isclose(circuit.controlBr(0.3, 0.1), fcoil.controlBr(0.3, 0.1))
     assert np.isclose(circuit.controlBz(0.3, 0.1), fcoil.controlBz(0.3, 0.1))
 
-    # Check the field, putting the same current 
+    # Check the field, putting the same current
     fcoil.current = 100
     circuit.current = 100
     assert np.isclose(circuit.psi(0.3, 0.1), fcoil.psi(0.3, 0.1))
     assert np.isclose(circuit.Br(0.3, 0.1), fcoil.Br(0.3, 0.1))
     assert np.isclose(circuit.Bz(0.3, 0.1), fcoil.Bz(0.3, 0.1))
+
 
 def test_two_turns():
     """
@@ -50,7 +51,7 @@ def test_two_turns():
     """
 
     fcoil = FilamentCoil(1.1, 1.2, turns=2)
-    
+
     circuit = Circuit(
         [
             ("A", FilamentCoil(1.1, 1.2), 1.0),
@@ -62,7 +63,8 @@ def test_two_turns():
     assert np.isclose(circuit.controlPsi(0.3, 0.1), fcoil.controlPsi(0.3, 0.1))
     assert np.isclose(circuit.controlBr(0.3, 0.1), fcoil.controlBr(0.3, 0.1))
     assert np.isclose(circuit.controlBz(0.3, 0.1), fcoil.controlBz(0.3, 0.1))
-    
+
+
 def test_mirrored():
     """
     Mirrored FilamentCoil the same as two coils in a circuit at half current
@@ -78,7 +80,7 @@ def test_mirrored():
         ]
     )
 
-    # Check 
+    # Check
     assert np.isclose(circuit.controlPsi(0.3, 0.1), fcoil.controlPsi(0.3, 0.1))
     assert np.isclose(circuit.controlBr(0.3, 0.1), fcoil.controlBr(0.3, 0.1))
     assert np.isclose(circuit.controlBz(0.3, 0.1), fcoil.controlBz(0.3, 0.1))
