@@ -28,6 +28,7 @@ from .coil import Coil, AreaCurrentLimit
 from .gradshafranov import Greens, GreensBr, GreensBz
 from . import polygons
 
+
 class PreCalcCoil(Coil):
     """
     This class represents a coil whose Green's functions have
@@ -63,7 +64,18 @@ class PreCalcCoil(Coil):
         ]
     )
 
-    def __init__(self, shape, Rgrid, Zgrid, mapBr, mapBz, mapPsi, current=0.0, turns=1, control=True):
+    def __init__(
+        self,
+        shape,
+        Rgrid,
+        Zgrid,
+        mapBr,
+        mapBz,
+        mapPsi,
+        current=0.0,
+        turns=1,
+        control=True,
+    ):
         """
         Inputs
         ------
@@ -88,33 +100,33 @@ class PreCalcCoil(Coil):
         self._Z_centre = sum(z for r, z in shape) / len(shape)
 
         self.current = current
-        self.turns   = turns
+        self.turns = turns
         self.control = control
-        self._area   = abs(polygons.area(shape))
-        self.shape   = shape
-        self._points = np.array([(r,z) for r, z in self.shape])
+        self._area = abs(polygons.area(shape))
+        self.shape = shape
+        self._points = np.array([(r, z) for r, z in self.shape])
 
         # Data for the pre-calculated Green's functions
-        self.Rgrid   = np.transpose(Rgrid)[:,0]
-        self.Zgrid   = np.transpose(Zgrid)[0,:]
+        self.Rgrid = np.transpose(Rgrid)[:, 0]
+        self.Zgrid = np.transpose(Zgrid)[0, :]
         self.mapPsi = np.transpose(np.asarray(mapPsi))
-        self.mapBr  = np.transpose(np.asarray(mapBr))
-        self.mapBz  = np.transpose(np.asarray(mapBz))
+        self.mapBr = np.transpose(np.asarray(mapBr))
+        self.mapBz = np.transpose(np.asarray(mapBz))
 
         # Interpolators for the pre-calculated Green's functions
-        self.cPsi = RectBivariateSpline(self.Rgrid,self.Zgrid,self.mapPsi)
-        self.cBr  = RectBivariateSpline(self.Rgrid,self.Zgrid,self.mapBr)
-        self.cBz  = RectBivariateSpline(self.Rgrid,self.Zgrid,self.mapBz)
+        self.cPsi = RectBivariateSpline(self.Rgrid, self.Zgrid, self.mapPsi)
+        self.cBr = RectBivariateSpline(self.Rgrid, self.Zgrid, self.mapBr)
+        self.cBz = RectBivariateSpline(self.Rgrid, self.Zgrid, self.mapBz)
 
     def controlPsi(self, R, Z):
         """
         Calculate poloidal flux at (R,Z) due to a unit current.
         """
-        
-        if isinstance(R,float) or isinstance(R,int):
-            result = self.cPsi(R,Z)[0][0]
+
+        if isinstance(R, float) or isinstance(R, int):
+            result = self.cPsi(R, Z)[0][0]
         else:
-            result = self.cPsi(R,Z,grid=False)
+            result = self.cPsi(R, Z, grid=False)
 
         return result
 
@@ -122,11 +134,11 @@ class PreCalcCoil(Coil):
         """
         Calculate radial magnetic field Br at (R,Z) due to a unit current.
         """
-        
-        if isinstance(R,float) or isinstance(R,int):
-            result = self.cBr(R,Z)[0][0]
+
+        if isinstance(R, float) or isinstance(R, int):
+            result = self.cBr(R, Z)[0][0]
         else:
-            result = self.cBr(R,Z,grid=False)
+            result = self.cBr(R, Z, grid=False)
 
         return result
 
@@ -134,11 +146,11 @@ class PreCalcCoil(Coil):
         """
         Calculate vertical magnetic field Br at (R,Z) due to a unit current.
         """
-        
-        if isinstance(R,float) or isinstance(R,int):
-            result = self.cBz(R,Z)[0][0]
+
+        if isinstance(R, float) or isinstance(R, int):
+            result = self.cBz(R, Z)[0][0]
         else:
-            result = self.cBz(R,Z,grid=False)
+            result = self.cBz(R, Z, grid=False)
 
         return result
 
@@ -216,14 +228,7 @@ class PreCalcCoil(Coil):
         Z[:RZlen] = [Z for R, Z in self.shape]
 
         return np.array(
-            (
-                RZlen,
-                R,
-                Z,
-                self.current,
-                self.turns,
-                self.control
-            ),
+            (RZlen, R, Z, self.current, self.turns, self.control),
             dtype=self.dtype,
         )
 
