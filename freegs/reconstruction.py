@@ -52,8 +52,9 @@ class Reconstruction(Equilibrium):
         self.dR = self.R[1, 0] - self.R[0, 0]
         self.dZ = self.Z[0, 1] - self.Z[0, 0]
 
-        # Creating Reconstruction Grid and Greens functions
+        # Creating Greens functions and Finite Element Grid
         self.generate_Greens()
+        self.FEmatrix = self.get_FiniteElements()
 
         # Reconstruction attributes
         self.psi_norm = None # normalised psi
@@ -94,6 +95,7 @@ class Reconstruction(Equilibrium):
 
         self.M = M
         self.sigma = sigma
+        self.F = self.get_fittingWeightVector()
 
     def take_Measurements_from_tokamak(self):
         """
@@ -126,6 +128,7 @@ class Reconstruction(Equilibrium):
 
         self.M = M
         self.sigma = sigma
+        self.F = self.get_fittingWeightVector()
 
     # Pass the coil current sto the equilibrium object
     def initialise_coil_current(self):
@@ -137,7 +140,7 @@ class Reconstruction(Equilibrium):
             coil.current = coil_currents[index][0]
 
     # Calculate the Current initialisation T matrix
-    def initialise_plasma_current(self, m=5, n=5):
+    def initialise_plasma_current(self):
         """
         Function for calculating the initial jtor
 
@@ -155,12 +158,9 @@ class Reconstruction(Equilibrium):
         #Finding plasma dependence of measurements
         M_plasma = self.get_M_plasma()
 
-        # Creates finite element grid
-        FEmatrix = self.get_FiniteElements(m=m,n=n)
-
         #Uses least squares solver to find coefficients and subsequently jtor
-        coefs = lstsq(self.Gplasma @ FEmatrix, M_plasma)[0]
-        jtor = FEmatrix @ coefs
+        coefs = lstsq(self.Gplasma @ self.FEmatrix, M_plasma)[0]
+        jtor = self.FEmatrix @ coefs
         return jtor
 
     # Calculating the plasma contirbution to the measurements
@@ -207,7 +207,6 @@ class Reconstruction(Equilibrium):
         if self.use_VesselCurrents:
             fil_currents = self.tokamak.eigenbasis @ self.get_index(self.c, 'vessel')
             self.tokamak.updateVesselCurrents(fil_currents)
-
 
     #Perform a Chi Squared test
     def convergence_test(self):
@@ -469,7 +468,7 @@ class Reconstruction(Equilibrium):
         return np.diag([val[0]**(-1) for val in self.sigma])
 
     # Calculate Finite Elements Grid
-    def get_FiniteElements(self, m, n):
+    def get_FiniteElements(self, m=5, n=5):
         """
         Parameters
         ----------
@@ -566,12 +565,8 @@ class Reconstruction(Equilibrium):
                     jtor_1d = self.initialise_plasma_current()
                     self.Jtor = np.reshape(jtor_1d, (self.nx, self.ny),order='F')
 
-                F = self.get_fittingWeightVector()
-
             else:
-
-                if self.show:
-                    self.plot_equilibria(fig, axs)
+                self.plot_equilibria(fig, axs)
 
                 # Use B & C to calculate Jtor matrix
                 jtor_1d = Basis @ self.get_index(self.c, 'plasma')
@@ -590,7 +585,7 @@ class Reconstruction(Equilibrium):
             SystemMatrix = self.get_SystemMatrix(A)
 
             # Performing least squares calculation for c
-            self.c = lstsq(F @ SystemMatrix, F @ self.M)[0]
+            self.c = lstsq(self.F @ SystemMatrix, self.F @ self.M)[0]
 
             # Updating the Coil Currents and Vessel Currents
             self.update_currents()
@@ -642,28 +637,29 @@ class Reconstruction(Equilibrium):
         plt.show()
 
     def plot_equilibria(self, fig, axs):
-        # Plot state of plasma equilibrium
-        if self.pause < 0:
-            fig = plt.figure()
-            axis = fig.add_subplot(111)
-        else:
-            axs[0].clear()
-            axs[1].clear()
+        if self.show:
+            # Plot state of plasma equilibrium
+            if self.pause < 0:
+                fig = plt.figure()
+                axis = fig.add_subplot(111)
+            else:
+                axs[0].clear()
+                axs[1].clear()
 
-        plotting.plotEquilibrium(self, axis=axs[0], show=False)
-        if self.Jtor is not None:
-            axs[1].imshow(np.rot90(self.Jtor), extent=(0.1, 2, -1, 1),
-                          cmap=plt.get_cmap('jet'))
+            plotting.plotEquilibrium(self, axis=axs[0], show=False)
+            if self.Jtor is not None:
+                axs[1].imshow(np.rot90(self.Jtor), extent=(0.1, 2, -1, 1),
+                              cmap=plt.get_cmap('jet'))
 
-        if self.pause < 0:
-            # Wait for user to close the window
-            plt.show()
-        else:
-            # Update the canvas and pause
-            # Note, a short pause is needed to force drawing update
-            axs[0].figure.canvas.draw()
-            axs[1].figure.canvas.draw()
-            plt.pause(self.pause)
+            if self.pause < 0:
+                # Wait for user to close the window
+                plt.show()
+            else:
+                # Update the canvas and pause
+                # Note, a short pause is needed to force drawing update
+                axs[0].figure.canvas.draw()
+                axs[1].figure.canvas.draw()
+                plt.pause(self.pause)
 
     def print_reconstruction(self):
         """
