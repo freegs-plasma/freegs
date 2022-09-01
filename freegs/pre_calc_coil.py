@@ -25,7 +25,7 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 import numpy as np
 from .coil import Coil, AreaCurrentLimit
 from .gradshafranov import Greens, GreensBr, GreensBz
-
+from . import polygons
 
 class PreCalcCoil(Coil):
     """

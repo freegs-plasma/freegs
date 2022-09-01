@@ -168,7 +168,7 @@ class Coil:
 
 
         Force on coil due to its own current:
-            Lorentz self‐forces on curved current loops
+            Lorentz self-forces on curved current loops
             Physics of Plasmas 1, 3425 (1998); https://doi.org/10.1063/1.870491
             David A. Garren and James Chen
         """
