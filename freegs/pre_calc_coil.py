@@ -23,6 +23,7 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import numpy as np
+from scipy.interpolate import RectBivariateSpline
 from .coil import Coil, AreaCurrentLimit
 from .gradshafranov import Greens, GreensBr, GreensBz
 from . import polygons
@@ -96,9 +97,9 @@ class PreCalcCoil(Coil):
         # Data for the pre-calculated Green's functions
         self.Rgrid   = np.transpose(Rgrid)[:,0]
         self.Zgrid   = np.transpose(Zgrid)[0,:]
-        self.map_psi = np.transpose(np.asarray(map_psi))
-        self.map_Br  = np.transpose(np.asarray(map_Br))
-        self.map_Bz  = np.transpose(np.asarray(map_Bz))
+        self.mapPsi = np.transpose(np.asarray(mapPsi))
+        self.mapBr  = np.transpose(np.asarray(mapBr))
+        self.mapBz  = np.transpose(np.asarray(mapBz))
 
         # Interpolators for the pre-calculated Green's functions
         self.cPsi = RectBivariateSpline(self.Rgrid,self.Zgrid,self.mapPsi)
