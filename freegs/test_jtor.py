@@ -1,25 +1,24 @@
 import numpy as np
 
 from . import jtor
+from . import equilibrium
 
 
 def test_psinorm_range():
     """Test that the profiles produce finite values outside core"""
 
+    eq = equilibrium.Equilibrium(Rmin = 0.5,
+                                 Rmax = 1.5,
+                                 Zmin = -1.0,
+                                 Zmax = 1.0,
+                                 nx = 33,
+                                 ny = 33)
+
     for profiles in [
-        jtor.ConstrainPaxisIp(1e3, 2e5, 2.0),
-        jtor.ConstrainBetapIp(1.0, 2e5, 2.0),
+        jtor.ConstrainPaxisIp(eq, 1e3, 2e5, 2.0),
+        jtor.ConstrainBetapIp(eq, 1.0, 2e5, 2.0),
     ]:
-
-        # Need to give a plasma psi
-        R, Z = np.meshgrid(
-            np.linspace(0.5, 1.5, 33), np.linspace(-1, 1, 33), indexing="ij"
-        )
-        psi = np.exp((-((R - 1.0) ** 2) - Z ** 2) * 3) + np.exp(
-            (-((R - 1.0) ** 2) - (Z + 1) ** 2) * 3
-        )
-
-        current_density = profiles.Jtor(R, Z, psi)
+        current_density = profiles.Jtor(eq.R, eq.Z, eq.psi())
         assert np.all(np.isfinite(current_density))
 
         assert profiles.pprime(1.0) == 0.0

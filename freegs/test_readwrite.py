@@ -19,7 +19,7 @@ def test_readwrite():
             ny=17,
             boundary=freegs.boundary.freeBoundaryHagenow,
         )
-        profiles = freegs.jtor.ConstrainPaxisIp(1e4, 1e6, 2.0)
+        profiles = freegs.jtor.ConstrainPaxisIp(eq, 1e4, 1e6, 2.0)
 
         # Note here the X-point locations and isoflux locations are not the same.
         # The result will be an unbalanced double null configuration, where the

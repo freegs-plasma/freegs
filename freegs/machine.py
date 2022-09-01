@@ -292,7 +292,7 @@ class Solenoid:
             (str("Zsmax"), np.float64),
             (str("Ns"), np.float64),
             (str("current"), np.float64),
-            (str("control"), np.bool),
+            (str("control"), bool),
         ]
     )
 
