@@ -6,7 +6,7 @@ Used in machine to define coils. Can also be a base class for other coil types.
 License
 -------
 
-Copyright 2016-2019 Ben Dudson, University of York. Email: benjamin.dudson@york.ac.uk
+Copyright 2016-2022 FreeGS contributors
 
 This file is part of FreeGS.
 
@@ -60,7 +60,7 @@ class Coil:
     --------------
 
     R, Z - Location of the coil
-    current - current in the coil in Amps
+    current - current in each turn of the coil in Amps
     turns   - Number of turns
     control - enable or disable control system
     area    - Cross-section area in m^2
@@ -168,7 +168,7 @@ class Coil:
 
 
         Force on coil due to its own current:
-            Lorentz self‐forces on curved current loops
+            Lorentz self-forces on curved current loops
             Physics of Plasmas 1, 3425 (1998); https://doi.org/10.1063/1.870491
             David A. Garren and James Chen
         """

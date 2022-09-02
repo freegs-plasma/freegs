@@ -46,15 +46,23 @@ class constrain(object):
     max_total_current - The maximum total current through the coilset.
     """
 
-    def __init__(self, xpoints=[], gamma=1e-12, isoflux=[], psivals=[], current_lims=None, max_total_current=None):
+    def __init__(
+        self,
+        xpoints=[],
+        gamma=1e-12,
+        isoflux=[],
+        psivals=[],
+        current_lims=None,
+        max_total_current=None,
+    ):
         """
         Create an instance, specifying the constraints to apply
         """
-        self.xpoints           = xpoints
-        self.gamma             = gamma
-        self.isoflux           = isoflux
-        self.psivals           = psivals
-        self.current_lims      = current_lims
+        self.xpoints = xpoints
+        self.gamma = gamma
+        self.isoflux = isoflux
+        self.psivals = psivals
+        self.current_lims = current_lims
         self.max_total_current = max_total_current
 
     def __call__(self, eq):
@@ -116,7 +124,7 @@ class constrain(object):
 
         # Number of controls (length of x)
         ncontrols = A.shape[1]
-        
+
         # First solve analytically by Tikhonov regularisation
         # minimise || Ax - b ||^2 + ||gamma x ||^2
 
@@ -127,7 +135,7 @@ class constrain(object):
         )
 
         # Now use the initial analytical soln to guide constrained solve
-        
+
         # Establish constraints on changes in coil currents from the present
         # and max/min coil current constraints
 
@@ -135,43 +143,45 @@ class constrain(object):
 
         if self.current_lims is None:
             for i in range(ncontrols):
-                current_change_bounds.append((-inf,inf))
+                current_change_bounds.append((-inf, inf))
         else:
             for i in range(ncontrols):
                 cur = tokamak.controlCurrents()[i]
-                lower_lim = self.current_lims[i][0]-cur
-                upper_lim = self.current_lims[i][1]-cur
-                current_change_bounds.append((lower_lim,upper_lim))
+                lower_lim = self.current_lims[i][0] - cur
+                upper_lim = self.current_lims[i][1] - cur
+                current_change_bounds.append((lower_lim, upper_lim))
 
         current_change_bnds = array(current_change_bounds)
 
         # Reform the constraint matrices to include Tikhonov regularisation
-        A2 = np.concatenate([A, self.gamma*eye(ncontrols)])
+        A2 = np.concatenate([A, self.gamma * eye(ncontrols)])
         b2 = np.concatenate([b, np.zeros(ncontrols)])
 
         # The objetive function to minimize
         # || A2x - b2 ||^2
         def objective(x):
-            return (norm((A2@x)-b2))**2
-        
+            return (norm((A2 @ x) - b2)) ** 2
+
         # Additional constraints on the optimisation
         cons = []
 
         def max_total_currents(x):
             sum = 0.0
-            for delta,i in zip(x,tokamak.controlCurrents()):
-                sum+= abs(delta+i)
-            return -(sum-self.max_total_current)
+            for delta, i in zip(x, tokamak.controlCurrents()):
+                sum += abs(delta + i)
+            return -(sum - self.max_total_current)
 
         if self.max_total_current is not None:
-            con1 = {'type': 'ineq', 'fun': max_total_currents}
+            con1 = {"type": "ineq", "fun": max_total_currents}
             cons.append(con1)
 
         # Use the analytical current change as the initial guess
         x0 = self.current_change
-        sol = optimize.minimize(objective,x0,method='SLSQP',bounds=current_change_bnds,constraints=cons)
+        sol = optimize.minimize(
+            objective, x0, method="SLSQP", bounds=current_change_bnds, constraints=cons
+        )
 
-        self.current_change=sol.x
+        self.current_change = sol.x
         tokamak.controlAdjust(self.current_change)
 
         # Store info for user
@@ -308,6 +318,7 @@ class ConstrainPsiNorm2D(object):
             (psi_norm - self.target_psinorm) * self.weights
         ).ravel()  # flatten array
 
+
 class ConstrainPsi2DAdvanced(object):
     """
     Adjusts coil currents to minimise the square differences
@@ -316,7 +327,9 @@ class ConstrainPsi2DAdvanced(object):
     Attempts to also constrain the coil currents as in the 'constrain' class.
     """
 
-    def __init__(self, target_psi, weights=1.0, current_lims=None, max_total_current=None):
+    def __init__(
+        self, target_psi, weights=1.0, current_lims=None, max_total_current=None
+    ):
         """
         target_psinorm : 2D (R,Z) array
             Must be the same size as the equilibrium psi
@@ -352,29 +365,34 @@ class ConstrainPsi2DAdvanced(object):
         for i in range(ncontrols):
             bnd_upper = max(self.current_lims[i])
             bnd_lower = min(self.current_lims[i])
-            sc = start_currents [i]
+            sc = start_currents[i]
             if not (bnd_lower <= sc <= bnd_upper):
-                if (sc < bnd_lower):
+                if sc < bnd_lower:
                     start_currents[i] = bnd_lower
                 else:
                     start_currents[i] = bnd_upper
-        
+
         current_bounds = []
 
         for i in range(ncontrols):
             if self.current_lims is None:
-                current_bounds.append((-inf,inf))
+                current_bounds.append((-inf, inf))
             else:
                 bnd_upper = max(self.current_lims[i])
                 bnd_lower = min(self.current_lims[i])
-                current_bounds.append((bnd_lower,bnd_upper))
+                current_bounds.append((bnd_lower, bnd_upper))
 
         current_bnds = array(current_bounds)
 
-        # Least squares optimisation of difference in target v achieved normalised psi 
+        # Least squares optimisation of difference in target v achieved normalised psi
         # applied with bounds on coil currents
-        end_currents = optimize.minimize(self.psi_difference,start_currents,method='L-BFGS-B',
-                                        bounds=current_bnds,args=(eq,)).x
+        end_currents = optimize.minimize(
+            self.psi_difference,
+            start_currents,
+            method="L-BFGS-B",
+            bounds=current_bnds,
+            args=(eq,),
+        ).x
 
         # Set the latest coil currents
         tokamak.setControlCurrents(end_currents)
@@ -393,7 +411,7 @@ class ConstrainPsi2DAdvanced(object):
 
         psi_av = np.average(psi, weights=self.weights)
         diff = (psi - psi_av - self.target_psi) * self.weights
-        sum_square_diff = np.sum(diff*diff)
+        sum_square_diff = np.sum(diff * diff)
 
         return sum_square_diff
 
@@ -442,9 +460,9 @@ class ConstrainPsiNorm2DAdvanced(object):
         for i in range(ncontrols):
             bnd_upper = max(self.current_lims[i])
             bnd_lower = min(self.current_lims[i])
-            sc = start_currents [i]
+            sc = start_currents[i]
             if not (bnd_lower <= sc <= bnd_upper):
-                if (sc < bnd_lower):
+                if sc < bnd_lower:
                     start_currents[i] = bnd_lower
                 else:
                     start_currents[i] = bnd_upper
@@ -453,18 +471,23 @@ class ConstrainPsiNorm2DAdvanced(object):
 
         for i in range(ncontrols):
             if self.current_lims is None:
-                current_bounds.append((-inf,inf))
+                current_bounds.append((-inf, inf))
             else:
                 bnd_upper = max(self.current_lims[i])
                 bnd_lower = min(self.current_lims[i])
-                current_bounds.append((bnd_lower,bnd_upper))
+                current_bounds.append((bnd_lower, bnd_upper))
 
         current_bnds = array(current_bounds)
 
-        # Least squares optimisation of difference in target v achieved normalised psi 
+        # Least squares optimisation of difference in target v achieved normalised psi
         # applied with bounds on coil currents
-        end_currents = optimize.minimize(self.psinorm_difference,start_currents,method='L-BFGS-B',
-                                        bounds=current_bnds,args=(eq,)).x
+        end_currents = optimize.minimize(
+            self.psinorm_difference,
+            start_currents,
+            method="L-BFGS-B",
+            bounds=current_bnds,
+            args=(eq,),
+        ).x
 
         # Set the latest coil currents
         tokamak.setControlCurrents(end_currents)
@@ -489,6 +512,6 @@ class ConstrainPsiNorm2DAdvanced(object):
         # 1 = plasma boundary
         psi_norm = (psi - psi_axis) / (psi_bndry - psi_axis)
         diff = (psi_norm - self.target_psinorm) * self.weights
-        sum_square_diff = np.sum(diff*diff)
+        sum_square_diff = np.sum(diff * diff)
 
         return sum_square_diff

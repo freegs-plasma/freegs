@@ -164,7 +164,7 @@ def read(
     blend=0.0,
     fit_sol=False,
     maxits=50,
-    current_bounds=None
+    current_bounds=None,
 ):
     """
     Reads a G-EQDSK format file
@@ -333,8 +333,8 @@ def read(
         Zmax=data["zmid"] + 0.5 * data["zdim"],
         nx=nx,
         ny=ny,  # Number of grid points
-        check_limited = True,
-        psi = psi
+        check_limited=True,
+        psi=psi,
     )
     # Grid spacing
     dR = eq.R[1, 0] - eq.R[0, 0]
@@ -373,7 +373,14 @@ def read(
         # Create a new Equilibrium object
         # (replacing previous 'eq')
         eq = Equilibrium(
-            tokamak=machine, Rmin=Rmin, Rmax=Rmax, Zmin=Zmin, Zmax=Zmax, nx=nx, ny=ny, check_limited=True
+            tokamak=machine,
+            Rmin=Rmin,
+            Rmax=Rmax,
+            Zmin=Zmin,
+            Zmax=Zmax,
+            nx=nx,
+            ny=ny,
+            check_limited=True,
         )
 
         # Interpolate Jtor and psi onto new grid
@@ -437,7 +444,7 @@ def read(
         if current_bounds is not None:
             controlsystem = control.ConstrainPsi2DAdvanced(
                 psi, current_lims=current_bounds
-                )
+            )
         else:
             controlsystem = control.ConstrainPsi2D(psi)
     else:
@@ -447,9 +454,7 @@ def read(
                 psi, weights=mask, current_lims=current_bounds
             )
         else:
-            controlsystem = control.ConstrainPsi2D(
-                psi, weights=mask
-            )
+            controlsystem = control.ConstrainPsi2D(psi, weights=mask)
 
     # Run control system to find coil currents
     controlsystem(eq)
@@ -467,9 +472,10 @@ def read(
     #
 
     if current_bounds is not None:
-        controlsystem = control.ConstrainPsiNorm2DAdvanced(psi_norm, weights=mask,
-            current_lims=current_bounds)
-        maxits = 1000 # Constrained coil currents may require many iterations
+        controlsystem = control.ConstrainPsiNorm2DAdvanced(
+            psi_norm, weights=mask, current_lims=current_bounds
+        )
+        maxits = 1000  # Constrained coil currents may require many iterations
     else:
         controlsystem = control.ConstrainPsiNorm2D(psi_norm, weights=mask)
     picard.solve(
@@ -482,7 +488,7 @@ def read(
         rtol=rtol,
         blend=blend,
         maxits=maxits,
-        check_limited=True
+        check_limited=True,
     )
 
     print(
