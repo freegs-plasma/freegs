@@ -19,9 +19,9 @@ alpha_n = 2
 pprime_order = 3
 ffprime_order = 3
 x_z1 = -0.6
-x_z2 = 0.7
-x_r1 = 1
-x_r2 = 1
+x_z2 = 0.6
+x_r1 = 1.1
+x_r2 = 1.1
 
 tokamak = machine.EfitTestMachine()
 
@@ -31,6 +31,6 @@ eq = reconstruction.generate_Measurements(tokamak, alpha_m, alpha_n, x_z1=x_z1, 
 print('Starting Reconstruction')
 
 eq_setup = {'tokamak': tokamak, 'Rmin': Rmin, 'Rmax': Rmax, 'Zmin': Zmin, 'Zmax': Zmax, 'nx': nx, 'ny': ny}
-Recon = reconstruction.Reconstruction(pprime_order, ffprime_order,use_VesselCurrents=True, test=True, tolerance=1e-10,  **eq_setup)
+Recon = reconstruction.Reconstruction(pprime_order, ffprime_order,use_VslCrnt=True, test=True, tolerance=1e-10,  **eq_setup)
 Recon.solve_from_tokamak()
 Recon.plot()

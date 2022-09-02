@@ -102,6 +102,9 @@ class Equilibrium:
         self.Z_1D = linspace(Zmin, Zmax, ny)
         self.R, self.Z = meshgrid(self.R_1D, self.Z_1D, indexing="ij")
 
+        self.dR = self.R[1, 0] - self.R[0, 0]
+        self.dZ = self.Z[0, 1] - self.Z[0, 0]
+
         self.check_limited = check_limited
         self.is_limited = False
         self.Rlim = None

@@ -40,7 +40,7 @@ def test_offaxis_Bfield():
     # secondly want to pull the magentic field i am calculating from the sensors
     for sensor in tokamak.sensors:
         if isinstance(sensor, freegs.machine.PoloidalFieldSensor):
-            sensor.get_measure(tokamak)
+            sensor.get_measure(tokamak, None)
             assert np.isclose(sensor.measurement, B, atol=1e-8)
 
 
@@ -137,7 +137,7 @@ def test_flux():
 
     for sensor in tokamak.sensors:
         if isinstance(sensor, freegs.machine.FluxLoopSensor):
-            sensor.get_measure(tokamak)
+            sensor.get_measure(tokamak, None)
             assert np.isclose(sensor.measurement, psi, atol=1e-8)
 
 
@@ -231,6 +231,7 @@ def test_rog_with_plasma():
 
     eq.solve(profiles)
     tokamak.takeMeasurements(eq)
+    print(tokamak.sensors[0].measurement)
     assert np.isclose(tokamak.sensors[0].measurement, plasmacurrent,atol=1000)
 
 test_flux()

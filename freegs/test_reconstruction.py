@@ -1,6 +1,7 @@
 from freegs import machine, equilibrium, reconstruction, plotting, critical
 import numpy as np
 import math
+import pickle
 
 def test_reconstruction():
     """
@@ -101,9 +102,10 @@ def test_vessel_eigenmode():
     Recon = reconstruction.Reconstruction(pprime_order, ffprime_order, show=show, **eq_setup)
     Recon.solve_from_dictionary(measurement_dict=measurement_dict, sigma_dict=sigma_dict)
 
-    eig_coef = Recon.c[-tokamak.eigenbasis.shape[1]+i]
-    print(Recon.c)
-    assert abs(Recon.c[-tokamak.eigenbasis.shape[1]+i]) > 50*abs(Recon.c[-tokamak.eigenbasis.shape[1]+i+1]) and abs(Recon.c[-tokamak.eigenbasis.shape[1]+i]) > 50*abs(Recon.c[-tokamak.eigenbasis.shape[1]+i-1])
+    eig_coef = Recon.coefs[-tokamak.eigenbasis.shape[1]+i]
+    print(Recon.coefs)
+    Recon.plot_filaments()
+    assert abs(Recon.coefs[-tokamak.eigenbasis.shape[1]+i]) > 50*abs(Recon.coefs[-tokamak.eigenbasis.shape[1]+i+1]) and abs(Recon.coefs[-tokamak.eigenbasis.shape[1]+i]) > 50*abs(Recon.coefs[-tokamak.eigenbasis.shape[1]+i-1])
 
 def advanced_reconstruction_test_novessel():
     """
@@ -193,8 +195,8 @@ def advanced_reconstruction_eigenmode():
 
     Recon.plot()
 
-test_reconstruction()
+#test_vessel_eigenmode()
+#test_reconstruction()
 advanced_reconstruction_test_novessel()
 advanced_reconstruction_test_vessel()
 advanced_reconstruction_eigenmode()
-test_vessel_eigenmode()

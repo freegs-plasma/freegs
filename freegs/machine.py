@@ -496,7 +496,7 @@ class RogowskiSensor(Sensor):
         polygonlist = [(r, z) for r, z in zip(self.R, self.Z)]
         self.polygon = Polygon(polygonlist)
 
-    def get_measure(self, tokamak, equilibrium):
+    def get_measure(self, tokamak, eq):
         """
         Method to update the current attribute of the sensor
         with whatever current is contained within the sensor
@@ -516,41 +516,41 @@ class RogowskiSensor(Sensor):
 
             # plasma current
             plasma_current = 0
-            if equilibrium is not None:
-                dR = equilibrium.R[1, 0] - equilibrium.R[0, 0]
-                dZ = equilibrium.Z[0, 1] - equilibrium.Z[0, 0]
-                dim = (equilibrium.nx, equilibrium.ny)
-                sensor_jtor = np.zeros(dim)
-                for i in range(dim[0]):
-                    for j in range(dim[1]):
-                        gridpoint = Polygon([(equilibrium.R[i, j] - dR / 2,
-                                             equilibrium.Z[i, j] + dZ / 2), (
-                                            equilibrium.R[i, j] + dR / 2,
-                                            equilibrium.Z[i, j] + dZ / 2), (
-                                            equilibrium.R[i, j] + dR / 2,
-                                            equilibrium.Z[i, j] - dZ / 2), (
-                                            equilibrium.R[i, j] - dR / 2,
-                                            equilibrium.Z[i, j] - dZ / 2)])
+            if eq is not None:
+                sensor_jtor = np.zeros((eq.nx,eq.ny))
+                for index, (R, Z) in enumerate(zip(eq.R.flatten(order = 'F'), eq.Z.flatten(order='F'))):
+                    gridpoint = Polygon([(R - eq.dR / 2,
+                                          Z + eq.dZ / 2), (
+                                             R + eq.dR / 2,
+                                             Z + eq.dZ / 2), (
+                                             R + eq.dR / 2,
+                                             Z - eq.dZ / 2), (
+                                             R - eq.dR / 2,
+                                             Z - eq.dZ / 2)])
 
-                        plasma_current += equilibrium.Jtor[i, j] * self.polygon.intersection(gridpoint).area
+                    plasma_current += eq.Jtor.flatten(order='F')[index] \
+                                      * self.polygon.intersection(gridpoint).area
 
             self.measurement = plasma_current + coil_current
 
 
     # Methods used in Reconstruction for generating the Greens matrices
-    def get_PlasmaGreensRow(self, equilibrium):
-        greens_matrix = np.zeros((equilibrium.nx, equilibrium.ny))
-        for i in range(equilibrium.nx):
-            for j in range(equilibrium.ny):
-                if self.polygon.contains(Point(equilibrium.R[i, j], equilibrium.Z[i, j])):
-                    greens_matrix[i, j] = equilibrium.dR * equilibrium.dZ
-        return greens_matrix
+    def get_PlasmaGreensRow(self, eq):
+        greens_row = np.zeros(eq.nx*eq.ny)
+        for index, (R,Z) in enumerate(zip(eq.R.flatten(order = 'F'),eq.Z.flatten(order = 'F'))):
+                if self.polygon.contains(Point(R, Z)):
+                    greens_row[index] = eq.dR * eq.dZ
+        return greens_row
 
     def get_CoilGreensRow(self, coil):
         return coil.inShape(self.polygon)
 
     def get_VesselGreensRow(self, passive):
         return passive.inShape(self.polygon)
+
+    def plot(self, axis):
+        axis.plot(list(self.R) + [self.R[0]],
+                  list(self.Z) + [self.Z[0]], "b")
 
 
 class PoloidalFieldSensor(Sensor):
@@ -566,7 +566,7 @@ class PoloidalFieldSensor(Sensor):
     def __repr__(self):
         return "R={R}, Z={Z}, Theta={Theta}".format(R=self.R, Z=self.Z, Theta=self.theta)
 
-    def get_measure(self, tokamak, equilibrium):
+    def get_measure(self, tokamak, eq):
         """
         Updates field attribute of sensor with measured field at that
         point/direction if sensor is on
@@ -576,20 +576,26 @@ class PoloidalFieldSensor(Sensor):
 
             field = (tokamak.Br(self.R, self.Z)) * np.cos(self.theta) + (tokamak.Bz(self.R, self.Z)) * np.sin(self.theta)
 
-            if equilibrium is not None:
-                field += (equilibrium.plasmaBr(self.R, self.Z)) * np.cos(self.theta) + (equilibrium.plasmaBz(self.R, self.Z)) * np.sin(self.theta)
+            if eq is not None:
+                field += (eq.plasmaBr(self.R, self.Z)) * np.cos(self.theta) + (eq.plasmaBz(self.R, self.Z)) * np.sin(self.theta)
 
             self.measurement = field
 
     # Methods used in Reconstruction for generating the Greens matrices
-    def get_PlasmaGreensRow(self, equilibrium):
-        return equilibrium.dR * equilibrium.dZ * (GreensBr(equilibrium.R, equilibrium.Z, self.R,self.Z) * np.cos(self.theta) + GreensBz(equilibrium.R,equilibrium.Z, self.R,self.Z) * np.sin(self.theta))
+    def get_PlasmaGreensRow(self, eq):
+        return eq.dR * eq.dZ * (GreensBr(eq.R.flatten(order = 'F'), eq.Z.flatten(order = 'F'), self.R,self.Z) * np.cos(self.theta)
+                                + GreensBz(eq.R.flatten(order = 'F'), eq.Z.flatten(order = 'F'), self.R,self.Z) * np.sin(self.theta))
 
     def get_CoilGreensRow(self, coil):
         return np.cos(self.theta) * coil.controlBr(self.R,self.Z) + np.sin(self.theta) * coil.controlBz(self.R, self.Z)
 
     def get_VesselGreensRow(self, passive):
         return np.cos(self.theta) * passive.controlBr(self.R,self.Z) + np.sin(self.theta) * passive.controlBz(self.R, self.Z)
+
+    def plot(self, axis):
+        axis.plot(self.R, self.Z, 'mo')
+        axis.arrow(self.R, self.Z, 0.1 * np.cos(self.theta),
+                   0.1 * np.sin(self.theta))
 
 
 class FluxLoopSensor(Sensor):
@@ -601,29 +607,32 @@ class FluxLoopSensor(Sensor):
     def __init__(self, R, Z, flux=0, name=None, weight=1, status=True, measurement=None):
         Sensor.__init__(self, R, Z, name=name, weight=weight, status=status, measurement=measurement)
 
-    def get_measure(self, tokamak, equilibrium):
+    def get_measure(self, tokamak, eq):
         """
             Updates flux attribute with
             poloidal flux at the point of measurement
             if sensor is on
         """
         if self.status:
-            if equilibrium is not None:
-                psi = equilibrium.psiRZ(self.R,self.Z)
+            if eq is not None:
+                psi = eq.psiRZ(self.R,self.Z)
             else:
                 psi = tokamak.psi(self.R, self.Z)
 
             self.measurement = psi
 
     # Methods used in Reconstruction for generating the Greens matrices
-    def get_PlasmaGreensRow(self, equilibrium):
-        return equilibrium.dR * equilibrium.dZ * Greens(equilibrium.R, equilibrium.Z, self.R,self.Z)
+    def get_PlasmaGreensRow(self, eq):
+        return eq.dR * eq.dZ * Greens(eq.R.flatten(order = 'F'), eq.Z.flatten(order = 'F'), self.R,self.Z)
 
     def get_CoilGreensRow(self, coil):
         return coil.controlPsi(self.R,self.Z)
 
     def get_VesselGreensRow(self, passive):
         return passive.controlPsi(self.R,self.Z)
+
+    def plot(self, axis):
+        axis.plot(self.R, self.Z, 'ro')
 
 
 class Filament(Coil):
@@ -638,16 +647,8 @@ class Filament(Coil):
         self.dZ = dZ
         self.resistance = 2 * np.pi * self.R * resistivity / (self.dR * self.dZ)
 
-        self.n_fils = 1
-        self.n_basis = 1
-        self.filaments = [self]
-        self.eigenbasis = self.calcEigenbasis()
-
     def updateFilamentCurrent(self, current):
         self.current = current
-
-    def calcEigenbasis(self):
-        return [[1]]
 
 
 class Passive:
@@ -668,9 +669,7 @@ class Passive:
         """
         Calculate Greens functions
         """
-        pgreen = {}
-        for filament in self.filaments:
-            pgreen[filament.name] = filament.createPsiGreens(R, Z)
+        pgreen = {filament.name:filament.createPsiGreens(R, Z) for filament in self.filaments}
         return pgreen
 
     def calcPsiFromGreens(self, pgreen):
@@ -697,10 +696,10 @@ class Passive:
     def inShape(self,polygon):
         return sum(filament.inShape(polygon) for filament in self.filaments)
 
-    def updateFilamentCurrent(self, currents, filament_index):
-        currents = currents[filament_index:]
+    def updateFilamentCurrent(self, vessel_currents, filament_index):
+        passive_currents = vessel_currents[filament_index:]
         for index, filament in enumerate(self.filaments):
-            filament.updateFilamentCurrent(currents[index])
+            filament.updateFilamentCurrent(passive_currents[index])
 
     def calcEigenbasis(self):
         R = np.zeros((self.n_fils, self.n_fils))
@@ -736,7 +735,6 @@ class Passive:
         return np.asarray(sorted_eigvecs[:self.n_basis]).T
 
 
-
 class Machine:
     """
     Represents the machine (Tokamak), including
@@ -769,9 +767,9 @@ class Machine:
             self.limit_points_R, self.limit_points_Z = self.generate_limit_points(nlimit)
 
         if self.vessel is not None:
-            self.getVesselEigenbasis()
+            self.eigenbasis = self.getVesselEigenbasis()
 
-        self.generate_n_attributes()
+        self.generate_list_lengths()
 
 
     def __repr__(self):
@@ -793,7 +791,7 @@ class Machine:
                 return coil
         raise KeyError("Machine does not contain coil with label '{0}'".format(name))
 
-    def generate_n_attributes(self):
+    def generate_list_lengths(self):
         if self.coils is not None:
             self.n_coils = len(self.coils)
         else:
@@ -806,9 +804,11 @@ class Machine:
             self.n_sensors = 0
 
         if self.vessel is not None: # i know i need to change the is not None
-            self.n_fils, self.n_basis = sum(fil.n_fils for fil in self.vessel), sum(fil.n_basis for fil in self.vessel)
+            self.n_fils = sum(fil.n_fils for fil in self.vessel)
+            self.n_basis =  sum(fil.n_basis for fil in self.vessel)
         else:
-            self.n_fils, self.n_basis = 0, 0
+            self.n_fils = 0
+            self.n_basis = 0
 
 
     def generate_limit_points(self,nlimit):
@@ -836,22 +836,22 @@ class Machine:
 
     def psi(self, R, Z):
         """
-        Poloidal flux due to coils
+        Poloidal flux due to coils and vessel filaments
         """
         psi_coils = 0.0
         for label, coil in self.coils:
             psi_coils += coil.psi(R, Z)
 
         if self.vessel is not None:
-            for filament in self.vessel:
-                psi_coils += filament.psi(R, Z)
+            for passive in self.vessel:
+                psi_coils += passive.psi(R, Z)
 
         return psi_coils
 
     def createPsiGreens(self, R, Z):
         """
         An optimisation, which pre-computes the Greens functions
-        and puts into arrays for each coil. This map can then be
+        and puts into arrays for each coil and vessel filament. This map can then be
         called at a later time, and quickly return the field
         """
         pgreen = {}
@@ -859,8 +859,8 @@ class Machine:
             pgreen[label] = coil.createPsiGreens(R, Z)
 
         if self.vessel is not None:
-            for filament in self.vessel:
-                pgreen[filament.name] = filament.createPsiGreens(R, Z)
+            for passive in self.vessel:
+                pgreen[passive.name] = passive.createPsiGreens(R, Z)
 
         return pgreen
 
@@ -874,8 +874,8 @@ class Machine:
             psi_coils += coil.calcPsiFromGreens(pgreen[label])
 
         if self.vessel is not None:
-            for filament in self.vessel:
-                psi_coils += filament.calcPsiFromGreens(pgreen[filament.name])
+            for passive in self.vessel:
+                psi_coils += passive.calcPsiFromGreens(pgreen[passive.name])
 
         return psi_coils
 
@@ -888,8 +888,8 @@ class Machine:
             Br += coil.Br(R, Z)
 
         if self.vessel is not None:
-            for filament in self.vessel:
-                Br += filament.Br(R, Z)
+            for passive in self.vessel:
+                Br += passive.Br(R, Z)
 
         return Br
 
@@ -902,8 +902,8 @@ class Machine:
             Bz += coil.Bz(R, Z)
 
         if self.vessel is not None:
-            for filament in self.vessel:
-                Bz += filament.Bz(R, Z)
+            for passive in self.vessel:
+                Bz += passive.Bz(R, Z)
 
         return Bz
 
@@ -950,7 +950,7 @@ class Machine:
     def setControlCurrents(self, currents):
         """
         Sets the currents in the coils being controlled.
-        Input list must be of the same length as the list
+        Input list m/ust be of the same length as the list
         returned by controlCurrents
         """
         controlcoils = [coil for label, coil in self.coils if coil.control]
@@ -963,20 +963,19 @@ class Machine:
             print(label + " : " + str(coil))
         print("==========================")
 
-    def takeMeasurements(self, equilibrium=None):
+    def takeMeasurements(self, eq=None):
         """
         Method calling the measure method of each sensor on the machine
         """
         for sensor in self.sensors:
-            sensor.get_measure(self, equilibrium)
+            sensor.get_measure(self, eq)
 
-
-    def printMeasurements(self, equilibrium=None):
+    def printMeasurements(self, eq=None):
         """
         Method for calling the takeMeasurements method, then printing the results
         """
         print("==========================")
-        self.takeMeasurements(equilibrium=equilibrium)
+        self.takeMeasurements(eq=eq)
         for sensor in self.sensors:
             if sensor.name != None:
                 print(sensor.name + ' '+ str(sensor) + ", Measurement=" + str(
@@ -1017,7 +1016,7 @@ class Machine:
         for index, (name, coil) in enumerate(self.coils):
             coil.current = currents[index][0]
 
-    def updateVesselCurrents(self, currents):
+    def updateVesselCurrents(self, vessel_currents):
         """
         Loops through filaments in vessel, assigns them each the corresponding
         given value of current
@@ -1026,19 +1025,23 @@ class Machine:
         ----------
         currents - ordered array of currents
 
+        vessel currents = [I1,I2,I3,....Infils]
+        vessel = [passive1,passive2,passive3]
+        passive1.filaments = [fil1,fil2,fil3....,fil_20]
+        passive
         """
         filament_index = 0
-        for index, filament in enumerate(self.vessel):
-            filament.updateFilamentCurrent(currents, filament_index)
-            filament_index += index * filament.n_basis
+        for index, passive in enumerate(self.vessel):
+            passive.updateFilamentCurrent(vessel_currents, filament_index)
+            filament_index += index * passive.n_basis
 
     def getVesselEigenbasis(self):
         """
         Builds the eigenbasis of the tokamak
         """
-        eigenbasis_list = (filament.eigenbasis for filament in self.vessel)
+        eigenbasis_list = (passive.eigenbasis for passive in self.vessel)
         eigenbasis = scipy.linalg.block_diag(*eigenbasis_list)
-        self.eigenbasis = eigenbasis
+        return eigenbasis
 
     def plot(self, axis=None, show=True):
         """
@@ -1170,7 +1173,7 @@ def EfitTestMachine():
     Used for reconstruction
     """
 
-    def createVesselFilaments(wall, n_fils=100, groupFilaments=True):
+    def createVesselFilaments(wall, n_fils=100):
         wallRZ = [[R, Z] for R, Z in zip(wall.R, wall.Z)]
 
         # Generating filament points
@@ -1183,13 +1186,11 @@ def EfitTestMachine():
         zfils = [point[1][0] for point in points[:-1]]
 
         # Populating vessel with filaments
-        vessel = []
-        for R, Z in zip(rfils, zfils):
-            vessel.append(Filament(R, Z, 0.025, 0.025, 1, name='fil' + str(
-                round(10000 * R ** 2 + 100 * Z))))
+        passive = []
+        for name, (R, Z) in enumerate(zip(rfils, zfils)):
+            passive.append(Filament(R, Z, 0.025, 0.025, 1, name='fil' + str(name)))
 
-        if groupFilaments:
-            vessel = [Passive(vessel, 'ivc', n_basis=6)]
+        vessel = [Passive(passive, 'ivc', n_basis=6)]
 
         return vessel
 
@@ -1244,7 +1245,7 @@ def EfitTestMachine():
 
     vessel = createVesselFilaments(wall)
 
-    return Machine(coils, wall, sensors, vessel=vessel)
+    return Machine(coils, wall, sensors, vessel)
 
 
 def DIIID():

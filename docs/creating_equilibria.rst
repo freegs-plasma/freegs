@@ -263,10 +263,12 @@ need a single value for R and Z input.
 
 Adding each one of these sensors to a machine when creating can be done as follows::
 
-sensors = [RogowskiSensor(R = [ 0.75, 0.75,  1.5,  1.8,   1.8,   1.5],
-                          Z = [-0.85, 0.85, 0.85, 0.25, -0.25, -0.85]),
-            PoloidalFieldSensor(R = 0.75, Z = 1, theta = 0.9),
-            FluxLoopSensor(R = 1.8, Z = 0.2)]
+    sensors = [RogowskiSensor(R = [ 0.75, 0.75,  1.5,  1.8,   1.8,   1.5],
+                              Z = [-0.85, 0.85, 0.85, 0.25, -0.25, -0.85]),
+                PoloidalFieldSensor(R = 0.75, Z = 1, theta = 0.9),
+                FluxLoopSensor(R = 1.8, Z = 0.2)]
+
+    tokamak = Machine(coils, wall, sensors)
 
 
 
