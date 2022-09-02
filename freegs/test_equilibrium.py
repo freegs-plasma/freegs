@@ -26,10 +26,6 @@ def test_inoutseparatrix():
 def test_fixed_boundary_psi():
     # This is adapted from example 5
 
-    profiles = jtor.ConstrainPaxisIp(
-        1e3, 1e5, 1.0  # Plasma pressure on axis [Pascals]  # Plasma current [Amps]
-    )  # fvac = R*Bt
-
     eq = equilibrium.Equilibrium(
         Rmin=0.1,
         Rmax=2.0,
@@ -39,6 +35,11 @@ def test_fixed_boundary_psi():
         ny=65,
         boundary=boundary.fixedBoundary,
     )
+
+    profiles = jtor.ConstrainPaxisIp(
+        eq, 1e3, 1e5, 1.0  # Plasma pressure on axis [Pascals]  # Plasma current [Amps]
+    )  # fvac = R*Bt
+
     # Nonlinear solve
     picard.solve(eq, profiles)
 

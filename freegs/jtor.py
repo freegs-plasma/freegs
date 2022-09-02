@@ -234,28 +234,28 @@ class ConstrainBetapIp(Profile):
         #       = - (2L*Beta0*mu0/Raxis) * (pfunc*RdRdZ)/((int(B_poloidal**2)RdRdZ))
 
         # Produce array of Bpol in (R,Z) for core plasma
-        B_polvals_2 = self.eq.Br(R,Z)**2 + self.eq.Bz(R,Z)**2
+        B_polvals_2 = self.eq.Br(R, Z) ** 2 + self.eq.Bz(R, Z) ** 2
         if mask is not None:
             B_polvals_2 *= mask
 
-        p_int = romb(romb(pfunc * R)) * dR*dZ
-        b_int = romb(romb(B_polvals_2 *R)) * dR*dZ
-        
-        #self.betap = - (2*LBeta0*mu0/ self.Raxis) * (p_int/b_int)
-        LBeta0 = (b_int/p_int) * (- self.betap * self.Raxis)/(2*mu0)
+        p_int = romb(romb(pfunc * R)) * dR * dZ
+        b_int = romb(romb(B_polvals_2 * R)) * dR * dZ
+
+        # self.betap = - (2*LBeta0*mu0/ self.Raxis) * (p_int/b_int)
+        LBeta0 = (b_int / p_int) * (-self.betap * self.Raxis) / (2 * mu0)
 
         # Integrate current components
-        IR = romb(romb(jtorshape * R/self.Raxis)) * dR*dZ
-        I_R = romb(romb(jtorshape * self.Raxis/R)) * dR*dZ
-        
+        IR = romb(romb(jtorshape * R / self.Raxis)) * dR * dZ
+        I_R = romb(romb(jtorshape * self.Raxis / R)) * dR * dZ
+
         # Toroidal plasma current Ip is
         #
         # Ip = L * (Beta0 * IR + (1-Beta0)*I_R)
         #    = L*Beta0*(IR - I_R) + L*I_R
         #
-        #L = self.Ip / ( (Beta0*IR) + ((1.0-Beta0)*(I_R)) )
+        # L = self.Ip / ( (Beta0*IR) + ((1.0-Beta0)*(I_R)) )
 
-        L = self.Ip/I_R - LBeta0*(IR/I_R - 1)
+        L = self.Ip / I_R - LBeta0 * (IR / I_R - 1)
         Beta0 = LBeta0 / L
 
         # print("Constraints: L = %e, Beta0 = %e" % (L, Beta0))
