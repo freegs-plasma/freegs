@@ -216,8 +216,63 @@ or an existing machine can be modified::
 
 Note that the location of these walls does not currently affect the
 equilibrium, but is used by some diagnostics, and is written to
-output files such as EQDSK format. 
-  
+output files such as EQDSK format.
+
+
+Sensors
+-----------------------------
+Rogowski (Rog), Poloidal Field (BP), and Flux Loop (FL) sensors can be added to the machine.
+
+Each individual sensor inherits from the Sensor class, which have inputs as follows::
+
+    class Sensor:
+        def __init__(self, R, Z, name=None, weight=1, status=True, measurement=None):
+
+
+R and Z take the input for the position of the sensors.
+
+The weight is an attribute that is useful to consider with reconstruction on real data,
+can be thought of as the inverse of the sensor measurement uncertainty. Will discuss more
+in future chapters.
+
+The status of a sensor determines whether it is turned on or not, and therefore whether
+it will take a measurement when ``takeMeasurement`` method of machine is called.
+
+A list of sensors can be specified when creating a machine::
+
+tokamak = freegs.machine.Machine(coils, wall, sensors)
+
+
+Rogowski Sensors
+~~~~~~~~~~~~~~~~
+Rog sensors measure the total current within their shape. The R-Z input is the
+same as the ``Wall`` class, taking an ordered list of (R,Z) points which form
+a closed boundary.
+
+
+BP Sensors
+~~~~~~~~~~~~~~~~
+BP sensors measure the poloidal field at a given angle. They are effectively 'point'
+sensors so single values for R and Z are given, aswell as a value for theta (angle of measurement)
+
+
+FL Sensors
+~~~~~~~~~~~~~~~~
+FL sensors measure the flux at an R,Z position. They are also point sensors, so
+need a single value for R and Z input.
+
+Adding each one of these sensors to a machine when creating can be done as follows::
+
+    sensors = [RogowskiSensor(R = [ 0.75, 0.75,  1.5,  1.8,   1.8,   1.5],
+                              Z = [-0.85, 0.85, 0.85, 0.25, -0.25, -0.85]),
+                PoloidalFieldSensor(R = 0.75, Z = 1, theta = 0.9),
+                FluxLoopSensor(R = 1.8, Z = 0.2)]
+
+    tokamak = Machine(coils, wall, sensors)
+
+
+
+
 Equilibrium and plasma domain
 -----------------------------
 

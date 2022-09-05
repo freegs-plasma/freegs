@@ -147,6 +147,35 @@ This can be changed e.g::
 
 would set the current limit for coil "P1L" to 1e9 Amps per square meter.
 
+Sensor Measurements
+---------------------------
+For a machine populated with sensors, to run the ``get_Measure(equilibrium)``
+method of each sensor, ``tokamak.takeMeasurments(equilibrium)`` is used. The measurement
+atrribute of each sensor is then updated with the measured values. If no equilibrium object
+is passed, then the sensors will find the coil contribution (and in a future update, vessel current contribution)
+to each of the measurements.
+
+To measure and print the values, the following method is used::
+
+    from freegs import machine
+    tokamak = machine.TestTokamakSensor()
+
+    tokamak.printMeasurements(equilibrium)
+
+The Rogowski Coils uses a nearest neighbour interpolation method. The following diagram illustrates
+this. The points correspond to each grid point on the equilibrium grid. A shapely square object
+is created, centered around the point. The sensor calculates the intersection area of each square with the rog
+and multiplies it by the value of the current density at that point.
+
+.. image:: RogMethod.png
+  :width: 400
+  :alt: Nearest Neighbour Interpolation. Rog coil in blue, grid points as grey
+        points, and the dotted lines are the squares around each grid point
+
+Both the BP and FL sensors use pre specified methods using interpolation in
+the machine and equilibrium classes.
+
+
 Field line connection length
 ----------------------------
 
