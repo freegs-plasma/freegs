@@ -29,10 +29,6 @@ import numpy as np
 import math
 from . import critical, plotting, jtor, control, picard, boundary
 from .equilibrium import Equilibrium
-from .machine import Coil, ShapedCoil, FilamentCoil, RogowskiSensor, PoloidalFieldSensor, FluxLoopSensor, Filament, Passive, Wall, Circuit, Machine
-from .gradshafranov import Greens, GreensBr, GreensBz
-from shapely.geometry import Point, Polygon, LineString, LinearRing
-from scipy.special import ellipk, ellipe
 from scipy.constants import mu_0
 from scipy.linalg import lstsq
 import matplotlib.pyplot as plt
@@ -557,12 +553,10 @@ class Reconstruction(Equilibrium):
 
             # Initialisation
             if self.it == 0:
-                jtor_2d = None
+                self.Jtor = None
 
                 if self.show:
                     import matplotlib.pyplot as plt
-                    from .plotting import plotEquilibrium
-
                     if self.pause > 0.0:
                         # No axis specified, so create a new figure
                         self.fig, self.axs = plt.subplots(1,2, sharex=True, sharey=True)
@@ -580,8 +574,8 @@ class Reconstruction(Equilibrium):
                 self.Jtor = np.reshape(jtor_1d, (self.nx, self.ny),order='F')
 
             # Calculate Psi values with elliptical solver
-            x_2d, mask = self.get_psi_norm()
-            self.psi_norm = x_2d.flatten('F')
+            psiN_2d, mask = self.get_psi_norm()
+            self.psi_norm = psiN_2d.flatten('F')
 
             # Calculate B and apply mask
             PlasmaBasis = self.get_PlasmaBasisMatrix()
@@ -649,7 +643,7 @@ class Reconstruction(Equilibrium):
             # Plot state of plasma equilibrium
             if self.pause < 0:
                 self.fig = plt.figure()
-                self.axis = fig.add_subplot(111)
+                self.axis = self.fig.add_subplot(111)
             else:
                 self.axs[0].clear()
                 self.axs[1].clear()
@@ -733,6 +727,7 @@ class Reconstruction(Equilibrium):
         #self.plot(show=self.show)
 
         if self.test:
+            assert self.chi <1e-3
             self.clear_attributes()
 
     def solve_from_dictionary(self, measurement_dict, sigma_dict):
@@ -743,6 +738,7 @@ class Reconstruction(Equilibrium):
         #self.plot(show=self.show)
 
         if self.test:
+            assert self.chi <1e-3
             self.clear_attributes()
 
 

@@ -33,7 +33,6 @@ from .coil import Coil, AreaCurrentLimit
 from .shaped_coil import ShapedCoil
 from .pre_calc_coil import PreCalcCoil
 from .filament_coil import FilamentCoil
-from scipy.integrate import romb, trapz  # Romberg integration
 from shapely.geometry import Point, LinearRing, LineString
 from shapely.geometry.polygon import Polygon
 
@@ -488,7 +487,7 @@ class RogowskiSensor(Sensor):
     Returns current inside the loop
     """
 
-    def __init__(self, R, Z, current=0, name=None, weight=1, status=True,
+    def __init__(self, R, Z, name=None, weight=1, status=True,
                  measurement=None):
 
         Sensor.__init__(self, R, Z, name=name, weight=weight, status=status, measurement=measurement)
@@ -517,7 +516,6 @@ class RogowskiSensor(Sensor):
             # plasma current
             plasma_current = 0
             if eq is not None:
-                sensor_jtor = np.zeros((eq.nx,eq.ny))
                 for index, (R, Z) in enumerate(zip(eq.R.flatten(order = 'F'), eq.Z.flatten(order='F'))):
                     gridpoint = Polygon([(R - eq.dR / 2,
                                           Z + eq.dZ / 2), (
@@ -559,7 +557,7 @@ class PoloidalFieldSensor(Sensor):
     Consists a single (R,Z) point, and an angle Theta
     At which the field is measured at
     """
-    def __init__(self, R, Z, theta, field=0, name=None, weight=1, status=True, measurement=None):
+    def __init__(self, R, Z, theta, name=None, weight=1, status=True, measurement=None):
         Sensor.__init__(self, R, Z, name=name, weight=weight, status=status,measurement=measurement)
         self.theta = theta
 
@@ -604,7 +602,7 @@ class FluxLoopSensor(Sensor):
     Consists a single (R,Z) point, describing the position of the probe
     Contains a method to find the value of flux (psi) at the position
     """
-    def __init__(self, R, Z, flux=0, name=None, weight=1, status=True, measurement=None):
+    def __init__(self, R, Z, name=None, weight=1, status=True, measurement=None):
         Sensor.__init__(self, R, Z, name=name, weight=weight, status=status, measurement=measurement)
 
     def get_measure(self, tokamak, eq):
@@ -977,7 +975,7 @@ class Machine:
         print("==========================")
         self.takeMeasurements(eq=eq)
         for sensor in self.sensors:
-            if sensor.name != None:
+            if sensor.name is not None:
                 print(sensor.name + ' '+ str(sensor) + ", Measurement=" + str(
                     sensor.measurement))
             else:
@@ -1023,12 +1021,7 @@ class Machine:
 
         Parameters
         ----------
-        currents - ordered array of currents
-
-        vessel currents = [I1,I2,I3,....Infils]
-        vessel = [passive1,passive2,passive3]
-        passive1.filaments = [fil1,fil2,fil3....,fil_20]
-        passive
+        vessel_currents - ordered array of currents
         """
         filament_index = 0
         for index, passive in enumerate(self.vessel):

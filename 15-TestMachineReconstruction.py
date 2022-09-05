@@ -3,7 +3,6 @@ This script simuates an equilibrium using the forward solver in freegs,
 then uses the sensor measurments and coil currents to reconstruct the data
 """
 from freegs import machine, reconstruction
-import numpy as np
 
 # Defining equilibrium grid
 Rmin = 0.1

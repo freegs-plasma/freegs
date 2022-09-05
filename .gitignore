@@ -9,3 +9,5 @@
 FreeGS.egg-info/
 build/
 dist/
+*.iml
+*.xml

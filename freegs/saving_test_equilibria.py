@@ -3,6 +3,7 @@ import pickle
 show=False
 """
 Script to save tokamak objects with pickle
+Run this to save 8 pkl files to your freegs library
 This greatly decrease time of test_reconstruction script
 if these equilibria are preconstructed
 """
