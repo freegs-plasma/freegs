@@ -19,4 +19,3 @@ solve(eq, profiles, constrain, show=True)
 
 tokamak.printCurrents()
 tokamak.printMeasurements(eq=eq)
-eq.printForces()

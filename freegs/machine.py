@@ -617,7 +617,6 @@ class Machine:
         if self.wall is not None:
             self.limit_points_R, self.limit_points_Z = self.generate_limit_points(nlimit)
 
-
     def __repr__(self):
         return "Machine(coils={coils}, wall={wall})".format(
             coils=self.coils, wall=self.wall
@@ -661,12 +660,11 @@ class Machine:
 
     def psi(self, R, Z):
         """
-        Poloidal flux due to coils and vessel filaments
+        Poloidal flux due to coils
         """
         psi_coils = 0.0
         for label, coil in self.coils:
             psi_coils += coil.psi(R, Z)
-
         return psi_coils
 
     def createPsiGreens(self, R, Z):
