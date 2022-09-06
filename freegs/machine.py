@@ -36,7 +36,6 @@ from .filament_coil import FilamentCoil
 from shapely.geometry import Point, LinearRing, LineString
 from shapely.geometry.polygon import Polygon
 
-
 # We need this for the `label` part of the Circuit dtype for writing
 # to HDF5 files. See the following for information:
 # http://docs.h5py.org/en/latest/strings.html#how-to-store-text-strings
@@ -177,6 +176,9 @@ class Circuit:
         for label, coil, multiplier in self.coils:
             forces[label] = coil.getForces(equilibrium)
         return forces
+
+    def inShape(self, polygon):
+        return sum(coil.inShape(polygon)*multiplier for label, coil, multiplier in self.coils)
 
     def __repr__(self):
         result = "Circuit(["
@@ -599,7 +601,7 @@ class Machine:
 
     """
 
-    def __init__(self, coils, wall=None, sensors=None, vessel=None, nlimit=500):
+    def __init__(self, coils, wall=None, sensors=None, nlimit=500):
         """
         coils - A list of coils [(label, Coil|Circuit|Solenoid)]
         sensors - A list of sensors
@@ -648,7 +650,6 @@ class Machine:
         distance = np.cumsum(np.sqrt(np.sum(np.diff(points,axis=0)**2,axis=1)))
         distance = np.insert(distance,0,0)/distance[-1]
 
-
         interpolator = interp1d(distance,points,kind='linear',axis=0)
         new_distances = np.linspace(0,1,nlimit,endpoint=True)
         interpolated_points = interpolator(new_distances)
@@ -671,13 +672,12 @@ class Machine:
     def createPsiGreens(self, R, Z):
         """
         An optimisation, which pre-computes the Greens functions
-        and puts into arrays for each coil and vessel filament. This map can then be
+        and puts into arrays for each coil. This map can then be
         called at a later time, and quickly return the field
         """
         pgreen = {}
         for label, coil in self.coils:
             pgreen[label] = coil.createPsiGreens(R, Z)
-
         return pgreen
 
     def calcPsiFromGreens(self, pgreen):
@@ -754,7 +754,7 @@ class Machine:
     def setControlCurrents(self, currents):
         """
         Sets the currents in the coils being controlled.
-        Input list m/ust be of the same length as the list
+        Input list must be of the same length as the list
         returned by controlCurrents
         """
         controlcoils = [coil for label, coil in self.coils if coil.control]
@@ -815,10 +815,6 @@ class Machine:
         for label, coil in self.coils:
             currents[label] = coil.current
         return currents
-
-    def updateCoilCurrents(self, currents):
-        for index, (name, coil) in enumerate(self.coils):
-            coil.current = currents[index][0]
 
     def plot(self, axis=None, show=True):
         """

@@ -442,7 +442,6 @@ class Equilibrium:
         """
 
         self._profiles = profiles
-
         self._updateBoundaryPsi()
 
         if Jtor is None:

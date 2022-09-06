@@ -22,7 +22,6 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 
 from numpy import linspace, amin, amax
 from . import critical
-from . import machine
 
 
 def plotCoils(coils, axis=None):
@@ -136,4 +135,3 @@ def plotEquilibrium(eq, axis=None, show=True, oxpoints=True, wall=True, plot_sen
         plt.show()
 
     return axis
-
