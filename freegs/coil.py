@@ -27,7 +27,7 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 from .gradshafranov import Greens, GreensBr, GreensBz, mu0
 import numpy as np
 import numbers
-from shapely.geometry import Point, Polygon
+from shapely.geometry import Point
 
 
 class AreaCurrentLimit:
@@ -206,7 +206,7 @@ class Coil:
             ]
         )  # Jphi x Br = - Fz
 
-    def inShape(self,polygon):
+    def inShape(self, polygon):
         if polygon.contains(Point(self.R, self.Z)):
             return 1
         else:
