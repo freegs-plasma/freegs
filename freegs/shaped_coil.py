@@ -26,7 +26,6 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 from . import quadrature
 from . import polygons
 from .gradshafranov import Greens, GreensBr, GreensBz
-from shapely.geometry import Point, Polygon
 
 import numpy as np
 
@@ -122,10 +121,6 @@ class ShapedCoil(Coil):
         return "ShapedCoil({0}, current={1:.1f}, turns={2}, control={3})".format(
             self.shape, self.current, self.turns, self.control
         )
-
-    def inShape(self,polygon):
-        Shaped_Coil = Polygon([shape for shape in self.shape])
-        return (polygon.intersection(Shaped_Coil).area) / (self._area)
 
     @property
     def R(self):

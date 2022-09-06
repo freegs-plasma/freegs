@@ -418,7 +418,7 @@ class Equilibrium:
             :, 0:2
         ]
 
-    def solve(self, profiles=None, Jtor=None, psi=None, psi_bndry=None):
+    def solve(self, profiles, Jtor=None, psi=None, psi_bndry=None):
         """
         Calculate the plasma equilibrium given new profiles
         replacing the current equilibrium.
@@ -440,8 +440,8 @@ class Equilibrium:
         psi_bndry  - Poloidal flux to use as the separatrix (plasma boundary)
                      If not given then X-point locations are used.
         """
-        if profiles is not None:
-            self._profiles = profiles
+
+        self._profiles = profiles
 
         self._updateBoundaryPsi()
 

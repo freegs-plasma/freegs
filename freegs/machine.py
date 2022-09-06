@@ -600,7 +600,6 @@ class Machine:
     """
 
     def __init__(self, coils, wall=None, sensors=None, vessel=None, nlimit=500):
-
         """
         coils - A list of coils [(label, Coil|Circuit|Solenoid)]
         sensors - A list of sensors
