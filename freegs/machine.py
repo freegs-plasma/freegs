@@ -179,11 +179,7 @@ class Circuit:
         return forces
 
     def inShape(self, polygon):
-        counter = 0
-        for label, coil, multiplier in self.coils:
-            counter += coil.inShape(polygon) * multiplier
-
-        return counter
+        return sum(coil.inShape(polygon)*multiplier for label, coil, multiplier in self.coils)
 
     def __repr__(self):
         result = "Circuit(["
