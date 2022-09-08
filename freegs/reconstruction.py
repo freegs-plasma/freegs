@@ -57,7 +57,7 @@ class Reconstruction(Equilibrium):
 
         # Reconstruction attributes
         self.check_limited = True
-        self.pause = 0.0001
+        self.pause = 0.1
 
     # Methods for building measurment and uncertainty matrices
     def take_Measurements_from_dictionary(self, measurement_dict, sigma_dict):
@@ -157,8 +157,15 @@ class Reconstruction(Equilibrium):
         M_plasma = self.get_M_plasma()
 
         #Uses least squares solver to find coefficients and subsequently jtor
-        coefs = lstsq(self.Gplasma @ self.FEmatrix, M_plasma)[0]
-        jtor = self.FEmatrix @ coefs
+        if self.use_VslCrnt:
+            coefs = lstsq(np.block([self.Gplasma @ self.FEmatrix, self.Gvessel]),M_plasma)[0]
+            jtor = self.FEmatrix @ coefs[:-self.tokamak.n_basis]
+            self.tokamak.updateVesselCurrents(self.tokamak.eigenbasis@coefs[-self.tokamak.n_basis:])
+        else:
+            coefs = lstsq(self.Gplasma @ self.FEmatrix, M_plasma)[0]
+            jtor = self.FEmatrix @ coefs
+
+        print(coefs)
         return jtor
 
     # Calculating the plasma contirbution to the measurements
@@ -471,7 +478,7 @@ class Reconstruction(Equilibrium):
         return np.diag([val**(-1) for val in self.sigma])
 
     # Calculate Finite Elements Grid
-    def get_FiniteElements(self, m=5, n=5):
+    def get_FiniteElements(self, m=3, n=3):
         """
         Parameters
         ----------
@@ -481,21 +488,20 @@ class Reconstruction(Equilibrium):
         -------
         T - finite element basis matrix for current initialisation
         """
-        m += 2
-        n += 2
         R = self.R.flatten(order='F')
         Z = self.Z.flatten(order='F')
-        a, b, c, d = self.Rmin, self.Rmax, self.Zmin, self.Zmax
-        dR = (b - a) / (m - 1)
-        dZ = (d - c) / (n - 1)
-        r_FE = np.linspace(a, b, m)
-        z_FE = np.linspace(c, d, n)
+        Rdif, Zdif = (self.Rmax-self.Rmin)/3, (self.Zmax-self.Zmin)/3
+        a, b, c, d = self.Rmin+Rdif, self.Rmin+2*Rdif, self.Zmin+Zdif, self.Zmin+2*Zdif
+        dR = (b - a) / (m + 1)
+        dZ = (d - c) / (n + 1)
+        r_FE = np.linspace(a, b, m+2)
+        z_FE = np.linspace(c, d, n+2)
 
-        T = np.zeros((self.nx * self.ny, (m - 2) * (n - 2)))
+        T = np.zeros((self.nx * self.ny, m * n))
         row_num = 0
-        for i in range(1, m - 1):
+        for i in range(1, m +1):
             r_h = r_FE[i]
-            for j in range(1, n - 1):
+            for j in range(1, n +1):
                 z_h = z_FE[j]
 
                 for h in range(T.shape[0]):
@@ -504,7 +510,6 @@ class Reconstruction(Equilibrium):
                             T[h, row_num] = (1 - abs(R[h] - r_h) / dR) * (
                                         1 - abs(Z[h] - z_h) / dZ)
                 row_num += 1
-
         return T
 
     # Indexing function
@@ -563,6 +568,7 @@ class Reconstruction(Equilibrium):
 
                 # Performs plasma current density initialisation
                 if self.use_CrntInit:
+                    print('yes')
                     jtor_1d = self.initialise_plasma_current()
                     self.Jtor = np.reshape(jtor_1d, (self.nx, self.ny),order='F')
 
@@ -717,7 +723,6 @@ class Reconstruction(Equilibrium):
             else:
                 print(key)
                 print('Not all inputted Measurement values used.')
-
 
     # Methods for solving
     def solve_from_tokamak(self):

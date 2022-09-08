@@ -1,4 +1,4 @@
-from freegs import machine, equilibrium, reconstruction, plotting, critical
+from freegs import machine, reconstruction
 import numpy as np
 import pickle
 
@@ -144,3 +144,4 @@ def test_vessel_eigenmode():
     Recon = reconstruction.Reconstruction(pprime_order, ffprime_order, show=show, **eq_setup)
     Recon.solve_from_dictionary(measurement_dict=measurement_dict, sigma_dict=sigma_dict)
     assert abs(Recon.coefs[-tokamak.eigenbasis.shape[1]+i]) > 50*abs(Recon.coefs[-tokamak.eigenbasis.shape[1]+i+1]) and abs(Recon.coefs[-tokamak.eigenbasis.shape[1]+i]) > 50*abs(Recon.coefs[-tokamak.eigenbasis.shape[1]+i-1])
+
