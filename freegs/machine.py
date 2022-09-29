@@ -32,6 +32,7 @@ from .coil import Coil, AreaCurrentLimit
 from .shaped_coil import ShapedCoil
 from .pre_calc_coil import PreCalcCoil
 from .filament_coil import FilamentCoil
+from .multi_coil import MultiCoil
 
 # We need this for the `label` part of the Circuit dtype for writing
 # to HDF5 files. See the following for information:
