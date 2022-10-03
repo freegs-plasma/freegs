@@ -69,8 +69,7 @@ def plotConstraints(control, axis=None, show=True):
 
     return axis
 
-
-def plotEquilibrium(eq, axis=None, show=True, oxpoints=True, wall=True):
+def plotEquilibrium(eq, axis=None, show=True, oxpoints=True, wall=True, plot_sensors=True):
     """
     Plot the equilibrium flux surfaces
 
@@ -78,7 +77,7 @@ def plotEquilibrium(eq, axis=None, show=True, oxpoints=True, wall=True):
     show     - Call matplotlib.pyplot.show() before returning
     oxpoints - Plot X points as red circles, O points as green circles
     wall     - Plot the wall (limiter)
-
+    sensors  - Plot the sensors
     """
 
     import matplotlib.pyplot as plt
@@ -103,7 +102,7 @@ def plotEquilibrium(eq, axis=None, show=True, oxpoints=True, wall=True):
         opt, xpt = critical.find_critical(eq.R, eq.Z, psi)
 
         for r, z, _ in xpt:
-            axis.plot(r, z, "ro")
+            axis.plot(r, z, "rx")
         for r, z, _ in opt:
             axis.plot(r, z, "go")
 
@@ -112,7 +111,7 @@ def plotEquilibrium(eq, axis=None, show=True, oxpoints=True, wall=True):
             axis.contour(eq.R, eq.Z, psi, levels=[psi_bndry], colors="r")
 
             # Add legend
-            axis.plot([], [], "ro", label="X-points")
+            axis.plot([], [], "rx", label="X-points")
             axis.plot([], [], "r", label="Separatrix")
         if opt:
             axis.plot([], [], "go", label="O-points")
@@ -123,6 +122,14 @@ def plotEquilibrium(eq, axis=None, show=True, oxpoints=True, wall=True):
             list(eq.tokamak.wall.Z) + [eq.tokamak.wall.Z[0]],
             "k",
         )
+
+    if plot_sensors:
+        if eq.tokamak.sensors is not None :
+            for sensor in eq.tokamak.sensors:
+                sensor.plot(axis)
+            axis.plot([], [], 'b', label='Rogowski Coil')
+            axis.plot([], [], 'mo', label='Poloidal Field Sensor')
+            axis.plot([], [], 'ro', label='Flux Loop Sensor')
 
     if show:
         plt.legend()
