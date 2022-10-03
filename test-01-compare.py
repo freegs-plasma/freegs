@@ -44,16 +44,17 @@ constrain = freegs.control.constrain(xpoints=xpoints, isoflux=isoflux)
 constrain(eq1)
 constrain(eq2)
 
-profiles = freegs.jtor.ConstrainBetapIp(0.1, 1e6, 1.0)
+profiles1 = freegs.jtor.ConstrainBetapIp(eq1, 0.1, 1e6, 1.0)
+profiles2 = freegs.jtor.ConstrainBetapIp(eq2, 0.1, 1e6, 1.0)
 
-jtor1 = profiles.Jtor(eq1.R, eq1.Z, eq1.psi(), eq.psi_bndry)
-jtor2 = profiles.Jtor(eq2.R, eq2.Z, eq2.psi(), eq.psi_bndry)
+jtor1 = profiles1.Jtor(eq1.R, eq1.Z, eq1.psi(), eq1.psi_bndry)
+jtor2 = profiles2.Jtor(eq2.R, eq2.Z, eq2.psi(), eq2.psi_bndry)
 
 # Check jtor1 == jtor2
 
 # Check a single linear solve
-eq1.solve(profiles)
-eq2.solve(profiles)
+eq1.solve(profiles1)
+eq2.solve(profiles2)
 
 # Nonlinear solve
 #freegs.solve(eq1, profiles, constrain)

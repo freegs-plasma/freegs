@@ -33,6 +33,8 @@ from .coil import Coil, AreaCurrentLimit
 from .shaped_coil import ShapedCoil
 from .pre_calc_coil import PreCalcCoil
 from .filament_coil import FilamentCoil
+from .multi_coil import MultiCoil
+
 from shapely.geometry import Point, LinearRing, LineString
 from shapely.geometry.polygon import Polygon
 
@@ -298,7 +300,7 @@ class Solenoid:
             (str("Zsmax"), np.float64),
             (str("Ns"), np.float64),
             (str("current"), np.float64),
-            (str("control"), np.bool),
+            (str("control"), bool),
         ]
     )
 
@@ -615,7 +617,9 @@ class Machine:
         self.limit_points_Z = None
 
         if self.wall is not None:
-            self.limit_points_R, self.limit_points_Z = self.generate_limit_points(nlimit)
+            self.limit_points_R, self.limit_points_Z = self.generate_limit_points(
+                nlimit
+            )
 
     def __repr__(self):
         return "Machine(coils={coils}, wall={wall})".format(
@@ -636,25 +640,25 @@ class Machine:
                 return coil
         raise KeyError("Machine does not contain coil with label '{0}'".format(name))
 
-    def generate_limit_points(self,nlimit):
-        '''
+    def generate_limit_points(self, nlimit):
+        """
         Generate points along the machine wall that may be used to check
         if the plasma is limited or not.
-        '''
+        """
 
         # Interpolate wall limit points.
         # Make an interpolator for point location as function of normalised distance
         # along the wall
-        points = np.array([self.wall.R,self.wall.Z]).T
-        distance = np.cumsum(np.sqrt(np.sum(np.diff(points,axis=0)**2,axis=1)))
-        distance = np.insert(distance,0,0)/distance[-1]
+        points = np.array([self.wall.R, self.wall.Z]).T
+        distance = np.cumsum(np.sqrt(np.sum(np.diff(points, axis=0) ** 2, axis=1)))
+        distance = np.insert(distance, 0, 0) / distance[-1]
 
-        interpolator = interp1d(distance,points,kind='linear',axis=0)
-        new_distances = np.linspace(0,1,nlimit,endpoint=True)
+        interpolator = interp1d(distance, points, kind="linear", axis=0)
+        new_distances = np.linspace(0, 1, nlimit, endpoint=True)
         interpolated_points = interpolator(new_distances)
 
-        R = np.asarray(interpolated_points[:,0])
-        Z = np.asarray(interpolated_points[:,1])
+        R = np.asarray(interpolated_points[:, 0])
+        Z = np.asarray(interpolated_points[:, 1])
 
         return R, Z
 
