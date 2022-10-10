@@ -10,6 +10,6 @@
 FreeGS.egg-info/
 build/
 dist/
-
 venv
 freegs/_version.py
+asv_bench/.asv/
