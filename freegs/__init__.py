@@ -29,7 +29,7 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 
 """
 
-__version__ = "0.7.0"
+from ._version import __version__
 
 from .equilibrium import Equilibrium
 

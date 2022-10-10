@@ -12,3 +12,4 @@ build/
 dist/
 
 venv
+freegs/_version.py

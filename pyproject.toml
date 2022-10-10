@@ -1,5 +1,8 @@
 [build-system]
-requires = ["setuptools >= 61.0.0"]
+requires = [
+    "setuptools >= 61.0.0",
+    "setuptools_scm[toml] >= 6.2",
+]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -18,7 +21,6 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: Scientific/Engineering :: Physics"
 ]
-version = "0.7.0"
 license = {text = "GNU Lesser General Public License v3 or later (LGPLv3+)"}
 authors = [{name = "Ben Dudson", email = "benjamin.dudson@york.ac.uk"}]
 urls = {project = "https://github.com/freegs-plasma/freegs"}
@@ -29,6 +31,7 @@ dependencies = [
     "h5py>=2.10.0",
     "Shapely>=1.7.1",
 ]
+dynamic = ["version"]
 
 [project.optional-dependencies]
 tests = [
@@ -37,3 +40,9 @@ tests = [
 docs = [
     "sphinx>=3.4,<5",
 ]
+
+[tool.setuptools.dynamic]
+version = { attr = "setuptools_scm.get_version" }
+
+[tool.setuptools_scm]
+write_to = "freegs/_version.py"
