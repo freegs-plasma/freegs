@@ -1,5 +1,7 @@
 from . import optimiser
 
+import numpy as np
+
 # Tests and example of solving optimisation problem
 #
 # Objects being evolved are lists of coefficients,
@@ -45,7 +47,12 @@ def test_quadratic():
     )
 
     # Answer should be close to (1,2)
-    assert abs(result[0] - 1.0) < 1e-2 and abs(result[1] - 2.0) < 1e-2
+    expected_point = np.array((1, 2))
+    start_distance = np.sqrt(np.sum((expected_point - start_values)**2))
+    result_distance = np.sqrt(np.sum((expected_point - result)**2))
+    # It should always get _closer_, even if it doesn't get particularly close
+    assert result_distance < start_distance
+    assert np.isclose(result_distance, 0, atol=1e-1)
 
 
 def test_reducing():
