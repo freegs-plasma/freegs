@@ -145,8 +145,8 @@ class OutputFile(object):
         psi_id = equilibrium_group.create_dataset("psi", data=equilibrium.psi())
         psi_id.dims[0].label = "R"
         psi_id.dims[1].label = "Z"
-        psi_id.dims.create_scale(equilibrium_group["R_1D"], "R")
-        psi_id.dims.create_scale(equilibrium_group["Z_1D"], "Z")
+        equilibrium_group["R_1D"].make_scale("R")
+        equilibrium_group["Z_1D"].make_scale("Z")
         psi_id.dims[0].attach_scale(equilibrium_group["R_1D"])
         psi_id.dims[1].attach_scale(equilibrium_group["Z_1D"])
 
