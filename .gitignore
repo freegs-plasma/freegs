@@ -10,3 +10,5 @@
 FreeGS.egg-info/
 build/
 dist/
+
+venv
