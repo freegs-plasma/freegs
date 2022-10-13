@@ -9,6 +9,8 @@ on: pull_request
 jobs:
   benchmark:
     runs-on: ubuntu-latest
+    env:
+      ASV_DIR: "./asv_bench"
 
     steps:
       - uses: actions/checkout@v3
@@ -25,6 +27,7 @@ jobs:
       - name: Run benchmarks
         env:
           ASV_FACTOR: 1.5
+        working-directory: ${{ env.ASV_DIR }}
         run: |
           # ID of this machine
           asv machine --yes
@@ -47,9 +50,10 @@ jobs:
       - name: Add instructions to artifact
         if: always()
         run: cp benchmarks.log .asv/results/
+        working-directory: ${{ env.ASV_DIR }}
 
       - uses: actions/upload-artifact@v3
         if: always()
         with:
           name: asv-benchmark-results-${{ runner.os }}
-          path: .asv/results
+          path: ${{ env.ASV_DIR }}/.asv/results
