@@ -1,0 +1,63 @@
+# Run the asv benchmarks on this PR, comparing to the base commit
+# Cribbed from scikit-image:
+# https://github.com/scikit-image/scikit-image/blob/main/.github/workflows/benchmarks.yml
+
+name: Benchmarks
+
+on: pull_request
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    env:
+      ASV_DIR: "./asv_bench"
+
+    steps:
+      # We need the full repo
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.x"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install asv virtualenv
+
+      - name: Run benchmarks
+        env:
+          ASV_FACTOR: 1.5
+        working-directory: ${{ env.ASV_DIR }}
+        run: |
+          # ID of this machine
+          asv machine --yes
+
+          echo "Baseline:  ${{ github.event.pull_request.base.sha }} (${{ github.event.pull_request.base.label }})"
+          echo "Contender: ${GITHUB_SHA} (${{ github.event.pull_request.head.label }})"
+
+          # Run benchmarks for current commit against base
+          ASV_OPTIONS="--split --show-stderr --factor $ASV_FACTOR"
+          asv continuous $ASV_OPTIONS ${{ github.event.pull_request.base.sha }} ${GITHUB_SHA} \
+              | sed "/Traceback \|failed$\|PERFORMANCE DECREASED/ s/^/::error::/" \
+              | tee benchmarks.log
+
+          # Report and export results for subsequent steps
+          asv compare --split --factor $ASV_FACTOR ${{ github.event.pull_request.base.sha }} ${GITHUB_SHA}
+          if grep "Traceback \|failed\|PERFORMANCE DECREASED" benchmarks.log > /dev/null ; then
+              exit 1
+          fi
+
+      - name: Add instructions to artifact
+        if: always()
+        run: cp benchmarks.log .asv/results/
+        working-directory: ${{ env.ASV_DIR }}
+
+      - uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: asv-benchmark-results-${{ runner.os }}
+          path: ${{ env.ASV_DIR }}/.asv/results

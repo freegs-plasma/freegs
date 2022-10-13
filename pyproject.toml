@@ -41,6 +41,9 @@ docs = [
     "sphinx>=3.4,<5",
 ]
 
+[tool.setuptools]
+packages = ["freegs"]
+
 [tool.setuptools.dynamic]
 version = { attr = "setuptools_scm.get_version" }
 
