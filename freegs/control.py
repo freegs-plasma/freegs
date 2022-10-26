@@ -176,13 +176,14 @@ class constrain(object):
             cons.append(con1)
 
         # Use the analytical current change as the initial guess
-        x0 = self.current_change
-        sol = optimize.minimize(
-            objective, x0, method="SLSQP", bounds=current_change_bnds, constraints=cons
-        )
+        if self.current_change.shape[0] > 0:
+            x0 = self.current_change
+            sol = optimize.minimize(
+                objective, x0, method="SLSQP", bounds=current_change_bnds, constraints=cons
+            )
 
-        self.current_change = sol.x
-        tokamak.controlAdjust(self.current_change)
+            self.current_change = sol.x
+            tokamak.controlAdjust(self.current_change)
 
         # Store info for user
         self.current_change = self.current_change
