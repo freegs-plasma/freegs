@@ -231,7 +231,7 @@ def read(
         show = True
 
     # Read the data as a Dictionary
-    data = _geqdsk.read(fh, cocos=cocos)
+    data = _geqdsk.read(fh, cocos=cocos, verbose=True)
 
     # If data contains a limiter, set the machine wall
     if "rlim" in data:

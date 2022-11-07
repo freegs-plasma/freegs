@@ -167,16 +167,21 @@ def write(data, fh, label=None, shot=None, time=None):
         co.newline()
 
 
-def read(fh, cocos=1):
+def read(fh, cocos=1, verbose=False):
     """
     Read a G-EQDSK formatted equilibrium file
 
     Format is specified here:
     https://fusion.gat.com/theory/Efitgeqdsk
 
-    cocos   - COordinate COnventions. Not fully handled yet,
-              only whether psi is divided by 2pi or not.
-              if < 10 then psi is divided by 2pi, otherwise not.
+    Arguments
+    ---------
+    cocos: int
+        COordinate COnventions. Not fully handled yet, only whether
+        psi is divided by 2pi or not. If < 10 then psi is divided by
+        2pi, otherwise not.
+    verbose: bool
+        If true, print some information about the file
 
     Returns
     -------
@@ -210,7 +215,8 @@ def read(fh, cocos=1):
     nx = int(words[-2])
     ny = int(words[-1])
 
-    print("  nx = {0}, ny = {1}".format(nx, ny))
+    if verbose:
+        print(f"  nx = {nx}, ny = {ny}")
 
     # Dictionary to hold result
     data = {"nx": nx, "ny": ny}
@@ -284,11 +290,10 @@ def read(fh, cocos=1):
     nbdry = next(values)
     nlim = next(values)
 
-    # print(nbdry, nlim)
-
     if nbdry > 0:
         # Read (R,Z) pairs
-        print(nbdry)
+        if verbose:
+            print(f"{nbdry=}")
         data["rbdry"] = zeros(nbdry)
         data["zbdry"] = zeros(nbdry)
         for i in range(nbdry):
