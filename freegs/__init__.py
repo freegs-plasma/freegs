@@ -29,7 +29,10 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 
 """
 
-from ._version import __version__
+try:
+    from ._version import __version__
+except:
+    __version__ = "unknown"
 
 from .equilibrium import Equilibrium
 
