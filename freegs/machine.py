@@ -90,6 +90,14 @@ class Circuit:
         self.coils = coils
         self.current = current
         self.control = control
+    
+    def __getitem__(self, name):
+        """Returns a coil in the circuit using circuit[coil_name]"""
+
+        for label, coil, _ in self.coils:
+            if label == name:
+                return coil
+        raise KeyError("Circuit does not contain coil with label '{0}'".format(name))
 
     def psi(self, R, Z):
         """
