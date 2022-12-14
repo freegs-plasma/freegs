@@ -98,6 +98,32 @@ class Circuit:
             if label == name:
                 return coil
         raise KeyError("Circuit does not contain coil with label '{0}'".format(name))
+    
+    @property
+    def current(self) -> float:
+        return self._current
+
+    @current.setter
+    def current(self, value: float):
+        """
+        When updating the circuit current, also update the current in the coils in the circuit (with multipliers)
+        """
+        self._current = value
+        for _, coil, multiplier in self.coils:
+            coil.current = multiplier * value
+
+    @property
+    def control(self) -> bool:
+        return self._control
+
+    @control.setter
+    def control(self, value: bool):
+        """
+        When updating the circuit control switch, also update the control switch in the coils in the circuit
+        """
+        self._control = value
+        for _, coil, _ in self.coils:
+            coil.control = value
 
     def psi(self, R, Z):
         """
