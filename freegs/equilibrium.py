@@ -349,7 +349,7 @@ class Equilibrium:
         result = critical.find_safety(self, psinorm=psinorm)
         # Convert to a scalar if only one result
         if len(result) == 1:
-            return np.asscalar(result)
+            return result[0]
         return result
 
     def tor_flux(self, psi=None):
@@ -366,7 +366,7 @@ class Equilibrium:
 
         # Convert to a scalar if only one result
         if len(result) == 1:
-            return np.asscalar(result)
+            return result[0]
         return result
 
     def rhotor(self, psi=None):
@@ -388,7 +388,7 @@ class Equilibrium:
         result = np.sqrt(torflux / max_torflux)
 
         if len(result) == 1:
-            return np.asscalar(result)
+            return result[0]
         return result
 
     def pprime(self, psinorm):
