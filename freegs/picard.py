@@ -92,6 +92,9 @@ def solve(
     # Initial psi_bndry (set low to prevent immediate convergence)
     bndry = 0.0
 
+    # Set an initial value for bndry_change (set high to prevent immediate convergence)
+    bndry_change = 10.0
+
     # Plasma assumed to not be limited at first
     has_been_limited = False
 
