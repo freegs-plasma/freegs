@@ -28,8 +28,7 @@ You should have received a copy of the GNU Lesser General Public License
 along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-
-from ._version import __version__
+from importlib_metadata import metadata
 
 from .equilibrium import Equilibrium
 
@@ -44,3 +43,7 @@ from .picard import solve
 from .dump import OutputFile
 
 from . import plotting
+
+
+__version__ = metadata(__package__)["Version"]
+__author__ = metadata(__package__)["Author"]

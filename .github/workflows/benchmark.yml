@@ -25,7 +25,8 @@ jobs:
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
+          sudo apt-get install libhdf5-serial-dev
+          python -m pip install --upgrade pip setuptools wheel
           python -m pip install asv virtualenv
 
       - name: Run benchmarks
