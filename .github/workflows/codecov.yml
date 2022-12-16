@@ -16,8 +16,8 @@ jobs:
           python-version: 3.8
       - name: Generate coverage report
         run: |
-          pip install pytest
-          pip install pytest-cov
+          sudo apt-get install libhdf5-serial-dev
+          python -m pip install --upgrade pip setuptools wheel pytest pytest-cov
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           pytest --cov=./ --cov-report=xml
       - name: Upload coverage to Codecov
