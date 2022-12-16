@@ -93,7 +93,7 @@ def solve(
     bndry = 0.0
 
     # Set an initial value for bndry_change (set high to prevent immediate convergence)
-    bndry_change = 10.0
+    bndry_change = np.inf
 
     # Plasma assumed to not be limited at first
     has_been_limited = False

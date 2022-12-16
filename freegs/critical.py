@@ -524,6 +524,7 @@ def find_safety(
     # Get variables for loop integral around flux surface
     r = psisurf[:, :, 0]
     z = psisurf[:, :, 1]
+
     fpol = eq.fpol(psirange[:]).reshape(npsi, 1)
     Br = eq.Br(r, z)
     Bz = eq.Bz(r, z)

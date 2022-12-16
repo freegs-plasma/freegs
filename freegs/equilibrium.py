@@ -346,10 +346,18 @@ class Equilibrium:
             psinorm = linspace(1.0 / (npsi + 1), 1.0, npsi, endpoint=False)
             return psinorm, critical.find_safety(self, psinorm=psinorm)
 
-        result = critical.find_safety(self, psinorm=psinorm)
+        elif np.any((psinorm < 0.01) | (psinorm > 0.99)):
+            psinorm_inner = np.linspace(0.01, 0.99, num=npsi)
+            q_inner = critical.find_safety(self, psinorm=psinorm_inner)
+
+            interp = interpolate.interp1d(psinorm_inner, q_inner, kind = "quadratic", fill_value = "extrapolate")
+            result = interp(psinorm)
+        else:
+            result = critical.find_safety(self, psinorm=psinorm)
+        
         # Convert to a scalar if only one result
-        if len(result) == 1:
-            return result[0]
+        if np.size(result) == 1:
+            return float(result)
         return result
 
     def tor_flux(self, psi=None):

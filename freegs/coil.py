@@ -27,6 +27,7 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 from .gradshafranov import Greens, GreensBr, GreensBz, mu0
 import numpy as np
 import numbers
+import warnings
 from shapely.geometry import Point
 import warnings
 
