@@ -57,6 +57,7 @@ def test_reconstruction_advanced_vessel():
             sigma_dict[coil_name] = 1e-5
 
         Recon.solve_from_dictionary(measurement_dict,sigma_dict)
+        Recon.plot()
 
 def test_advanced_eigenmode():
     """
@@ -145,3 +146,4 @@ def test_vessel_eigenmode():
     Recon.solve_from_dictionary(measurement_dict=measurement_dict, sigma_dict=sigma_dict)
     assert abs(Recon.coefs[-tokamak.eigenbasis.shape[1]+i]) > 50*abs(Recon.coefs[-tokamak.eigenbasis.shape[1]+i+1]) and abs(Recon.coefs[-tokamak.eigenbasis.shape[1]+i]) > 50*abs(Recon.coefs[-tokamak.eigenbasis.shape[1]+i-1])
 
+test_reconstruction_advanced_vessel()

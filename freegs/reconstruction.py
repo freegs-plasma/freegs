@@ -728,6 +728,7 @@ class Reconstruction(Equilibrium):
     def solve_from_tokamak(self):
         self.take_Measurements_from_tokamak()
         self.reconstruct()
+        self.plot_equilibria()
         self.print_reconstruction()
         #self.plot(show=self.show)
 

@@ -21,7 +21,7 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 from numpy import linspace, amin, amax
-from . import critical
+from . import critical, machine
 
 
 def plotCoils(coils, axis=None):
@@ -125,13 +125,14 @@ def plotEquilibrium(eq, axis=None, show=True, oxpoints=True, wall=True, plot_sen
     if plot_sensors:
         if eq.tokamak.sensors is not None :
             for sensor in eq.tokamak.sensors:
-                sensor.plot(axis)
+                if not isinstance(sensor, machine.RogowskiSensor):
+                    sensor.plot(axis)
             axis.plot([], [], 'b', label='Rogowski Coil')
             axis.plot([], [], 'mo', label='Poloidal Field Sensor')
             axis.plot([], [], 'ro', label='Flux Loop Sensor')
 
     if show:
-        plt.legend()
+        #plt.legend()
         plt.show()
 
     return axis
