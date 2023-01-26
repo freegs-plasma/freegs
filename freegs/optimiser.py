@@ -27,6 +27,14 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 import random
 import copy
 import bisect
+import sys
+
+RANDOM_SEED_FOR_PYTEST = 101
+
+def _set_random_seed_if_called_in_pytest():
+    """If testing with pytest, set a random seed so that the results are deterministic"""
+    if "pytest" in sys.modules:
+        random.seed(RANDOM_SEED_FOR_PYTEST)
 
 
 def mutate(obj, controls):
@@ -100,6 +108,8 @@ def optimise(obj, controls, measure, maxgen=10, N=10, CR=0.3, F=1.0, monitor=Non
     Returns the object with the lowest measure (score).
 
     """
+    _set_random_seed_if_called_in_pytest()
+
     assert N >= 4
 
     best = (measure(obj), obj)  # Highest score, candidate solution (agent)
