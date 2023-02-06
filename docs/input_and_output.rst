@@ -118,7 +118,7 @@ To convert a G-EQDSK file directly to DivGeo without any solves, and
 without needing to know the coil locations, use the low-level
 routines::
 
-  from freegdsk import geqdsk
+  from freeqdsk import geqdsk
   from freegs import _divgeo
 
   with open("input.geqdsk") as f:
