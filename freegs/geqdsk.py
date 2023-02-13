@@ -23,7 +23,6 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 
 """
 
-from . import _geqdsk
 from . import critical
 from .equilibrium import Equilibrium
 from .machine import Wall
@@ -32,6 +31,8 @@ from . import control
 from . import picard
 from .gradshafranov import mu0
 
+
+from freeqdsk import geqdsk
 from scipy import interpolate
 from numpy import (
     linspace,
@@ -46,7 +47,7 @@ import numpy as np
 from scipy.integrate import romb
 
 
-def write(eq, fh, label=None, oxpoints=None, fileformat=_geqdsk.write):
+def write(eq, fh, label=None, oxpoints=None, fileformat=geqdsk.write):
     """
     Write a GEQDSK equilibrium file, given a FreeGS Equilibrium object
 
@@ -231,7 +232,7 @@ def read(
         show = True
 
     # Read the data as a Dictionary
-    data = _geqdsk.read(fh, cocos=cocos)
+    data = geqdsk.read(fh, cocos=cocos)
 
     # If data contains a limiter, set the machine wall
     if "rlim" in data:
