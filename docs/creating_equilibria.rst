@@ -240,7 +240,7 @@ it will take a measurement when ``takeMeasurement`` method of machine is called.
 
 A list of sensors can be specified when creating a machine::
 
-tokamak = freegs.machine.Machine(coils, wall, sensors)
+    tokamak = freegs.machine.Machine(coils, wall, sensors)
 
 
 Rogowski Sensors
