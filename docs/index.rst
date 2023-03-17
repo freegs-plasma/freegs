@@ -18,10 +18,6 @@ Welcome to FreeGS's documentation!
              
 .. automodule:: freegs
              
-#.. automodule:: freegs.equilibrium
-#    :members:
-
-
 Indices and tables
 ------------------
 
