@@ -65,7 +65,7 @@ master_doc = "index"
 
 # General information about the project.
 project = "FreeGS"
-copyright = "2017-2023, Ben Dudson"
+copyright = "2017-2023, FreeGS authors"
 author = "Ben Dudson"
 
 # The version info for the project you're documenting, acts as replacement for
