@@ -1,4 +1,4 @@
-.. _creating_equilibria
+.. _creating_equilibria:
 
 Creating equilibria
 ===================
@@ -433,7 +433,7 @@ The total toroidal plasma current is calculated by integrating the toroidal curr
 The integrals in these two constraints are done numerically,
 and then rearranged to get :math:`L` and :math:`\beta_0`. 
 
-.. _constrain_betap_ip
+.. _constrain_betap_ip:
 
 Constrain poloidal beta and current
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

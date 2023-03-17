@@ -1,4 +1,4 @@
-.. _optimisation
+.. _optimisation:
 
 Optimisation
 ============
