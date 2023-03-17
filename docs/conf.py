@@ -32,7 +32,7 @@ class Mock(MagicMock):
         return MagicMock()
 
 
-MOCK_MODULES = ["_tkinter"]
+MOCK_MODULES = ["_tkinter", "shapely", "shapely.geometry", "shapely.geometry.polygon"]
 sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
 
 # -- General configuration ------------------------------------------------
