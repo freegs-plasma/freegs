@@ -1,4 +1,4 @@
-.. _creating_equilibria
+.. _creating_equilibria:
 
 Creating equilibria
 ===================
@@ -240,7 +240,7 @@ it will take a measurement when ``takeMeasurement`` method of machine is called.
 
 A list of sensors can be specified when creating a machine::
 
-tokamak = freegs.machine.Machine(coils, wall, sensors)
+    tokamak = freegs.machine.Machine(coils, wall, sensors)
 
 
 Rogowski Sensors
@@ -433,7 +433,7 @@ The total toroidal plasma current is calculated by integrating the toroidal curr
 The integrals in these two constraints are done numerically,
 and then rearranged to get :math:`L` and :math:`\beta_0`. 
 
-.. _constrain_betap_ip
+.. _constrain_betap_ip:
 
 Constrain poloidal beta and current
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
