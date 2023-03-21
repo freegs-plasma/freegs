@@ -1,21 +1,5 @@
 """
- Classes representing plasma profiles.
-
- These must have the following methods:
-
-   Jtor(R, Z, psi, psi_bndry=None)
-      -> Return a numpy array of toroidal current density [J/m^2]
-   pprime(psinorm)
-      -> return p' at given normalised psi
-   ffprime(psinorm)
-      -> return ff' at given normalised psi
-   pressure(psinorm)
-      -> return p at given normalised psi
-   fpol(psinorm)
-      -> return f at given normalised psi
-   fvac()
-      -> f = R*Bt in vacuum
-
+Classes representing plasma profiles.
 
 Copyright 2016 Ben Dudson, University of York. Email: benjamin.dudson@york.ac.uk
 
@@ -41,9 +25,10 @@ from .gradshafranov import mu0
 
 from numpy import clip, zeros, reshape, sqrt, pi
 import numpy as np
+import abc
 
 
-class Profile(object):
+class Profile(metaclass=abc.ABCMeta):
     """
     Base class from which profiles classes can inherit
 
@@ -125,6 +110,28 @@ class Profile(object):
 
         return reshape(ovals, psinorm.shape)
 
+    """
+    Abstract methods that derived classes must implement.
+    """
+    @abc.abstractmethod
+    def Jtor(self, R: np.ndarray, Z: np.ndarray, psi: np.ndarray, psi_bndry=None)->np.ndarray:
+        """Return a numpy array of toroidal current density [J/m^2]"""
+        pass
+
+    @abc.abstractmethod
+    def pprime(self, psinorm: float)->float:
+        """Return p' at the given normalised psi"""
+        pass
+
+    @abc.abstractmethod
+    def ffprime(self, psinorm: float)->float:
+        """Return ff' at the given normalised psi"""
+        pass
+
+    @abc.abstractmethod
+    def fvac(self)->float:
+        """Return f = R*Bt in vacuum"""
+        pass
 
 class ConstrainBetapIp(Profile):
     """
@@ -407,7 +414,6 @@ class ConstrainPaxisIp(Profile):
 
         return Jtor
 
-    # Profile functions
     def pprime(self, pn):
         """
         dp/dpsi as a function of normalised psi. 0 outside core
@@ -415,7 +421,7 @@ class ConstrainPaxisIp(Profile):
         """
         shape = (1.0 - np.clip(pn, 0.0, 1.0) ** self.alpha_m) ** self.alpha_n
         return self.L * self.Beta0 / self.Raxis * shape
-
+    
     def ffprime(self, pn):
         """
         f * df/dpsi as a function of normalised psi. 0 outside core.
