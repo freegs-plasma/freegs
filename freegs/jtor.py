@@ -28,7 +28,7 @@ import numpy as np
 import abc
 
 
-class Profile(metaclass=abc.ABCMeta):
+class Profile(abc.ABC):
     """
     Base class from which profiles classes can inherit
 
