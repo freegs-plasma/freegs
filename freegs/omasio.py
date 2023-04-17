@@ -1,7 +1,10 @@
 # IDS schema view: https://gafusion.github.io/omas/schema.html
+from typing import Tuple, Type, List
 
 import omas
 import numpy as np
+
+from freegs.coil import Coil
 from .machine import ShapedCoil, FilamentCoil
 
 # OMAS coil types:
@@ -47,7 +50,9 @@ def _identify_geometry_type(ods: omas.ODS) -> str | None:
     return geometry_type
 
 
-def _load_omas_coil(ods: omas.ODS):
+def _load_omas_coil(ods: omas.ODS) -> Tuple[str, Type[Coil]]:
+    """ Load coil from OMAS data.
+    :param ods: 'pf_active.coil.:' data"""
     # Identify coil name
     coil_name = _identify_name(ods)
 
@@ -56,7 +61,7 @@ def _load_omas_coil(ods: omas.ODS):
         if len(ods["current"]["data"]) > 1:
             print(
                 f"Warning: multiple coil currents found. Using first one for time: "
-                f"{ods['pf_active.coil'][idx]['current']['time'][0]}")
+                f"{ods['current']['time'][0]}")
 
         coil_current = ods["current"]["data"][0]
     else:
@@ -78,7 +83,7 @@ def _load_omas_coil(ods: omas.ODS):
             coil_name = _identify_name(ods["element"][0])
 
         if not coil_name:
-            raise ValueError(f"Coil name not identified: \n {ods['pf_active.coil'][idx]}")
+            raise ValueError(f"Coil name not identified: \n {ods}")
 
         geometry_type = _identify_geometry_type(ods["element"][0])
 
@@ -94,7 +99,7 @@ def _load_omas_coil(ods: omas.ODS):
         if geometry_type == "outline":
             outline_r = ods["element"][0]["geometry"]["outline"]["r"]
             outline_z = ods["element"][0]["geometry"]["outline"]["z"]
-            coil = (coil_name, ShapedCoil(zip(outline_r, outline_z)), coil_current, turns)
+            coil = (coil_name, ShapedCoil(list(zip(outline_r, outline_z))), coil_current, turns)
         elif geometry_type == "rectangle":
             r_centre = ods["element"][0]["geometry"]["rectangle"]["r"]
             z_centre = ods["element"][0]["geometry"]["rectangle"]["z"]
@@ -102,22 +107,12 @@ def _load_omas_coil(ods: omas.ODS):
             height = ods["element"][0]["geometry"]["rectangle"]["height"]
             coil_r = [r_centre - width / 2, r_centre + width / 2, r_centre + width / 2, r_centre - width / 2]
             coil_z = [z_centre - height / 2, z_centre - height / 2, z_centre + height / 2, z_centre + height / 2]
-            coil = (coil_name, ShapedCoil(zip(coil_r, coil_z)), coil_current, turns)
+            coil = (coil_name, ShapedCoil(list(zip(coil_r, coil_z))), coil_current, turns)
         else:
             raise ValueError(f"Coil geometry type {geometry_type} not supported yet.")
     return coil
 
 
-def _load_omas_coils(ods: omas.ODS):
+def _load_omas_coils(ods: omas.ODS) -> List[Tuple[str, Type[Coil]]]:
     coils = [_load_omas_coil(ods["pf_active.coil"][idx]) for idx in ods["pf_active.coil"]]
     return coils
-
-
-def main():
-    ods = omas.ods_sample()
-    _load_omas_coils(ods)
-
-
-if __name__ == '__main__':
-    np.linspace(10, 20)
-    main()
