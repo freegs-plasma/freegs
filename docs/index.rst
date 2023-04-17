@@ -15,13 +15,13 @@ Welcome to FreeGS's documentation!
    diagnostics
    tests
    optimisation
-             
-.. automodule:: freegs
-             
-#.. automodule:: freegs.equilibrium
-#    :members:
 
+.. toctree::
+   :maxdepth: 2
+   :caption: API reference:
 
+   api/modules
+             
 Indices and tables
 ------------------
 

@@ -9,7 +9,7 @@ build-backend = "setuptools.build_meta"
 name = "FreeGS"
 description = "Free boundary Grad-Shafranov solver for tokamak plasma equilibria"
 readme = "README.md"
-requires-python = ">=3.7"
+requires-python = ">=3.8"
 classifiers = [
     "Programming Language :: Python",
     "Development Status :: 3 - Alpha",
@@ -30,6 +30,8 @@ dependencies = [
     "matplotlib>=1.3",
     "h5py>=2.10.0",
     "Shapely>=1.7.1",
+    "importlib-metadata<4.3,>=1.1.0",
+    "freeqdsk>=0.1.0",
 ]
 dynamic = ["version"]
 

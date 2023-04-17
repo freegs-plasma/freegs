@@ -1,7 +1,7 @@
 Diagnostics
 ===========
 
-Once an equilibrium has been generated (see creating_equilibria_)
+Once an equilibrium has been generated (see :ref:`creating_equilibria`)
 there are routines for diagnosing and calculating derived quantities.
 Here the ``Equilibrium`` object is assumed to be called ``eq`` and the
 ``Tokamak`` object called ``tokamak``.
@@ -54,7 +54,7 @@ This is calculated using the expression
 
    \beta_p = \frac{8\pi}{\mu_0} \frac{1}{I_p^2}\iint p\left(\psi\right) dRdZ 
 
-i.e. the same calculation as is done in the poloidal beta constraint constrain_betap_ip_.
+i.e. the same calculation as is done in the poloidal beta constraint :ref:`constrain_betap_ip`.
 
 Plasma pressure
 ---------------

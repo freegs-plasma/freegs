@@ -29,10 +29,7 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 
 """
 
-try:
-    from ._version import __version__
-except:
-    __version__ = "unknown"
+from importlib_metadata import metadata
 
 from .equilibrium import Equilibrium
 
@@ -47,3 +44,7 @@ from .picard import solve
 from .dump import OutputFile
 
 from . import plotting
+
+
+__version__ = metadata(__package__)["Version"]
+__author__ = metadata(__package__)["Author"]

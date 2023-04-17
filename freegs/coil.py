@@ -28,6 +28,7 @@ from .gradshafranov import Greens, GreensBr, GreensBz, mu0
 import numpy as np
 import numbers
 from shapely.geometry import Point
+import warnings
 
 
 class AreaCurrentLimit:
@@ -253,11 +254,13 @@ class Coil:
         The cross-section area of the coil in m^2
         """
         if isinstance(self._area, numbers.Number):
-            assert self._area > 0
+            if not self._area > 0:
+                warnings.warn(f"Coil area {self._area:3.2f} <= 0")
             return self._area
         # Calculate using functor
         area = self._area(self)
-        assert area > 0
+        if not area > 0:
+            warnings.warn(f"Coil area {area:3.2f} <= 0")
         return area
 
     @area.setter

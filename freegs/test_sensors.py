@@ -233,15 +233,3 @@ def test_rog_with_plasma():
     tokamak.takeMeasurements(eq)
     print(tokamak.sensors[0].measurement)
     assert np.isclose(tokamak.sensors[0].measurement, plasmacurrent,atol=1000)
-
-test_flux()
-test_iso_flux()
-test_offaxis_Bfield()
-test_xpoint_field()
-
-test_rog_around_coil()
-test_rog_with_plasma()
-test_rog_around_Shapedcoil()
-test_rog_around_Filamentcoil()
-test_rog_around_circuit()
-
