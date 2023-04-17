@@ -93,12 +93,13 @@ class ShapedCoil(Coil):
 
     def controlPsi(self, R, Z):
         """
-        Calculate poloidal flux at (R,Z) due to a unit current
+        Calculate poloidal flux at (R,Z) due to a unit current in the circuit
         """
         result = 0.0
         for R_fil, Z_fil, weight in self._points:
             result += Greens(R_fil, Z_fil, R, Z) * weight
-        return result
+        # Multiply by turns so that toroidal current is current * turns
+        return result * self.turns
 
     def controlBr(self, R, Z):
         """
@@ -107,7 +108,7 @@ class ShapedCoil(Coil):
         result = 0.0
         for R_fil, Z_fil, weight in self._points:
             result += GreensBr(R_fil, Z_fil, R, Z) * weight
-        return result
+        return result * self.turns
 
     def controlBz(self, R, Z):
         """
@@ -116,7 +117,7 @@ class ShapedCoil(Coil):
         result = 0.0
         for R_fil, Z_fil, weight in self._points:
             result += GreensBz(R_fil, Z_fil, R, Z) * weight
-        return result
+        return result * self.turns
 
     def inShape(self,polygon):
         Shaped_Coil = Polygon([shape for shape in self.shape])
