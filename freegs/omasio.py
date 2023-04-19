@@ -1,13 +1,13 @@
 # IDS schema view: https://gafusion.github.io/omas/schema.html
 from __future__ import annotations
 
-from typing import Tuple, Type, List
+from typing import Tuple, Type, List, Dict
 
 import omas
 import numpy as np
 
 from freegs.coil import Coil
-from .machine import ShapedCoil, FilamentCoil
+from .machine import ShapedCoil, FilamentCoil, Circuit
 
 # OMAS coil types:
 # multi-element coil is always translated to FilamentCoil (only support rectangular geometry)
@@ -22,12 +22,26 @@ OMAS_COIL_TYPES = {1: 'outline',
 
 
 def _identify_name(ods: omas.ODS) -> str | None:
+    """ Identify coil name from OMAS data.
+    Primary identifier is 'name', secondary is 'identifier'.
+    Note: Not sure what is an intended difference between 'name' and 'identifier'.
+    """
     if "name" in ods:
         return ods["name"]
     elif "identifier" in ods:
         return ods["identifier"]
     else:
         return None
+
+
+def _load_omas_power_supplies(ods: omas.ODS) -> List[Dict]:
+    """ Load power supplies names from OMAS data.
+    :param ods: 'pf_active.power_supply.:' data"""
+    # FreeGS does not have PowerSupply class, so we return data as list of dicts
+    # The voltages can be loaded in the same way as currents to support equilibrium evolution.
+    power_supplies_names = [{"name": _identify_name(ods[idx]),
+                             "current": _load_omas_current(ods[idx])} for idx in ods]
+    return power_supplies_names
 
 
 def _identify_geometry_type(ods: omas.ODS) -> str | None:
@@ -52,6 +66,89 @@ def _identify_geometry_type(ods: omas.ODS) -> str | None:
     return geometry_type
 
 
+def _load_omas_current(ods: omas.ODS) -> float:
+    """ Load current from OMAS data.
+
+    :param ods: any IDS substructure which can contain current structure data"""
+    # Read current
+    if "current" in ods:
+        if len(ods["current"]["data"]) > 1:
+            print(
+                f"Warning: multiple circuit currents found. Using first one for time: "
+                f"{ods['current']['time'][0]}")
+
+        circuit_current = ods["current"]["data"][0]
+    else:
+        circuit_current = 0.0
+
+    return circuit_current
+
+
+def _circuit_connection_to_linear(circuit_structure: np.ndarray, n_supplies: int) -> Tuple[Tuple, Tuple]:
+    num_rows, num_cols = circuit_structure.shape
+
+    supply_idx = set()
+    coil_idx = set()
+
+    # Loop through each node in the circuit
+    for i in range(num_rows):
+        # Loop through each supply or coil side connected to the node
+        for j in range(num_cols):
+            if circuit_structure[i, j] == 1:
+                # Determine if the connection is to a supply or coil
+                if j < 2 * n_supplies:
+                    index = j // 2
+                    supply_idx.add(index)
+                else:
+                    index = (j - 2 * n_supplies) // 2
+                    coil_idx.add(index)
+
+    return tuple(supply_idx), tuple(coil_idx)
+
+
+def _load_omas_circuit(ods: omas.ODS, coils: List[Tuple[str, Coil]], power_supplies: List[Dict]) -> Tuple[str, Circuit]:
+    """ Load circuit from OMAS data.
+    :param ods: 'pf_active.circuit.:' data"""
+    # Identify circuit name
+
+    # IDS circuit description can be found here: https://gafusion.github.io/omas/schema/schema_pf%20active.html.
+
+    # Get linear circuit (coil and supply) structure
+    supply_idx, coil_idx = _circuit_connection_to_linear(ods["connections"], len(power_supplies))
+
+    if len(supply_idx) == 0 or len(coil_idx) == 0:
+        raise ValueError(f"Invalid circuit structure. No supplies or coils found for circuit {ods}.")
+
+    if len(supply_idx) > 1:
+        print(f"Warning: multiple supplies found for circuit {ods}.")
+
+    # Construct circuit name. First from circuit name, then from supply name, then from coil names.
+    circuit_name = _identify_name(ods)
+    if not circuit_name:
+        if power_supplies[supply_idx[0]]["name"]:
+            supply_names = [power_supplies[supply_idx[idx]]["name"] for idx in supply_idx if
+                            power_supplies[supply_idx[idx]]["name"]]
+            circuit_name = "+".join(supply_names)
+        elif coils[coil_idx[0]][0]:
+            coil_names = [coil[0] for coil in coils if coil[0]]
+            circuit_name = "+".join(coil_names)
+        else:
+            raise ValueError(f"Unable to identify circuit name for circuit {ods}.")
+
+    circuit_current = _load_omas_current(ods)
+
+    # Init FreeGS circuit
+    # TODO: Recognize correctly the multiplier for the circuit current
+    circuit = Circuit([(coils[idx][0], coils[idx[1]], 1.0) for idx in coil_idx], circuit_current)
+    return circuit_name, circuit
+
+
+def _load_omas_circuits(ods: omas.ODS) -> List[Tuple[str, Circuit]]:
+    coils = _load_omas_coils(ods)
+    power_supplies = _load_omas_power_supplies(ods)
+    return [_load_omas_circuit(ods["pf_active.circuit"][idx], coils, power_supplies) for idx in ods["pf_active.circuit"]]
+
+
 def _load_omas_coil(ods: omas.ODS) -> Tuple[str, Coil]:
     """ Load coil from OMAS data.
     :param ods: 'pf_active.coil.:' data"""
@@ -59,15 +156,7 @@ def _load_omas_coil(ods: omas.ODS) -> Tuple[str, Coil]:
     coil_name = _identify_name(ods)
 
     # Read current
-    if "current" in ods:
-        if len(ods["current"]["data"]) > 1:
-            print(
-                f"Warning: multiple coil currents found. Using first one for time: "
-                f"{ods['current']['time'][0]}")
-
-        coil_current = ods["current"]["data"][0]
-    else:
-        coil_current = 0.0
+    coil_current = _load_omas_current(ods)
 
     # Multicoil or simple coil?
     if len(ods["element"]) > 1:
