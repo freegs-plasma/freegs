@@ -7,7 +7,7 @@ import omas
 import numpy as np
 
 from freegs.coil import Coil
-from .machine import ShapedCoil, FilamentCoil, Circuit
+from .machine import ShapedCoil, FilamentCoil, Circuit, Wall, Machine
 
 # OMAS coil types:
 # multi-element coil is always translated to FilamentCoil (only support rectangular geometry)
@@ -143,10 +143,13 @@ def _load_omas_circuit(ods: omas.ODS, coils: List[Tuple[str, Coil]], power_suppl
     return circuit_name, circuit
 
 
-def _load_omas_circuits(ods: omas.ODS) -> List[Tuple[str, Circuit]]:
+def _load_omas_circuits(ods: omas.ODS) -> List[Tuple[str, Circuit]] | None:
     coils = _load_omas_coils(ods)
     power_supplies = _load_omas_power_supplies(ods)
-    return [_load_omas_circuit(ods["pf_active.circuit"][idx], coils, power_supplies) for idx in ods["pf_active.circuit"]]
+    if "pf_active.circuit" not in ods:
+        return None
+    return [_load_omas_circuit(ods["pf_active.circuit"][idx], coils, power_supplies) for idx in
+            ods["pf_active.circuit"]]
 
 
 def _load_omas_coil(ods: omas.ODS) -> Tuple[str, Coil]:
@@ -212,3 +215,43 @@ def _load_omas_coil(ods: omas.ODS) -> Tuple[str, Coil]:
 def _load_omas_coils(ods: omas.ODS) -> List[Tuple[str, Coil]]:
     coils = [_load_omas_coil(ods["pf_active.coil"][idx]) for idx in ods["pf_active.coil"]]
     return coils
+
+
+def _load_omas_limiter(ods: omas.ODS):
+    # Look for the limiter in the ODS.
+
+    # Try to find limiter description in the OMAS data.
+    # If not found, raise.
+    if "limiter" not in ods["wall.description_2d.:"]:
+        return None
+
+    # Identify the first occurrence of limiter id ods
+    limiter_id = next((idx for idx in ods["wall.description_2d"] if "limiter" in ods["wall.description_2d"][idx]))
+    limiter_ods = ods["wall.description_2d"][limiter_id]
+
+    # Currently is supported only continuous limiter
+    if limiter_ods["type.index"] != 0:
+        raise ValueError("Only continuous limiter is supported yet.")
+
+    # Create FreeGS wall object
+    limiter = Wall(limiter_ods["unit.0.outline.r"], limiter_ods["unit.0.outline.z"])
+
+    return limiter
+
+
+def load_omas_machine(ods: omas.ODS):
+    """ Load machine from OMAS data.
+    :param ods: OMAS data"""
+
+    # Load circuits
+    coils = _load_omas_circuits(ods)
+    if not coils:
+        coils = _load_omas_coils(ods)
+
+    # Load limiter
+    limiter = _load_omas_limiter(ods)
+
+    # Load machine
+    machine = Machine(coils, limiter)
+
+    return machine
