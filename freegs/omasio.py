@@ -1,4 +1,6 @@
 # IDS schema view: https://gafusion.github.io/omas/schema.html
+from __future__ import annotations
+
 from typing import Tuple, Type, List
 
 import omas
@@ -50,7 +52,7 @@ def _identify_geometry_type(ods: omas.ODS) -> str | None:
     return geometry_type
 
 
-def _load_omas_coil(ods: omas.ODS) -> Tuple[str, Type[Coil]]:
+def _load_omas_coil(ods: omas.ODS) -> Tuple[str, Coil]:
     """ Load coil from OMAS data.
     :param ods: 'pf_active.coil.:' data"""
     # Identify coil name
@@ -76,7 +78,7 @@ def _load_omas_coil(ods: omas.ODS) -> Tuple[str, Type[Coil]]:
             raise ValueError("Multicoil with non-unit turns is not supported yet.")
 
         # TODO: check if turns are interpreted correctly
-        coil = (coil_name, FilamentCoil(r_filaments, z_filaments, coil_current, turns=len(r_filaments)))
+        coil = FilamentCoil(r_filaments, z_filaments, coil_current, turns=len(r_filaments))
     else:
         print("Simple coil")
         if not coil_name:
@@ -99,7 +101,7 @@ def _load_omas_coil(ods: omas.ODS) -> Tuple[str, Type[Coil]]:
         if geometry_type == "outline":
             outline_r = ods["element"][0]["geometry"]["outline"]["r"]
             outline_z = ods["element"][0]["geometry"]["outline"]["z"]
-            coil = (coil_name, ShapedCoil(list(zip(outline_r, outline_z))), coil_current, turns)
+            coil = ShapedCoil(list(zip(outline_r, outline_z)), coil_current, turns)
         elif geometry_type == "rectangle":
             r_centre = ods["element"][0]["geometry"]["rectangle"]["r"]
             z_centre = ods["element"][0]["geometry"]["rectangle"]["z"]
@@ -107,12 +109,17 @@ def _load_omas_coil(ods: omas.ODS) -> Tuple[str, Type[Coil]]:
             height = ods["element"][0]["geometry"]["rectangle"]["height"]
             coil_r = [r_centre - width / 2, r_centre + width / 2, r_centre + width / 2, r_centre - width / 2]
             coil_z = [z_centre - height / 2, z_centre - height / 2, z_centre + height / 2, z_centre + height / 2]
-            coil = (coil_name, ShapedCoil(list(zip(coil_r, coil_z))), coil_current, turns)
+            coil = ShapedCoil(list(zip(coil_r, coil_z)), coil_current, turns)
         else:
             raise ValueError(f"Coil geometry type {geometry_type} not supported yet.")
-    return coil
+
+    if coil_name is None:
+        raise ValueError(f"Coil name not identified: \n {ods}")
+
+    coil_tuple = (coil_name, coil)
+    return coil_tuple
 
 
-def _load_omas_coils(ods: omas.ODS) -> List[Tuple[str, Type[Coil]]]:
+def _load_omas_coils(ods: omas.ODS) -> List[Tuple[str, Coil]]:
     coils = [_load_omas_coil(ods["pf_active.coil"][idx]) for idx in ods["pf_active.coil"]]
     return coils
