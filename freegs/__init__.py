@@ -28,6 +28,7 @@ You should have received a copy of the GNU Lesser General Public License
 along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 
 """
+
 from importlib_metadata import metadata
 
 from .equilibrium import Equilibrium
