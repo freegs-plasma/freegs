@@ -34,9 +34,9 @@ def _identify_name(ods: omas.ODS) -> str | None:
         return None
 
 
-def _load_omas_power_supplies(ods: omas.ODS) -> List[Dict]:
+def _load_omas_supplies(ods: omas.ODS) -> List[Dict]:
     """ Load power supplies names from OMAS data.
-    :param ods: 'pf_active.power_supply.:' data"""
+    :param ods: 'pf_active.supply.:' data"""
     # FreeGS does not have PowerSupply class, so we return data as list of dicts
     # The voltages can be loaded in the same way as currents to support equilibrium evolution.
     power_supplies_names = [{"name": _identify_name(ods[idx]),
@@ -84,6 +84,7 @@ def _load_omas_current(ods: omas.ODS) -> float:
 
 
 def _circuit_connection_to_linear(circuit_structure: np.ndarray, n_supplies: int) -> Tuple[Tuple, Tuple]:
+    # TODO This function does not support non-linear circuits and connections which generate opposite currents.
     num_rows, num_cols = circuit_structure.shape
 
     supply_idx = set()
@@ -92,6 +93,7 @@ def _circuit_connection_to_linear(circuit_structure: np.ndarray, n_supplies: int
     # Loop through each node in the circuit
     for i in range(num_rows):
         # Loop through each supply or coil side connected to the node
+        node_count = 0
         for j in range(num_cols):
             if circuit_structure[i, j] == 1:
                 # Determine if the connection is to a supply or coil
@@ -101,6 +103,9 @@ def _circuit_connection_to_linear(circuit_structure: np.ndarray, n_supplies: int
                 else:
                     index = (j - 2 * n_supplies) // 2
                     coil_idx.add(index)
+                node_count += 1
+        if node_count > 2:
+            raise ValueError(f"Non-linear circuit structure. Node {i} has more than 2 connections.")
 
     return tuple(supply_idx), tuple(coil_idx)
 
@@ -138,13 +143,13 @@ def _load_omas_circuit(ods: omas.ODS, coils: List[Tuple[str, Coil]], power_suppl
 
     # Init FreeGS circuit
     # TODO: Recognize correctly the multiplier for the circuit current
-    circuit = Circuit([(coils[idx][0], coils[idx[1]], 1.0) for idx in coil_idx], circuit_current)
+    circuit = Circuit([(coils[idx][0], coils[idx][1], 1.0) for idx in coil_idx], circuit_current)
     return circuit_name, circuit
 
 
-def _load_omas_circuits(ods: omas.ODS) -> List[Tuple[str, Circuit]] | None:
-    coils = _load_omas_coils(ods)
-    power_supplies = _load_omas_power_supplies(ods)
+def load_omas_circuits(ods: omas.ODS) -> List[Tuple[str, Circuit]] | None:
+    coils = load_omas_coils(ods)
+    power_supplies = _load_omas_supplies(ods["pf_active.supply"])
     if "pf_active.circuit" not in ods:
         return None
     return [_load_omas_circuit(ods["pf_active.circuit"][idx], coils, power_supplies) for idx in
@@ -162,14 +167,14 @@ def _load_omas_coil(ods: omas.ODS) -> Tuple[str, Coil]:
 
     # Multicoil or simple coil?
     if len(ods["element"]) > 1:
-        r_filaments = ods["element"][:]["geometry"]["rectangle"]["r"]
-        z_filaments = ods["element"][:]["geometry"]["rectangle"]["z"]
-        turns = ods["element"][:]["turns_with_sign"]
+        r_filaments = ods["element.:.geometry.rectangle.r"]
+        z_filaments = ods["element.:.geometry.rectangle.z"]
+        turns = ods["element.:.turns_with_sign"]
         if not np.all(np.abs(turns) == 1):
             raise ValueError("Multicoil with non-unit turns is not supported yet.")
 
         # TODO: check if turns are interpreted correctly
-        coil = FilamentCoil(r_filaments, z_filaments, coil_current, turns=len(r_filaments))
+        coil = FilamentCoil(r_filaments, z_filaments, current=coil_current, turns=len(r_filaments))
     else:
         if not coil_name:
             coil_name = _identify_name(ods["element"][0])
@@ -208,7 +213,7 @@ def _load_omas_coil(ods: omas.ODS) -> Tuple[str, Coil]:
     return coil_tuple
 
 
-def _load_omas_coils(ods: omas.ODS) -> List[Tuple[str, Coil]]:
+def load_omas_coils(ods: omas.ODS) -> List[Tuple[str, Coil]]:
     coils = [_load_omas_coil(ods["pf_active.coil"][idx]) for idx in ods["pf_active.coil"]]
     return coils
 
@@ -240,9 +245,9 @@ def load_omas_machine(ods: omas.ODS):
     :param ods: OMAS data"""
 
     # Load circuits
-    coils = _load_omas_circuits(ods)
+    coils = load_omas_circuits(ods)
     if not coils:
-        coils = _load_omas_coils(ods)
+        coils = load_omas_coils(ods)
 
     # Load limiter
     limiter = _load_omas_limiter(ods)
