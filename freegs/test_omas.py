@@ -93,36 +93,46 @@ def test_omas_machine(example_ods):
     machine = load_omas_machine(example_ods)
 
 
-# Run only on request, since it takes a while to run
-# @pytest.mark.skip(reason="Run only on request")
-def test_omas_test_reconstruction(example_ods):
-    machine = load_omas_machine(example_ods)
-
+def _test_freegs_inverse(machine, ods):
+    # Inverse problem
     eq = freegs.Equilibrium(machine,
                             Rmin=0.6, Rmax=2.8,
                             Zmin=-2.0, Zmax=1.8,
                             nx=65, ny=65)
 
-    ip = example_ods["equilibrium"]["time_slice"][0]["global_quantities"]["ip"]
-    p_ax = example_ods["equilibrium"]["time_slice"][0]["profiles_1d"]["pressure"][0]
-    btor = example_ods["equilibrium"]["time_slice"][0]["global_quantities"]["magnetic_axis"]["b_field_tor"]
-    rax = example_ods["equilibrium"]["time_slice"][0]["global_quantities"]["magnetic_axis"]["r"]
+    ip = ods["equilibrium"]["time_slice"][0]["global_quantities"]["ip"]
+    p_ax = ods["equilibrium"]["time_slice"][0]["profiles_1d"]["pressure"][0]
+    btor = ods["equilibrium"]["time_slice"][0]["global_quantities"]["magnetic_axis"]["b_field_tor"]
+    rax = ods["equilibrium"]["time_slice"][0]["global_quantities"]["magnetic_axis"]["r"]
     f0 = btor * rax
 
     profiles = freegs.jtor.ConstrainPaxisIp(eq, p_ax, ip, f0)
 
     # Try some circular equilibrium
-    r_lcfs = example_ods["equilibrium"]["time_slice"][0]["boundary"]["outline"]["r"]
-    z_lcfs = example_ods["equilibrium"]["time_slice"][0]["boundary"]["outline"]["z"]
+    r_lcfs = ods["equilibrium"]["time_slice"][0]["boundary"]["outline"]["r"]
+    z_lcfs = ods["equilibrium"]["time_slice"][0]["boundary"]["outline"]["z"]
 
     isoflux = [(r_lcfs[0], z_lcfs[0], r, z) for r, z in zip(r_lcfs[1:], z_lcfs[1:])]
     constraints = freegs.control.constrain(isoflux=isoflux)
 
     freegs.solve(eq, profiles, constraints)
 
-    ax = plt.gca()
-    ax.set_aspect("equal")
-    eq.plot(axis=ax, show=False)
-    machine.plot(axis=ax, show=False)
-    constraints.plot(axis=ax, show=False)
-    plt.show()
+    # ax = plt.gca()
+    # ax.set_aspect("equal")
+    # eq.plot(axis=ax, show=False)
+    # machine.plot(axis=ax, show=False)
+    # constraints.plot(axis=ax, show=False)
+    # plt.show()
+
+
+# Run only on request, since it takes a while to run
+@pytest.mark.skip(reason="Run only on request")
+def test_omas_test_reconstruction(example_ods):
+    machine = load_omas_machine(example_ods)
+    _test_freegs_inverse(machine, example_ods)
+
+
+@pytest.mark.skip(reason="Run only on request")
+def test_omas_w_circuits_test_reconstruction(example_circuit_ods):
+    machine = load_omas_machine(example_circuit_ods)
+    _test_freegs_inverse(machine, example_circuit_ods)
