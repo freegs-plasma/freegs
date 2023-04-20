@@ -76,7 +76,6 @@ def _load_omas_current(ods: omas.ODS) -> float:
             print(
                 f"Warning: multiple circuit currents found. Using first one for time: "
                 f"{ods['current']['time'][0]}")
-
         circuit_current = ods["current"]["data"][0]
     else:
         circuit_current = 0.0
@@ -172,7 +171,6 @@ def _load_omas_coil(ods: omas.ODS) -> Tuple[str, Coil]:
         # TODO: check if turns are interpreted correctly
         coil = FilamentCoil(r_filaments, z_filaments, coil_current, turns=len(r_filaments))
     else:
-        print("Simple coil")
         if not coil_name:
             coil_name = _identify_name(ods["element"][0])
 
@@ -180,8 +178,6 @@ def _load_omas_coil(ods: omas.ODS) -> Tuple[str, Coil]:
             raise ValueError(f"Coil name not identified: \n {ods}")
 
         geometry_type = _identify_geometry_type(ods["element"][0])
-
-        print(f"Coil name: {coil_name}")
 
         # Read turns:
         if "turns" in ods["element"][0]:
@@ -227,7 +223,7 @@ def _load_omas_limiter(ods: omas.ODS):
 
     # Identify the first occurrence of limiter id ods
     limiter_id = next((idx for idx in ods["wall.description_2d"] if "limiter" in ods["wall.description_2d"][idx]))
-    limiter_ods = ods["wall.description_2d"][limiter_id]
+    limiter_ods = ods["wall.description_2d"][limiter_id]["limiter"]
 
     # Currently is supported only continuous limiter
     if limiter_ods["type.index"] != 0:
