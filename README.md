@@ -5,6 +5,7 @@ FreeGS: Free boundary Grad-Shafranov solver
 [![py3comp](https://img.shields.io/badge/py3-compatible-brightgreen.svg)](https://img.shields.io/badge/py3-compatible-brightgreen.svg)
 [![Build Status](https://github.com/freegs-plasma/freegs/workflows/Tests/badge.svg)](https://github.com/freegs-plasma/freegs/workflows/Tests/badge.svg)
 [![codecov](https://codecov.io/gh/freegs-plasma/freegs/branch/master/graph/badge.svg?token=4dc6aHbu7K)](https://codecov.io/gh/freegs-plasma/freegs)
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/freegs-plasma/freegs/tutorial?labpath=tutorial.ipynb)
 
 This Python module calculates plasma equilibria for tokamak fusion experiments,
 by solving the Grad-Shafranov equation with free boundaries. Given a set of coils,
@@ -49,6 +50,11 @@ Examples
 --------
 
 The Jupyter notebooks contain examples wuth additional notes
+
+
+* [tutorial.ipynb](./tutorial.ipynb)
+
+Launch tutorial in [![MyBinder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/freegs-plasma/freegs/tutorial?labpath=tutorial.ipynb)
 
 * MAST-example.ipynb 
 
