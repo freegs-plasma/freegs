@@ -18,6 +18,7 @@ GNU Lesser General Public License for more details.
 You should have received a copy of the GNU Lesser General Public License
 along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 """
+
 from scipy.integrate import romb, quad  # Romberg integration
 from . import critical
 from .gradshafranov import mu0
@@ -136,36 +137,57 @@ class Profile(abc.ABC):
         pass
 
 
-class ConstrainBetapIp(Profile):
-    """
-    Constrain poloidal Beta and plasma current
-
-    This is the constraint used in
-    YoungMu Jeon arXiv:1503.03135
-
+class ProfileShapeFunction(abc.ABC):
+    """When instantiated, can be called with the normalised psi to
+    shape the profiles.
     """
 
-    def __init__(self, eq, betap, Ip, fvac, alpha_m=1.0, alpha_n=2.0, Raxis=1.0):
+    @abc.abstractmethod
+    def __call__(self, psi_norm):
         """
-        betap - Poloidal beta
-        Ip    - Plasma current [Amps]
-        fvac  - Vacuum f = R*Bt
-
-        Raxis - R used in p' and ff' components
+        psi_norm - normalised psi [0, 1]
         """
+        pass
 
+
+class DoublePowerShapeFunction(ProfileShapeFunction):
+    def __init__(self, alpha_m=1.0, alpha_n=2.0) -> None:
         # Check inputs
         if alpha_m < 0:
             raise ValueError("alpha_m must be positive")
         if alpha_n < 0:
             raise ValueError("alpha_n must be positive")
 
+        self.alpha_m = alpha_m
+        self.alpha_n = alpha_n
+
+    def __call__(self, psi_norm):
+        return (1.0 - psi_norm**self.alpha_m) ** self.alpha_n
+
+
+class ConstrainBetapIpArbShape(Profile):
+    """Constrain poloidal Beta and plasma current with an arbitrary
+    shaping function
+    """
+
+    def __init__(self, eq, betap, Ip, fvac, shape_function=None, Raxis=1.0):
+        """
+        betap - Poloidal beta
+        Ip    - Plasma current [Amps]
+        fvac  - Vacuum f = R*Bt
+        shape_function - a callable which accepts a scalar normalised psi and array of alpha.
+        Defaults to `DoublePowerShapeFunction`.
+        Raxis - R used in p' and ff' components
+        """
+
+        if shape_function is None:
+            shape_function = DoublePowerShapeFunction()
+
         # Set parameters for later use
         self.betap = betap
         self.Ip = Ip
         self._fvac = fvac
-        self.alpha_m = alpha_m
-        self.alpha_n = alpha_n
+        self.shape_function = shape_function
         self.Raxis = Raxis
         self.eq = eq
 
@@ -208,7 +230,7 @@ class ConstrainBetapIp(Profile):
         psi_norm = (psi - psi_axis) / (psi_bndry - psi_axis)
 
         # Current profile shape
-        jtorshape = (1.0 - np.clip(psi_norm, 0.0, 1.0) ** self.alpha_m) ** self.alpha_n
+        jtorshape = self.shape_function(np.clip(psi_norm, 0.0, 1.0))
 
         if mask is not None:
             # If there is a masking function (X-points, limiters)
@@ -219,9 +241,7 @@ class ConstrainBetapIp(Profile):
         # Need integral of jtorshape to calculate pressure
         # Note factor to convert from normalised psi integral
         def pshape(psinorm):
-            shapeintegral, _ = quad(
-                lambda x: (1.0 - x**self.alpha_m) ** self.alpha_n, psinorm, 1.0
-            )
+            shapeintegral, _ = quad(self.shape_function, psinorm, 1.0)
             shapeintegral *= psi_bndry - psi_axis
             return shapeintegral
 
@@ -286,7 +306,7 @@ class ConstrainBetapIp(Profile):
         dp/dpsi as a function of normalised psi. 0 outside core
         Calculate pprimeshape inside the core only
         """
-        shape = (1.0 - np.clip(pn, 0.0, 1.0) ** self.alpha_m) ** self.alpha_n
+        shape = self.shape_function(np.clip(pn, 0.0, 1.0))
         return self.L * self.Beta0 / self.Raxis * shape
 
     def ffprime(self, pn):
@@ -294,20 +314,37 @@ class ConstrainBetapIp(Profile):
         f * df/dpsi as a function of normalised psi. 0 outside core.
         Calculate ffprimeshape inside the core only.
         """
-        shape = (1.0 - np.clip(pn, 0.0, 1.0) ** self.alpha_m) ** self.alpha_n
+        shape = self.shape_function(np.clip(pn, 0.0, 1.0))
         return mu0 * self.L * (1 - self.Beta0) * self.Raxis * shape
 
     def fvac(self):
         return self._fvac
 
 
-class ConstrainPaxisIp(Profile):
+class ConstrainBetapIp(ConstrainBetapIpArbShape):
+    """Constrain poloidal Beta and plasma current with the
+    double power shaping function.
+
+    Provided for API backwards compatability. `ConstrainBetapIpArbShape`
+    provides more flexibility for profile shaping.
+
+    This is the constraint used in
+    YoungMu Jeon arXiv:1503.03135
     """
-    Constrain pressure on axis and plasma current
+
+    def __init__(self, eq, betap, Ip, fvac, alpha_m=1.0, alpha_n=2.0, Raxis=1.0):
+        shape_function = DoublePowerShapeFunction(alpha_m, alpha_n)
+        super().__init__(eq, betap, Ip, fvac, shape_function, Raxis)
+
+
+class ConstrainPaxisIpArbShape(Profile):
+    """
+    Constrain pressure on axis and plasma current with an
+    arbitrary shaping function.
 
     """
 
-    def __init__(self, eq, paxis, Ip, fvac, alpha_m=1.0, alpha_n=2.0, Raxis=1.0):
+    def __init__(self, eq, paxis, Ip, fvac, shape_function=None, Raxis=1.0):
         """
         paxis - Pressure at magnetic axis [Pa]
         Ip    - Plasma current [Amps]
@@ -316,18 +353,14 @@ class ConstrainPaxisIp(Profile):
         Raxis - R used in p' and ff' components
         """
 
-        # Check inputs
-        if alpha_m < 0:
-            raise ValueError("alpha_m must be positive")
-        if alpha_n < 0:
-            raise ValueError("alpha_n must be positive")
+        if shape_function is None:
+            shape_function = DoublePowerShapeFunction()
 
         # Set parameters for later use
         self.paxis = paxis
         self.Ip = Ip
         self._fvac = fvac
-        self.alpha_m = alpha_m
-        self.alpha_n = alpha_n
+        self.shape_function = shape_function
         self.Raxis = Raxis
         self.eq = eq
 
@@ -370,7 +403,7 @@ class ConstrainPaxisIp(Profile):
         psi_norm = (psi - psi_axis) / (psi_bndry - psi_axis)
 
         # Current profile shape
-        jtorshape = (1.0 - np.clip(psi_norm, 0.0, 1.0) ** self.alpha_m) ** self.alpha_n
+        jtorshape = self.shape_function(np.clip(psi_norm, 0.0, 1.0))
 
         if mask is not None:
             # If there is a masking function (X-points, limiters)
@@ -380,9 +413,7 @@ class ConstrainPaxisIp(Profile):
 
         # Need integral of jtorshape to calculate paxis
         # Note factor to convert from normalised psi integral
-        shapeintegral, _ = quad(
-            lambda x: (1.0 - x**self.alpha_m) ** self.alpha_n, 0.0, 1.0
-        )
+        shapeintegral, _ = quad(self.shape_function, 0.0, 1.0)
         shapeintegral *= psi_bndry - psi_axis
 
         # Pressure on axis is
@@ -422,7 +453,7 @@ class ConstrainPaxisIp(Profile):
         dp/dpsi as a function of normalised psi. 0 outside core
         Calculate pprimeshape inside the core only
         """
-        shape = (1.0 - np.clip(pn, 0.0, 1.0) ** self.alpha_m) ** self.alpha_n
+        shape = self.shape_function(np.clip(pn, 0.0, 1.0))
         return self.L * self.Beta0 / self.Raxis * shape
 
     def ffprime(self, pn):
@@ -430,19 +461,29 @@ class ConstrainPaxisIp(Profile):
         f * df/dpsi as a function of normalised psi. 0 outside core.
         Calculate ffprimeshape inside the core only.
         """
-        shape = (1.0 - np.clip(pn, 0.0, 1.0) ** self.alpha_m) ** self.alpha_n
+        shape = self.shape_function(np.clip(pn, 0.0, 1.0))
         return mu0 * self.L * (1 - self.Beta0) * self.Raxis * shape
 
     def fvac(self):
         return self._fvac
 
 
-class ProfilesPprimeFfprime(Profile):
+class ConstrainPaxisIp(ConstrainPaxisIpArbShape):
+    """Constrain pressure on axis and plasma current
+
+    Provided for API backwards compatability. `ConstrainPaxisIpArbShape`
+    provides more flexibility for profile shaping.
     """
-    Specified profile functions p'(psi), ff'(psi)
+
+    def __init__(self, eq, paxis, Ip, fvac, alpha_m=1.0, alpha_n=2.0, Raxis=1.0):
+        shape_function = DoublePowerShapeFunction(alpha_m, alpha_n)
+        super().__init__(eq, paxis, Ip, fvac, shape_function, Raxis)
+
+
+class ProfilesPprimeFfprime(Profile):
+    """Specified profile functions p'(psi), ff'(psi)
 
     Jtor = R*p' + ff'/(R*mu0)
-
     """
 
     def __init__(self, pprime_func, ffprime_func, fvac, p_func=None, f_func=None):
