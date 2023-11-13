@@ -18,12 +18,11 @@ GNU Lesser General Public License for more details.
 You should have received a copy of the GNU Lesser General Public License
 along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 """
-import matplotlib.pyplot as plt
 from scipy.integrate import romb, quad  # Romberg integration
 from . import critical
 from .gradshafranov import mu0
 
-from numpy import clip, zeros, reshape, sqrt, pi
+from numpy import clip, zeros, reshape, sqrt
 import numpy as np
 import abc
 

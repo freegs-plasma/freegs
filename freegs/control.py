@@ -8,7 +8,6 @@ from numpy import dot, transpose, eye, array, inf
 from numpy.linalg import inv, norm
 import numpy as np
 from scipy import optimize
-from . import critical
 
 
 class constrain(object):

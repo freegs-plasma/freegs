@@ -62,10 +62,6 @@ def test_xpoint_field():
                             nx=65, ny=65,  # Number of grid points
                             boundary=freegs.boundary.freeBoundary)  # Boundary condition
 
-    profiles = freegs.jtor.ConstrainPaxisIp(eq, 1e3,
-                                            # Plasma pressure on axis [Pascals]
-                                            2e5,  # Plasma current [Amps]
-                                            2.0)  # Vacuum f=R*Bt
 
     xpoints = [(1.1, -0.6),  # (R,Z) locations of X-points
                (1.1, 0.6)]
@@ -97,7 +93,7 @@ def test_iso_flux():
                             nx=65, ny=65,  # Number of grid points
                             boundary=freegs.boundary.freeBoundary)  # Boundary condition
 
-    profiles = freegs.jtor.ConstrainPaxisIp(eq, 1e3,
+    freegs.jtor.ConstrainPaxisIp(eq, 1e3,
                                             # Plasma pressure on axis [Pascals]
                                             2e5,  # Plasma current [Amps]
                                             2.0)  # Vacuum f=R*Bt
@@ -123,7 +119,7 @@ def test_flux():
     """
     r = 4
     z = 7
-    theta = np.pi / 2
+    np.pi / 2
     Rcoil = 1.5
     zcoil = 1
     current = 100000
@@ -166,8 +162,6 @@ def test_rog_around_Shapedcoil():
     Test single Rog around a coil
     """
 
-    Rcoil = 1.5
-    zcoil = 1
     current = 100000.0
     coil = [('Coil 1', freegs.machine.ShapedCoil(
         [(0.95, -0.1), (0.95, 0.1), (1.05, 0.1), (1.05, -0.1)],

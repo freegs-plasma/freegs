@@ -1186,8 +1186,6 @@ class Equilibrium:
         R = self.R
         Z = self.Z
 
-        # Produce array of Btor in (R,Z)
-        B_torvals_2 = self.Btor(R, Z) ** 2
 
         dR = R[1, 0] - R[0, 0]
         dZ = Z[0, 1] - Z[0, 0]
@@ -1378,7 +1376,6 @@ if __name__ == "__main__":
     # Test the different spline interpolation routines
 
     from numpy import ravel
-    import matplotlib.pyplot as plt
 
     import machine
 

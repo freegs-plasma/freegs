@@ -24,18 +24,12 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 
 from .gradshafranov import Greens, GreensBr, GreensBz
 import numpy as np
-import scipy.linalg
 from scipy.interpolate import interp1d
-from scipy.special import ellipk, ellipe
-from scipy.constants import mu_0
 
 from .coil import Coil, AreaCurrentLimit
 from .shaped_coil import ShapedCoil
-from .pre_calc_coil import PreCalcCoil
 from .filament_coil import FilamentCoil
-from .multi_coil import MultiCoil
 
-from shapely.geometry import Point, LinearRing, LineString
 from shapely.geometry.polygon import Polygon
 
 # We need this for the `label` part of the Circuit dtype for writing
