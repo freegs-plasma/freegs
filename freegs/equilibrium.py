@@ -338,18 +338,30 @@ class Equilibrium:
         >>> psinorm, q = eq.q()
 
         Note: psinorm = 0 is the magnetic axis, and psinorm = 1 is the separatrix.
-              Calculating q on either of these flux surfaces is problematic,
-              and the results will probably not be accurate.
+              If you request a value close to either of these limits, an extrapolation
+              based on a 1D grid of values from 0.01 to 0.99 will be used. This gives
+              smooth and continuous q-profiles, but comes at an increased computational
+              cost.
         """
         if psinorm is None:
             # An array which doesn't include psinorm = 0 or 1
             psinorm = linspace(1.0 / (npsi + 1), 1.0, npsi, endpoint=False)
             return psinorm, critical.find_safety(self, psinorm=psinorm)
 
-        result = critical.find_safety(self, psinorm=psinorm)
+        elif np.any((psinorm < 0.01) | (psinorm > 0.99)):
+            psinorm_inner = np.linspace(0.01, 0.99, num=npsi)
+            q_inner = critical.find_safety(self, psinorm=psinorm_inner)
+
+            interp = interpolate.interp1d(psinorm_inner, q_inner,
+                                          kind = "quadratic",
+                                          fill_value = "extrapolate")
+            result = interp(psinorm)
+        else:
+            result = critical.find_safety(self, psinorm=psinorm)
+        
         # Convert to a scalar if only one result
-        if len(result) == 1:
-            return result[0]
+        if np.size(result) == 1:
+            return float(result)
         return result
 
     def tor_flux(self, psi=None):
