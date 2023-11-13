@@ -65,7 +65,9 @@ def pickUnique(N, m, e):
     inds = sorted(e)  # Sorted list of indices. Used to avoid clashes
     others = []  # The list of three agents
     for i in range(m):
-        newind = random.randint(0, N - 1 - i - len(e))
+        high = N - 1 - i - len(e)
+        newind = random.randint(0, high) if high > 0 else 0
+        
         for ind in inds:
             if newind == ind:
                 newind += 1
