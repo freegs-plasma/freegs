@@ -27,7 +27,7 @@ from . import picard
 import matplotlib.pyplot as plt
 from freegs.plotting import plotEquilibrium
 
-from math import sqrt
+from numpy import sqrt, inf
 
 # Measures which operate on Equilibrium objects
 
@@ -199,7 +199,7 @@ def optimise(eq, controls, measure, maxgen=10, N=10, CR=0.3, F=1.0, monitor=None
             return measure(eq)
         except:
             # Solve failed.
-            return float("inf")
+            return float(inf)
 
     # Call the generic optimiser,
     return optimiser.optimise(
