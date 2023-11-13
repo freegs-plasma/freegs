@@ -159,7 +159,7 @@ def freeBoundaryHagenow(eq, Jtor, psi):
         sum([weight * psi_fixed[:, -(1 + index)] for index, weight in coeffs]) / dZ
     )  # Upper boundary
 
-    dd = sqrt(dR ** 2 + dZ ** 2)  # Diagonal spacing
+    dd = sqrt(dR**2 + dZ**2)  # Diagonal spacing
 
     # Left down corner
     dUdn_L[0] = dUdn_D[0] = (

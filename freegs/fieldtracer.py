@@ -102,7 +102,7 @@ class FieldTracer(object):
         Bz = self._eq.Bz(R, Z)
         Btor = self._eq.Btor(R, Z)
 
-        B = np.sqrt(Br ** 2 + Bz ** 2 + Btor ** 2)
+        B = np.sqrt(Br**2 + Bz**2 + Btor**2)
 
         # Detect when the boundary has been reached
         self.updateEvolving(R, Z, evolving)

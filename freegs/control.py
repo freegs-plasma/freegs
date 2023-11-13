@@ -129,7 +129,7 @@ class constrain(object):
 
         # Calculate the change in coil current
         self.current_change = dot(
-            inv(dot(transpose(A), A) + self.gamma ** 2 * eye(ncontrols)),
+            inv(dot(transpose(A), A) + self.gamma**2 * eye(ncontrols)),
             dot(transpose(A), b),
         )
 
@@ -178,7 +178,11 @@ class constrain(object):
         if self.current_change.shape[0] > 0:
             x0 = self.current_change
             sol = optimize.minimize(
-                objective, x0, method="SLSQP", bounds=current_change_bnds, constraints=cons
+                objective,
+                x0,
+                method="SLSQP",
+                bounds=current_change_bnds,
+                constraints=cons,
             )
 
             self.current_change = sol.x

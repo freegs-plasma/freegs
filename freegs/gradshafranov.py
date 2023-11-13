@@ -71,8 +71,8 @@ class GSElliptic:
 
         b = zeros([nx, ny])
 
-        invdR2 = 1.0 / dR ** 2
-        invdZ2 = 1.0 / dZ ** 2
+        invdR2 = 1.0 / dR**2
+        invdZ2 = 1.0 / dZ**2
 
         for x in range(1, nx - 1):
             R = self.Rmin + dR * x  # Major radius of this point
@@ -92,7 +92,7 @@ class GSElliptic:
         Return the diagonal elements
 
         """
-        return -2.0 / dR ** 2 - 2.0 / dZ ** 2
+        return -2.0 / dR**2 - 2.0 / dZ**2
 
 
 class GSsparse:
@@ -122,8 +122,8 @@ class GSsparse:
         # Create a linked list sparse matrix
         A = eye(N, format="lil")
 
-        invdR2 = 1.0 / dR ** 2
-        invdZ2 = 1.0 / dZ ** 2
+        invdR2 = 1.0 / dR**2
+        invdZ2 = 1.0 / dZ**2
 
         for x in range(1, nx - 1):
             R = self.Rmin + dR * x  # Major radius of this point
@@ -210,8 +210,8 @@ class GSsparse4thOrder:
         # Create a linked list sparse matrix
         A = lil_matrix((N, N))
 
-        invdR2 = 1.0 / dR ** 2
-        invdZ2 = 1.0 / dZ ** 2
+        invdR2 = 1.0 / dR**2
+        invdZ2 = 1.0 / dZ**2
 
         for x in range(1, nx - 1):
             R = self.Rmin + dR * x  # Major radius of this point

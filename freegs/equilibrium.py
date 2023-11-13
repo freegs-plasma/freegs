@@ -113,7 +113,7 @@ class Equilibrium:
         if psi is None:
             # Starting guess for psi
             xx, yy = meshgrid(linspace(0, 1, nx), linspace(0, 1, ny), indexing="ij")
-            psi = exp(-((xx - 0.5) ** 2 + (yy - 0.5) ** 2) / 0.4 ** 2)
+            psi = exp(-((xx - 0.5) ** 2 + (yy - 0.5) ** 2) / 0.4**2)
 
             psi[0, :] = 0.0
             psi[:, 0] = 0.0
@@ -352,13 +352,13 @@ class Equilibrium:
             psinorm_inner = np.linspace(0.01, 0.99, num=npsi)
             q_inner = critical.find_safety(self, psinorm=psinorm_inner)
 
-            interp = interpolate.interp1d(psinorm_inner, q_inner,
-                                          kind = "quadratic",
-                                          fill_value = "extrapolate")
+            interp = interpolate.interp1d(
+                psinorm_inner, q_inner, kind="quadratic", fill_value="extrapolate"
+            )
             result = interp(psinorm)
         else:
             result = critical.find_safety(self, psinorm=psinorm)
-        
+
         # Convert to a scalar if only one result
         if np.size(result) == 1:
             return float(result)
@@ -1186,7 +1186,6 @@ class Equilibrium:
         R = self.R
         Z = self.Z
 
-
         dR = R[1, 0] - R[0, 0]
         dZ = Z[0, 1] - Z[0, 0]
         dV = 2.0 * np.pi * R * dR * dZ
@@ -1372,7 +1371,6 @@ def newDomain(eq, Rmin=None, Rmax=None, Zmin=None, Zmax=None, nx=None, ny=None):
 
 
 if __name__ == "__main__":
-
     # Test the different spline interpolation routines
 
     from numpy import ravel

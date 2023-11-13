@@ -132,6 +132,7 @@ class CoilHeight:
 
 # Monitor optimisation solutions
 
+
 # Plot and save the best equilibrium each generation
 class PlotMonitor:
     """

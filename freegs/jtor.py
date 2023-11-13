@@ -112,25 +112,29 @@ class Profile(abc.ABC):
     """
     Abstract methods that derived classes must implement.
     """
+
     @abc.abstractmethod
-    def Jtor(self, R: np.ndarray, Z: np.ndarray, psi: np.ndarray, psi_bndry=None)->np.ndarray:
+    def Jtor(
+        self, R: np.ndarray, Z: np.ndarray, psi: np.ndarray, psi_bndry=None
+    ) -> np.ndarray:
         """Return a numpy array of toroidal current density [J/m^2]"""
         pass
 
     @abc.abstractmethod
-    def pprime(self, psinorm: float)->float:
+    def pprime(self, psinorm: float) -> float:
         """Return p' at the given normalised psi"""
         pass
 
     @abc.abstractmethod
-    def ffprime(self, psinorm: float)->float:
+    def ffprime(self, psinorm: float) -> float:
         """Return ff' at the given normalised psi"""
         pass
 
     @abc.abstractmethod
-    def fvac(self)->float:
+    def fvac(self) -> float:
         """Return f = R*Bt in vacuum"""
         pass
+
 
 class ConstrainBetapIp(Profile):
     """
@@ -216,7 +220,7 @@ class ConstrainBetapIp(Profile):
         # Note factor to convert from normalised psi integral
         def pshape(psinorm):
             shapeintegral, _ = quad(
-                lambda x: (1.0 - x ** self.alpha_m) ** self.alpha_n, psinorm, 1.0
+                lambda x: (1.0 - x**self.alpha_m) ** self.alpha_n, psinorm, 1.0
             )
             shapeintegral *= psi_bndry - psi_axis
             return shapeintegral
@@ -377,7 +381,7 @@ class ConstrainPaxisIp(Profile):
         # Need integral of jtorshape to calculate paxis
         # Note factor to convert from normalised psi integral
         shapeintegral, _ = quad(
-            lambda x: (1.0 - x ** self.alpha_m) ** self.alpha_n, 0.0, 1.0
+            lambda x: (1.0 - x**self.alpha_m) ** self.alpha_n, 0.0, 1.0
         )
         shapeintegral *= psi_bndry - psi_axis
 
@@ -420,7 +424,7 @@ class ConstrainPaxisIp(Profile):
         """
         shape = (1.0 - np.clip(pn, 0.0, 1.0) ** self.alpha_m) ** self.alpha_n
         return self.L * self.Beta0 / self.Raxis * shape
-    
+
     def ffprime(self, pn):
         """
         f * df/dpsi as a function of normalised psi. 0 outside core.

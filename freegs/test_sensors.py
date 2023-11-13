@@ -3,6 +3,7 @@ import numpy as np
 from scipy.special import ellipk, ellipe
 from scipy.constants import mu_0
 
+
 def test_offaxis_Bfield():
     """
     Using the analytical equation for off axis b field due to a single coil loop
@@ -16,25 +17,32 @@ def test_offaxis_Bfield():
     Rcoil = 1.5
     zcoil = 1
     current = 10000
-    coil = [('Coil', freegs.machine.Coil(Rcoil, zcoil, current=current))]
+    coil = [("Coil", freegs.machine.Coil(Rcoil, zcoil, current=current))]
     sensor = [freegs.machine.PoloidalFieldSensor(r, z, theta)]
     tokamak = freegs.machine.Machine(coil, sensors=sensor)
 
     # first want to write a calc for the analytical B field (with elliptical integrals)
     # defining the constants
     B0 = (current * mu_0) / (
-            2 * Rcoil)  # this is the field on axis centre of coil plane
+        2 * Rcoil
+    )  # this is the field on axis centre of coil plane
     a = r / Rcoil
     b = (z - zcoil) / Rcoil
     c = (z - zcoil) / r
-    Q = (1 + a) ** 2 + b ** 2
+    Q = (1 + a) ** 2 + b**2
     k = ((4 * a) / Q) ** 0.5
 
     # calculating B components
-    Bz = B0 * (1 / (np.pi * (Q ** 0.5))) * (ellipe(k ** 2) * (
-            (1 - a ** 2 - b ** 2) / (Q - 4 * a)) + ellipk(k ** 2))
-    Br = B0 * (c / (np.pi * (Q ** 0.5))) * (ellipe(k ** 2) * (
-            (1 + a ** 2 + b ** 2) / (Q - 4 * a)) - ellipk(k ** 2))
+    Bz = (
+        B0
+        * (1 / (np.pi * (Q**0.5)))
+        * (ellipe(k**2) * ((1 - a**2 - b**2) / (Q - 4 * a)) + ellipk(k**2))
+    )
+    Br = (
+        B0
+        * (c / (np.pi * (Q**0.5)))
+        * (ellipe(k**2) * ((1 + a**2 + b**2) / (Q - 4 * a)) - ellipk(k**2))
+    )
     B = Bz * np.sin(theta) + Br * np.cos(theta)
 
     # secondly want to pull the magentic field i am calculating from the sensors
@@ -50,21 +58,25 @@ def test_xpoint_field():
     the correct constraints value
     """
     tokamak = freegs.machine.TestTokamak()
-    tokamak.sensors = [freegs.machine.PoloidalFieldSensor(1.1, -0.6, 0),
-                       freegs.machine.PoloidalFieldSensor(1.1, 0.6, 0),
-                       freegs.machine.PoloidalFieldSensor(1.1, -0.6, np.pi/2),
-                       freegs.machine.PoloidalFieldSensor(1.1, 0.6, np.pi/2)
-                       ]
+    tokamak.sensors = [
+        freegs.machine.PoloidalFieldSensor(1.1, -0.6, 0),
+        freegs.machine.PoloidalFieldSensor(1.1, 0.6, 0),
+        freegs.machine.PoloidalFieldSensor(1.1, -0.6, np.pi / 2),
+        freegs.machine.PoloidalFieldSensor(1.1, 0.6, np.pi / 2),
+    ]
 
-    eq = freegs.Equilibrium(tokamak=tokamak,
-                            Rmin=0.1, Rmax=2.0,  # Radial domain
-                            Zmin=-1.0, Zmax=1.0,  # Height range
-                            nx=65, ny=65,  # Number of grid points
-                            boundary=freegs.boundary.freeBoundary)  # Boundary condition
+    eq = freegs.Equilibrium(
+        tokamak=tokamak,
+        Rmin=0.1,
+        Rmax=2.0,  # Radial domain
+        Zmin=-1.0,
+        Zmax=1.0,  # Height range
+        nx=65,
+        ny=65,  # Number of grid points
+        boundary=freegs.boundary.freeBoundary,
+    )  # Boundary condition
 
-
-    xpoints = [(1.1, -0.6),  # (R,Z) locations of X-points
-               (1.1, 0.6)]
+    xpoints = [(1.1, -0.6), (1.1, 0.6)]  # (R,Z) locations of X-points
 
     isoflux = [(1.1, -0.6, 1.1, 0.6)]  # (R1,Z1, R2,Z2) pair of locations
 
@@ -84,22 +96,31 @@ def test_iso_flux():
     sensor meaurement confirms constraint
     """
     tokamak = freegs.machine.TestTokamak()
-    tokamak.sensors = [freegs.machine.FluxLoopSensor(1.1, -0.6),
-                       freegs.machine.FluxLoopSensor(1.1, 0.6)]
+    tokamak.sensors = [
+        freegs.machine.FluxLoopSensor(1.1, -0.6),
+        freegs.machine.FluxLoopSensor(1.1, 0.6),
+    ]
 
-    eq = freegs.Equilibrium(tokamak=tokamak,
-                            Rmin=0.1, Rmax=2.0,  # Radial domain
-                            Zmin=-1.0, Zmax=1.0,  # Height range
-                            nx=65, ny=65,  # Number of grid points
-                            boundary=freegs.boundary.freeBoundary)  # Boundary condition
+    eq = freegs.Equilibrium(
+        tokamak=tokamak,
+        Rmin=0.1,
+        Rmax=2.0,  # Radial domain
+        Zmin=-1.0,
+        Zmax=1.0,  # Height range
+        nx=65,
+        ny=65,  # Number of grid points
+        boundary=freegs.boundary.freeBoundary,
+    )  # Boundary condition
 
-    freegs.jtor.ConstrainPaxisIp(eq, 1e3,
-                                            # Plasma pressure on axis [Pascals]
-                                            2e5,  # Plasma current [Amps]
-                                            2.0)  # Vacuum f=R*Bt
+    freegs.jtor.ConstrainPaxisIp(
+        eq,
+        1e3,
+        # Plasma pressure on axis [Pascals]
+        2e5,  # Plasma current [Amps]
+        2.0,
+    )  # Vacuum f=R*Bt
 
-    xpoints = [(1.1, -0.6),  # (R,Z) locations of X-points
-               (1.1, 0.6)]
+    xpoints = [(1.1, -0.6), (1.1, 0.6)]  # (R,Z) locations of X-points
 
     isoflux = [(1.1, -0.6, 1.1, 0.6)]  # (R1,Z1, R2,Z2) pair of locations
 
@@ -109,8 +130,9 @@ def test_iso_flux():
 
     tokamak.takeMeasurements(eq)
 
-    assert np.isclose(tokamak.sensors[0].measurement, tokamak.sensors[1].measurement,
-                        atol=1e-8)
+    assert np.isclose(
+        tokamak.sensors[0].measurement, tokamak.sensors[1].measurement, atol=1e-8
+    )
 
 
 def test_flux():
@@ -123,7 +145,7 @@ def test_flux():
     Rcoil = 1.5
     zcoil = 1
     current = 100000
-    coil = [('Coil', freegs.machine.Coil(Rcoil, zcoil, current=current))]
+    coil = [("Coil", freegs.machine.Coil(Rcoil, zcoil, current=current))]
     sensor = [freegs.machine.FluxLoopSensor(r, z)]
     tokamak = freegs.machine.Machine(coil, sensors=sensor)
 
@@ -146,10 +168,15 @@ def test_rog_around_coil():
     zcoil = 1
     zcoil2 = -1
     current = 100000.0
-    coil = [('Coil 1', freegs.machine.Coil(Rcoil, zcoil, current=current)),
-            ('Coil 2', freegs.machine.Coil(Rcoil, zcoil2, current=current))]
-    sensor = [freegs.machine.RogowskiSensor([1.45, 1.45, 1.55, 1.55],
-                                            [0.95, 1.05, 1.05, 0.95])]
+    coil = [
+        ("Coil 1", freegs.machine.Coil(Rcoil, zcoil, current=current)),
+        ("Coil 2", freegs.machine.Coil(Rcoil, zcoil2, current=current)),
+    ]
+    sensor = [
+        freegs.machine.RogowskiSensor(
+            [1.45, 1.45, 1.55, 1.55], [0.95, 1.05, 1.05, 0.95]
+        )
+    ]
     tokamak = freegs.machine.Machine(coil, sensors=sensor)
 
     tokamak.takeMeasurements()
@@ -163,11 +190,17 @@ def test_rog_around_Shapedcoil():
     """
 
     current = 100000.0
-    coil = [('Coil 1', freegs.machine.ShapedCoil(
-        [(0.95, -0.1), (0.95, 0.1), (1.05, 0.1), (1.05, -0.1)],
-        current=current))]
-    sensor = [freegs.machine.RogowskiSensor([0.9, 0.9, 1.0, 1.0],
-                                            [-0.2, 0.2, 0.2, -0.2])]
+    coil = [
+        (
+            "Coil 1",
+            freegs.machine.ShapedCoil(
+                [(0.95, -0.1), (0.95, 0.1), (1.05, 0.1), (1.05, -0.1)], current=current
+            ),
+        )
+    ]
+    sensor = [
+        freegs.machine.RogowskiSensor([0.9, 0.9, 1.0, 1.0], [-0.2, 0.2, 0.2, -0.2])
+    ]
     tokamak = freegs.machine.Machine(coil, sensors=sensor)
 
     tokamak.takeMeasurements()
@@ -176,30 +209,80 @@ def test_rog_around_Shapedcoil():
 
 
 def test_rog_around_Filamentcoil():
-
     tokamak = freegs.machine.EmptyTokamak()
     total_current = 300
 
-    tokamak.coils = [('FILCOIL1',freegs.machine.FilamentCoil((0.5,0.5,0.5),(0.9,1,1.1), current=total_current)),('FILCOIL2',freegs.machine.FilamentCoil((0.5,0.5,0.5),(-0.9,-1,-1.1), current=total_current))]
-    tokamak.sensors = [freegs.machine.RogowskiSensor([0.4,0.4,0.6,0.6], [0.8,1.2,1.2,0.8], name='UPPERCOIL'),freegs.machine.RogowskiSensor([0.4,0.4,0.6,0.6], [0.95,1.05,1.05,0.95], name='UPPERFIL')]
+    tokamak.coils = [
+        (
+            "FILCOIL1",
+            freegs.machine.FilamentCoil(
+                (0.5, 0.5, 0.5), (0.9, 1, 1.1), current=total_current
+            ),
+        ),
+        (
+            "FILCOIL2",
+            freegs.machine.FilamentCoil(
+                (0.5, 0.5, 0.5), (-0.9, -1, -1.1), current=total_current
+            ),
+        ),
+    ]
+    tokamak.sensors = [
+        freegs.machine.RogowskiSensor(
+            [0.4, 0.4, 0.6, 0.6], [0.8, 1.2, 1.2, 0.8], name="UPPERCOIL"
+        ),
+        freegs.machine.RogowskiSensor(
+            [0.4, 0.4, 0.6, 0.6], [0.95, 1.05, 1.05, 0.95], name="UPPERFIL"
+        ),
+    ]
 
     tokamak.takeMeasurements()
 
-    assert tokamak.sensors[0].measurement == total_current and tokamak.sensors[1].measurement == total_current / 3
+    assert (
+        tokamak.sensors[0].measurement == total_current
+        and tokamak.sensors[1].measurement == total_current / 3
+    )
 
 
 def test_rog_around_circuit():
-
     tokamak = freegs.machine.EmptyTokamak()
     circuit_current = 100
     npoints = 3
 
-    tokamak.coils = [('CIRCUIT', freegs.machine.Circuit([('FILCOIL1',freegs.machine.FilamentCoil((0.5,0.5,0.5),(0.9,1,1.1)), npoints),('FILCOIL2',freegs.machine.FilamentCoil((0.5,0.5,0.5),(-0.9,-1,-1.1)), npoints)], current=circuit_current))]
-    tokamak.sensors = [freegs.machine.RogowskiSensor([0.4,0.4,0.6,0.6], [0.8,1.2,1.2,0.8], name='UPPERCOIL'),freegs.machine.RogowskiSensor([0.4,0.4,0.6,0.6], [0.95,1.05,1.05,0.95], name='UPPERFIL')]
+    tokamak.coils = [
+        (
+            "CIRCUIT",
+            freegs.machine.Circuit(
+                [
+                    (
+                        "FILCOIL1",
+                        freegs.machine.FilamentCoil((0.5, 0.5, 0.5), (0.9, 1, 1.1)),
+                        npoints,
+                    ),
+                    (
+                        "FILCOIL2",
+                        freegs.machine.FilamentCoil((0.5, 0.5, 0.5), (-0.9, -1, -1.1)),
+                        npoints,
+                    ),
+                ],
+                current=circuit_current,
+            ),
+        )
+    ]
+    tokamak.sensors = [
+        freegs.machine.RogowskiSensor(
+            [0.4, 0.4, 0.6, 0.6], [0.8, 1.2, 1.2, 0.8], name="UPPERCOIL"
+        ),
+        freegs.machine.RogowskiSensor(
+            [0.4, 0.4, 0.6, 0.6], [0.95, 1.05, 1.05, 0.95], name="UPPERFIL"
+        ),
+    ]
 
     tokamak.takeMeasurements()
 
-    assert tokamak.sensors[0].measurement == circuit_current * npoints and tokamak.sensors[1].measurement == circuit_current
+    assert (
+        tokamak.sensors[0].measurement == circuit_current * npoints
+        and tokamak.sensors[1].measurement == circuit_current
+    )
 
 
 def test_rog_with_plasma():
@@ -207,23 +290,30 @@ def test_rog_with_plasma():
     Testing Rog around a plasma profile
     """
     tokamak = freegs.machine.EmptyTokamak()  #
-    tokamak.sensors = [
-        freegs.machine.RogowskiSensor([0.1, 0.1, 2, 2], [-1, 1, 1, -1])]
+    tokamak.sensors = [freegs.machine.RogowskiSensor([0.1, 0.1, 2, 2], [-1, 1, 1, -1])]
 
-    eq = freegs.Equilibrium(tokamak=tokamak,
-                            Rmin=0.1, Rmax=2.0,  # Radial domain
-                            Zmin=-1.0, Zmax=1.0,  # Height range
-                            nx=65, ny=65,  # Number of grid points
-                            boundary=freegs.boundary.freeBoundary)  # Boundary condition
+    eq = freegs.Equilibrium(
+        tokamak=tokamak,
+        Rmin=0.1,
+        Rmax=2.0,  # Radial domain
+        Zmin=-1.0,
+        Zmax=1.0,  # Height range
+        nx=65,
+        ny=65,  # Number of grid points
+        boundary=freegs.boundary.freeBoundary,
+    )  # Boundary condition
 
     plasmacurrent = 300000
-    profiles = freegs.jtor.ConstrainPaxisIp(eq, 1e3,
-                                            # Plasma pressure on axis [Pascals]
-                                            plasmacurrent,
-                                            # Plasma current [Amps]
-                                            2.0)  # Vacuum f=R*Bt
+    profiles = freegs.jtor.ConstrainPaxisIp(
+        eq,
+        1e3,
+        # Plasma pressure on axis [Pascals]
+        plasmacurrent,
+        # Plasma current [Amps]
+        2.0,
+    )  # Vacuum f=R*Bt
 
     eq.solve(profiles)
     tokamak.takeMeasurements(eq)
     print(tokamak.sensors[0].measurement)
-    assert np.isclose(tokamak.sensors[0].measurement, plasmacurrent,atol=1000)
+    assert np.isclose(tokamak.sensors[0].measurement, plasmacurrent, atol=1000)

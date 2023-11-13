@@ -31,6 +31,7 @@ import sys
 
 RANDOM_SEED_FOR_PYTEST = 101
 
+
 def _set_random_seed_if_called_in_pytest():
     """If testing with pytest, set a random seed so that the results are deterministic"""
     if "pytest" in sys.modules:
@@ -67,7 +68,7 @@ def pickUnique(N, m, e):
     for i in range(m):
         high = N - 1 - i - len(e)
         newind = random.randint(0, high) if high > 0 else 0
-        
+
         for ind in inds:
             if newind == ind:
                 newind += 1
