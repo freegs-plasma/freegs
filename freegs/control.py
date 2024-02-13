@@ -145,11 +145,13 @@ class constrain(object):
             for i in range(ncontrols):
                 current_change_bounds.append((-inf, inf))
         else:
-            for i in range(ncontrols):
-                cur = tokamak.controlCurrents()[i]
-                lower_lim = self.current_lims[i][0] - cur
-                upper_lim = self.current_lims[i][1] - cur
-                current_change_bounds.append((lower_lim, upper_lim))
+            assert len(self.current_lims) == len(tokamak.coils), \
+                f"Should provide current limits for all coils. Provided {len(self.current_lims)} limits for {len(tokamak.coils)} coils."
+            for i, (_, coil) in enumerate(tokamak.coils):
+                if coil.control:
+                    lower_lim = self.current_lims[i][0] - coil.current
+                    upper_lim = self.current_lims[i][1] - coil.current
+                    current_change_bounds.append((lower_lim, upper_lim))
 
         current_change_bnds = array(current_change_bounds)
 
