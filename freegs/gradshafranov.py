@@ -38,7 +38,7 @@ class GSElliptic:
     Represents the Grad-Shafranov elliptic operator
 
     .. math::
-        \Delta^* = R^2 \nabla\cdot\frac{1}{R^2}\nabla
+        \\Delta^* = R^2 \\nabla\\cdot\\frac{1}{R^2}\\nabla
 
     which is
 
