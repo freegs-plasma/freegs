@@ -18,12 +18,11 @@ GNU Lesser General Public License for more details.
 You should have received a copy of the GNU Lesser General Public License
 along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 """
-import matplotlib.pyplot as plt
 from scipy.integrate import romb, quad  # Romberg integration
 from . import critical
 from .gradshafranov import mu0
 
-from numpy import clip, zeros, reshape, sqrt, pi
+from numpy import clip, zeros, reshape, sqrt
 import numpy as np
 import abc
 
@@ -113,25 +112,29 @@ class Profile(abc.ABC):
     """
     Abstract methods that derived classes must implement.
     """
+
     @abc.abstractmethod
-    def Jtor(self, R: np.ndarray, Z: np.ndarray, psi: np.ndarray, psi_bndry=None)->np.ndarray:
+    def Jtor(
+        self, R: np.ndarray, Z: np.ndarray, psi: np.ndarray, psi_bndry=None
+    ) -> np.ndarray:
         """Return a numpy array of toroidal current density [J/m^2]"""
         pass
 
     @abc.abstractmethod
-    def pprime(self, psinorm: float)->float:
+    def pprime(self, psinorm: float) -> float:
         """Return p' at the given normalised psi"""
         pass
 
     @abc.abstractmethod
-    def ffprime(self, psinorm: float)->float:
+    def ffprime(self, psinorm: float) -> float:
         """Return ff' at the given normalised psi"""
         pass
 
     @abc.abstractmethod
-    def fvac(self)->float:
+    def fvac(self) -> float:
         """Return f = R*Bt in vacuum"""
         pass
+
 
 class ConstrainBetapIp(Profile):
     """
@@ -217,7 +220,7 @@ class ConstrainBetapIp(Profile):
         # Note factor to convert from normalised psi integral
         def pshape(psinorm):
             shapeintegral, _ = quad(
-                lambda x: (1.0 - x ** self.alpha_m) ** self.alpha_n, psinorm, 1.0
+                lambda x: (1.0 - x**self.alpha_m) ** self.alpha_n, psinorm, 1.0
             )
             shapeintegral *= psi_bndry - psi_axis
             return shapeintegral
@@ -378,7 +381,7 @@ class ConstrainPaxisIp(Profile):
         # Need integral of jtorshape to calculate paxis
         # Note factor to convert from normalised psi integral
         shapeintegral, _ = quad(
-            lambda x: (1.0 - x ** self.alpha_m) ** self.alpha_n, 0.0, 1.0
+            lambda x: (1.0 - x**self.alpha_m) ** self.alpha_n, 0.0, 1.0
         )
         shapeintegral *= psi_bndry - psi_axis
 
@@ -421,7 +424,7 @@ class ConstrainPaxisIp(Profile):
         """
         shape = (1.0 - np.clip(pn, 0.0, 1.0) ** self.alpha_m) ** self.alpha_n
         return self.L * self.Beta0 / self.Raxis * shape
-    
+
     def ffprime(self, pn):
         """
         f * df/dpsi as a function of normalised psi. 0 outside core.
@@ -434,7 +437,7 @@ class ConstrainPaxisIp(Profile):
         return self._fvac
 
 
-class ProfilesPprimeFfprime:
+class ProfilesPprimeFfprime(Profile):
     """
     Specified profile functions p'(psi), ff'(psi)
 
@@ -451,8 +454,8 @@ class ProfilesPprimeFfprime:
 
         Optionally, the pres
         """
-        self.pprime = pprime_func
-        self.ffprime = ffprime_func
+        self._pprime = pprime_func
+        self._ffprime = ffprime_func
         self.p_func = p_func
         self.f_func = f_func
         self._fvac = fvac
@@ -490,6 +493,9 @@ class ProfilesPprimeFfprime:
             # If there is a masking function (X-points, limiters)
             Jtor *= mask
 
+        self.psi_bndry = psi_bndry
+        self.psi_axis = psi_axis
+
         return Jtor
 
     def pressure(self, psinorm, out=None):
@@ -518,3 +524,9 @@ class ProfilesPprimeFfprime:
 
     def fvac(self):
         return self._fvac
+
+    def pprime(self, psinorm):
+        return self._pprime(psinorm)
+
+    def ffprime(self, psinorm):
+        return self._ffprime(psinorm)
