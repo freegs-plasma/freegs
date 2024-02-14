@@ -858,6 +858,10 @@ class Machine:
         """
         for label, coil in self.coils:
             axis = coil.plot(axis=axis, show=False)
+
+        if self.wall is not None:
+            axis.plot(self.wall.R, self.wall.Z, 'k-')
+
         if show:
             import matplotlib.pyplot as plt
 
