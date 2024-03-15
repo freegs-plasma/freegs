@@ -175,8 +175,8 @@ class ConstrainBetapIpArbShape(Profile):
         betap - Poloidal beta
         Ip    - Plasma current [Amps]
         fvac  - Vacuum f = R*Bt
-        shape_function - a callable which accepts a scalar normalised psi and array of alpha.
-        Defaults to `DoublePowerShapeFunction`.
+        shape_function - a callable which accepts a scalar normalised psi.
+                         Defaults to `DoublePowerShapeFunction`.
         Raxis - R used in p' and ff' components
         """
 
