@@ -6,7 +6,7 @@ state, including plasma and coil currents
 from numpy import pi, meshgrid, linspace, exp, array
 import numpy as np
 from scipy import interpolate
-from scipy.integrate import romb, cumtrapz  # Romberg integration
+from scipy.integrate import romb, cumulative_trapezoid
 
 from .boundary import fixedBoundary, freeBoundary
 from . import critical
@@ -374,7 +374,7 @@ class Equilibrium:
         qvals = self.q(psiN)
 
         # Integrate q wrt psi to get rho. rho = 0 @ psiN = 0
-        result = cumtrapz(qvals, psi, initial=0.0) * (-1.0 / (2.0 * np.pi))
+        result = cumulative_trapezoid(qvals, psi, initial=0.0) * (-1.0 / (2.0 * np.pi))
 
         # Convert to a scalar if only one result
         if len(result) == 1:
