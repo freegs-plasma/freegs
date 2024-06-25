@@ -399,13 +399,15 @@ Constrain pressure and current
 One of the most intuitive methods is to fix the shape
 of the plasma profiles, and adjust them to fix the
 pressure on the magnetic axis and total plasma current.
-To do this, create a ``ConstrainPaxisIp`` profile object:
+To do this, create a ``ConstrainBetapIpArbShape`` profile object:
 
 ::
    
-   profiles = freegs.jtor.ConstrainPaxisIp(1e4, # Pressure on axis [Pa]
-                                           1e6, # Plasma current [Amps]
-                                           1.0) # Vacuum f=R*Bt
+   profiles = freegs.jtor.ConstrainBetapIpArbShape(eq,
+                  1e4, # Pressure on axis [Pa]
+                  1e6, # Plasma current [Amps]
+                  1.0, # Vacuum f=R*Bt
+                  shape_function=freegs.jtor.DoublePowerShapeFunction())
 
 
 This sets the toroidal current to:
@@ -415,7 +417,7 @@ This sets the toroidal current to:
    J_\phi = L \left[\beta_0 R + \left(1-\beta_0\right)/R\right] \left(1-\psi_n^{\alpha_m}\right)^{\alpha_n}
 
 where :math:`\psi_n` is the normalised poloidal flux, 0 on the magnetic axis and 1 on the plasma boundary/separatrix.
-The constants which determine the profile shapes are :math:`\alpha_m = 1` and  :math:`\alpha_n = 2`. These can be changed by specifying in the initialisation of ``ConstrainPaxisIp``.
+The constants which determine the profile shapes are :math:`\alpha_m = 1` and  :math:`\alpha_n = 2`. These can be changed by specifying in the initialisation of ``DoublePowerShapeFunction``. Any arbitrary shape function can be passed via the ``shape_function`` argument provided the object complies with the ``ProfileShapeFunction`` interface.
 
 The values of :math:`L` and :math:`\beta_0` are determined from the constraints: The pressure on axis is given by integrating the pressure gradient flux function 
 
@@ -448,11 +450,14 @@ This is the method used in `Y.M.Jeon 2015 <https://arxiv.org/abs/1503.03135>`_, 
 
 ::
    
-   profiles = freegs.jtor.ConstrainBetapIp(0.5, # Poloidal beta
-                                           1e6, # Plasma current [Amps]
-                                           1.0) # Vacuum f=R*Bt
-   
+   profiles = freegs.jtor.ConstrainBetapIpArbShape(eq,
+                  0.5, # Poloidal beta
+                  1e6, # Plasma current [Amps]
+                  1.0, # Vacuum f=R*Bt
+                  shape_function=freegs.jtor.DoublePowerShapeFunction())
+
 By integrating over the plasma domain and combining the constraints on poloidal beta and plasma current, the values of :math:`L` and :math:`\beta_0` are found.
+
 
 Feedback and shape control
 --------------------------
