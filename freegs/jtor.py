@@ -26,7 +26,6 @@ from numpy import clip, zeros, reshape, sqrt
 import numpy as np
 import abc
 
-
 class Profile(abc.ABC):
     """
     Base class from which profiles classes can inherit
@@ -175,7 +174,6 @@ class Profile(abc.ABC):
     def fvac(self) -> float:
         """Return f = R*Bt in vacuum"""
         pass
-
 
 class ConstrainBetapIp(Profile):
     """
