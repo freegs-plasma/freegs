@@ -44,27 +44,41 @@ def solve(
     """
     Perform Picard iteration to find solution to the Grad-Shafranov equation
 
-    eq       - an Equilibrium object (equilibrium.py)
-    profiles - A Profile object for toroidal current (jtor.py)
+    Parameters
+    ----------
+    eq :
+        an Equilibrium object (equilibrium.py)
+    profiles :
+        A Profile object for toroidal current (jtor.py)
 
-    rtol     - Relative tolerance (change in psi)/( max(psi) - min(psi) )
-    atol     - Absolute tolerance, change in psi
-    blend    - Blending of previous and next psi solution
-               psi{n+1} <- psi{n+1} * (1-blend) + blend * psi{n}
+    rtol:
+        Relative tolerance (change in psi)/( max(psi) - min(psi) )
+    atol:
+        Absolute tolerance, change in psi
+    blend:
+        Blending of previous and next psi solution
 
-    show     - If true, plot the plasma equilibrium at each nonlinear step
-    axis     - Specify a figure to plot onto. Default (None) creates a new figure
-    pause    - Delay between output plots. If negative, waits for window to be closed
+            psi{n+1} <- psi{n+1} * (1-blend) + blend * psi{n}
 
-    maxits   - Maximum number of iterations. Set to None for no limit.
-               If this limit is exceeded then a RuntimeError is raised.
-
-    convergenceInfo - True/False toggle for outputting convergence data.
-
-    check_limited - True/False toggle to control checking for limited plasmas.
-    wait_for_limited - True/False toggle to keep iterating until the plasma is limited.
-    limit_it - Integer > Sometimes waiting some number of interations before checking if
-    a plasma is limited can improve convergence. This sets the number of iterations to wait.
+    show:
+        If true, plot the plasma equilibrium at each nonlinear step
+    axis:
+        Specify a figure to plot onto. Default (None) creates a new figure
+    pause:
+        Delay between output plots. If negative, waits for window to be closed
+    maxits:
+        Maximum number of iterations. Set to None for no limit.
+        If this limit is exceeded then a RuntimeError is raised.
+    convergenceInfo:
+        True/False toggle for outputting convergence data.
+    check_limited:
+        True/False toggle to control checking for limited plasmas.
+    wait_for_limited:
+        True/False toggle to keep iterating until the plasma is limited.
+    limit_it:
+        Sometimes waiting some number of interations before checking
+        if a plasma is limited can improve convergence. This sets the
+        number of iterations to wait.
     """
 
     if constrain is not None:

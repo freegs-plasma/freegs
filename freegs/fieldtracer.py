@@ -166,26 +166,29 @@ def traceFieldLines(eq, solwidth=0.03, nlines=10, nturns=50, npoints=200, axis=N
 
     Inputs
     ------
-
-    eq          Equilibrium object
-    solwidth    The width of the SOL in meters
-    nlines      Number of field lines to follow
-    nturns      Number of times around the tokamak to follow
-    npoints     Maximum number of points per line. May hit a wall
-
-    axis        Matplotlib figure Axis. If given, field lines
-                are plotted on the axis
+    eq:
+        Equilibrium object
+    solwidth:
+        The width of the SOL in meters
+    nlines:
+        Number of field lines to follow
+    nturns:
+        Number of times around the tokamak to follow
+    npoints:
+        Maximum number of points per line. May hit a wall
+    axis:
+        Matplotlib figure Axis. If given, field lines are plotted on the axis
 
     Returns
     -------
+    [LineCoordinates, LineCoordinates]:
+        The forward and backward field line coordinates
+        stored in LineCoordinates objects
 
-    The forward and backward field line coordinates
-    stored in LineCoordinates objects
+        >>> forward, backward = traceFieldLines(eq)
 
-    >>> forward, backward = traceFieldLines(eq)
-
-    forward and backward have data members
-    R, Z, length  2D arrays of shape (npoints, nlines)
+        forward and backward have data members
+        R, Z, length  2D arrays of shape (npoints, nlines)
 
     """
     ft = FieldTracer(eq)

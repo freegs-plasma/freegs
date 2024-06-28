@@ -110,7 +110,7 @@ class OutputFile(object):
 
     def write_equilibrium(self, equilibrium):
         """
-        Write `equilbrium` to file
+        Write ``equilbrium`` to file
         """
 
         self.handle["coil_dtype"] = Coil.dtype
