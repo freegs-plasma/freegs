@@ -10,7 +10,6 @@ from scipy.integrate import romb, cumulative_trapezoid
 
 from .boundary import fixedBoundary, freeBoundary
 from . import critical
-
 from . import polygons
 
 # Operators which define the G-S equation
@@ -18,11 +17,8 @@ from .gradshafranov import mu0, GSsparse, GSsparse4thOrder
 
 # Multigrid solver
 from . import multigrid
-
 from . import machine
-
 import matplotlib.pyplot as plt
-
 
 class Equilibrium:
     """
@@ -429,6 +425,21 @@ class Equilibrium:
         return array(critical.find_separatrix(self, ntheta=npoints, psi=self.psi()))[
             :, 0:2
         ]
+
+    def psi_surfRZ(self, psiN=0.995, npoints=360):
+        """
+        Returns the R,Z of a flux surface specified by a value of psiN. This flux surface is closed on itself.
+        """
+
+        surf = critical.find_separatrix(self, opoint=None, xpoint=None, ntheta=npoints, psi=None, axis=None, psival=psiN)
+
+        Rsurf = [point[0] for point in surf]
+        Zsurf = [point[1] for point in surf]
+
+        Rsurf.append(Rsurf[0])
+        Zsurf.append(Zsurf[0])
+
+        return np.array(Rsurf), np.array(Zsurf)
 
     def solve(self, profiles, Jtor=None, psi=None, psi_bndry=None):
         """
@@ -1056,19 +1067,35 @@ class Equilibrium:
         integral = romb(romb(B_polvals_2 * dV))
         return 2 * integral / (mu0 * mu0 * R_geo * Ip * Ip)
 
+    def flux_surface_averaged_Bpol2(self, psiN=0.995, npoints=360):
+        """
+        Calculates the flux surface averaged value of the square of the poloidal field.
+        """
+
+        # Get R, Z points of the flux surface
+        Rsurf, Zsurf = self.psi_surfRZ(psiN=psiN,npoints=npoints)
+
+        # Get the poloidal field
+        Bpol_surf = self.Bpol(Rsurf,Zsurf)
+
+        # Get the square of the poloidal field
+        Bpol_surf2 = Bpol_surf**2.0
+
+        # Get dl along the surface
+        dl = np.sqrt(np.diff(Rsurf)**2.0 + np.diff(Zsurf)**2.0)
+        dl = np.insert(dl,0,0.0)
+
+        # Get l along the surface
+        l = np.cumsum(dl)
+
+        # Calculate the flux surface averaged quantity
+        return np.trapz(x=l, y=Bpol_surf2 * Bpol_surf) / np.trapz(x=l, y=np.ones(np.size(l)) * Bpol_surf)
+
     def poloidalBeta(self):
-        """Calculate plasma poloidal beta by integrating the thermal pressure
-        and poloidal magnetic field pressure over the plasma volume."""
-
-        R = self.R
-        Z = self.Z
-
-        # Produce array of Bpol in (R,Z)
-        B_polvals_2 = self.Br(R, Z) ** 2 + self.Bz(R, Z) ** 2
-
-        dR = R[1, 0] - R[0, 0]
-        dZ = Z[0, 1] - Z[0, 0]
-        dV = 2.0 * np.pi * R * dR * dZ
+        """Return the poloidal beta.
+        
+        betaP = 2 * mu0 * <p> / <<Bpol^2>>
+        """
 
         # Normalised psi
         psi_norm = self.psiN()
@@ -1076,12 +1103,10 @@ class Equilibrium:
         # Plasma pressure
         pressure = self.pressure(psi_norm)
 
-        if self.mask is not None:  # Only include points in the core
-            dV *= self.mask
+        volume_averaged_pressure = self.calc_volume_averaged(pressure)
+        line_averaged_Bpol2_lcfs = self.flux_surface_averaged_Bpol2(psiN=1.0)
 
-        pressure_integral = romb(romb(pressure * dV))
-        field_integral_pol = romb(romb(B_polvals_2 * dV))
-        return 2 * mu0 * pressure_integral / field_integral_pol
+        return (2.0 * mu0 * volume_averaged_pressure) / line_averaged_Bpol2_lcfs
 
     def poloidalBeta2(self):
         """Return the poloidal beta
@@ -1250,6 +1275,26 @@ class Equilibrium:
 
         return val
 
+    def calc_volume_integrated(self,field):
+        """
+        Calculates the volume integral of the input field.
+        """
+
+        dV = 2.0 * np.pi * self.R * self.dR  *self.dZ
+
+        if self.mask is not None:  # Only include points in the core
+            dV *= self.mask
+
+        return romb(romb(field * dV))
+
+    def calc_volume_averaged(self,field):
+        """
+        Calculates the volume average of the input field.
+        """
+
+        volume_integrated_field = self.calc_volume_integrated(field)
+        
+        return volume_integrated_field / self.plasmaVolume()
 
 def refine(eq, nx=None, ny=None):
     """
@@ -1291,7 +1336,6 @@ def refine(eq, nx=None, ny=None):
 
     return result
 
-
 def coarsen(eq):
     """
     Reduce grid resolution, returning a new equilibrium
@@ -1318,7 +1362,6 @@ def coarsen(eq):
         result.control = eq.control
 
     return result
-
 
 def newDomain(eq, Rmin=None, Rmax=None, Zmin=None, Zmax=None, nx=None, ny=None):
     """Creates a new Equilibrium, solving in a different domain.
@@ -1371,7 +1414,6 @@ def newDomain(eq, Rmin=None, Rmax=None, Zmin=None, Zmax=None, nx=None, ny=None):
     result.solve(profiles)
 
     return result
-
 
 if __name__ == "__main__":
 
