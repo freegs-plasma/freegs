@@ -48,6 +48,8 @@ extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
     "sphinx.ext.coverage",
+    "sphinx.ext.intersphinx",
+    "sphinx.ext.napoleon",
     "sphinx.ext.viewcode",
     "sphinx_autodoc_typehints",
 ]
@@ -98,6 +100,11 @@ pygments_style = "sphinx"
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = False
 
+# Numpy-doc config
+napoleon_google_docstring = False
+napoleon_numpy_docstring = True
+napoleon_attr_annotations = True
+napoleon_preprocess_types = True
 
 # -- Options for HTML output ----------------------------------------------
 
@@ -179,3 +186,14 @@ texinfo_documents = [
         "Miscellaneous",
     ),
 ]
+
+# -- Options for intersphinx extension ---------------------------------------
+# https://www.sphinx-doc.org/en/master/usage/extensions/intersphinx.html#configuration
+
+intersphinx_mapping = {
+    "python": ("https://docs.python.org/3", None),
+    "numpy": ("https://numpy.org/doc/stable", None),
+    "scipy": ("https://docs.scipy.org/doc/scipy", None),
+    "xarray": ("https://docs.xarray.dev/en/latest", None),
+    "pint": ("https://pint.readthedocs.io/en/stable/", None),
+}
