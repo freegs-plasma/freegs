@@ -19,6 +19,7 @@ You should have received a copy of the GNU Lesser General Public License
 along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 """
 from scipy.integrate import romb, quad  # Romberg integration
+from scipy.interpolate import interp1d
 from . import critical
 from .gradshafranov import mu0
 
