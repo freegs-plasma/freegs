@@ -218,11 +218,6 @@ class ConstrainBetapIp(Profile):
         L and Beta0 are parameters which are set by constraints
         """
 
-        # Intermediary update of the plasma
-        # boundary and axis flux
-        self.eq._updateBoundaryPsi(psi)
-        psi_bndry = self.eq.psi_bndry
-
         # Analyse the equilibrium, finding O- and X-points
         opt, xpt = critical.find_critical(R, Z, psi)
         if not opt:
@@ -310,6 +305,7 @@ class ConstrainBetapIp(Profile):
 
         self.L = L
         self.Beta0 = Beta0
+
         self.psi_bndry = psi_bndry
         self.psi_axis = psi_axis
 
@@ -374,11 +370,6 @@ class ConstrainPaxisIp(Profile):
         where jtorshape is a shape function
         L and Beta0 are parameters which are set by constraints
         """
-
-        # Intermediary update of the plasma
-        # boundary and axis flux
-        self.eq._updateBoundaryPsi(psi)
-        psi_bndry = self.eq.psi_bndry
 
         # Analyse the equilibrium, finding O- and X-points
         opt, xpt = critical.find_critical(R, Z, psi)
@@ -555,16 +546,28 @@ class BetapIpConstrainedSplineProfiles(Profile):
         Jtor = R*pprime + ffprime/(R * mu0)
         """
 
-        # Intermediary update of the plasma
-        # boundary and axis flux
-        self.eq._updateBoundaryPsi(psi)
-        psi_bndry = self.eq.psi_bndry
-        psi_axis = self.eq.psi_axis
-        mask = self.eq.mask
+        # Analyse the equilibrium, finding O- and X-points
+        opt, xpt = critical.find_critical(R, Z, psi)
+        if not opt:
+            raise ValueError("No O-points found!")
+        psi_axis = opt[0][2]
+
+        if psi_bndry is not None:
+            mask = critical.core_mask(R, Z, psi, opt, xpt, psi_bndry)
+        elif xpt:
+            psi_bndry = xpt[0][2]
+            mask = critical.core_mask(R, Z, psi, opt, xpt)
+        else:
+            # No X-points
+            psi_bndry = psi[0, 0]
+            mask = None
 
         dR = R[1, 0] - R[0, 0]
         dZ = Z[0, 1] - Z[0, 0]
 
+        # Calculate normalised psi.
+        # 0 = magnetic axis
+        # 1 = plasma boundary
         psi_norm = (psi - psi_axis) / (psi_bndry - psi_axis)
 
         pprime_shape = self.pprime_spline(psi_norm)
@@ -596,7 +599,6 @@ class BetapIpConstrainedSplineProfiles(Profile):
         # Integrate over plasma
         # betap = (2 mu0) * volume_av(p) / (flux_surf_av(B_poloidal**2))
         #       = - (2 mu0 * L * Beta0 / Raxis) * volume_av(pfunc) / (flux_surf_av(B_poloidal**2))
-
         p_int = self.eq.calc_volume_averaged(pfunc)
         b_int = self.eq.flux_surface_averaged_Bpol2(psiN=1.0)
 
@@ -624,7 +626,6 @@ class BetapIpConstrainedSplineProfiles(Profile):
 
         self.L = L
         self.Beta0 = Beta0
-
         self.psi_bndry = psi_bndry
         self.psi_axis = psi_axis
 
@@ -734,16 +735,28 @@ class PaxisIpConstrainedSplineProfiles(Profile):
         Jtor = R*pprime + ffprime/(R * mu0)
         """
 
-        # Intermediary update of the plasma
-        # boundary and axis flux
-        self.eq._updateBoundaryPsi(psi)
-        psi_bndry = self.eq.psi_bndry
-        psi_axis = self.eq.psi_axis
-        mask = self.eq.mask
+        # Analyse the equilibrium, finding O- and X-points
+        opt, xpt = critical.find_critical(R, Z, psi)
+        if not opt:
+            raise ValueError("No O-points found!")
+        psi_axis = opt[0][2]
+
+        if psi_bndry is not None:
+            mask = critical.core_mask(R, Z, psi, opt, xpt, psi_bndry)
+        elif xpt:
+            psi_bndry = xpt[0][2]
+            mask = critical.core_mask(R, Z, psi, opt, xpt)
+        else:
+            # No X-points
+            psi_bndry = psi[0, 0]
+            mask = None
 
         dR = R[1, 0] - R[0, 0]
         dZ = Z[0, 1] - Z[0, 0]
 
+        # Calculate normalised psi.
+        # 0 = magnetic axis
+        # 1 = plasma boundary
         psi_norm = (psi - psi_axis) / (psi_bndry - psi_axis)
 
         pprime_shape = self.pprime_spline(psi_norm)
@@ -895,16 +908,28 @@ class PprimeIpConstrainedSplineProfiles(Profile):
         Jtor = R*pprime + ffprime/(R * mu0)
         """
 
-        # Intermediary update of the plasma
-        # boundary and axis flux
-        self.eq._updateBoundaryPsi(psi)
-        psi_bndry = self.eq.psi_bndry
-        psi_axis = self.eq.psi_axis
-        mask = self.eq.mask
+        # Analyse the equilibrium, finding O- and X-points
+        opt, xpt = critical.find_critical(R, Z, psi)
+        if not opt:
+            raise ValueError("No O-points found!")
+        psi_axis = opt[0][2]
+
+        if psi_bndry is not None:
+            mask = critical.core_mask(R, Z, psi, opt, xpt, psi_bndry)
+        elif xpt:
+            psi_bndry = xpt[0][2]
+            mask = critical.core_mask(R, Z, psi, opt, xpt)
+        else:
+            # No X-points
+            psi_bndry = psi[0, 0]
+            mask = None
 
         dR = R[1, 0] - R[0, 0]
         dZ = Z[0, 1] - Z[0, 0]
 
+        # Calculate normalised psi.
+        # 0 = magnetic axis
+        # 1 = plasma boundary
         psi_norm = (psi - psi_axis) / (psi_bndry - psi_axis)
 
         pprime_shape = self.pprime_spline(psi_norm)
@@ -1048,16 +1073,28 @@ class BetapFfprimeConstrainedSplineProfiles(Profile):
         Jtor = R*pprime + ffprime/(R * mu0)
         """
 
-        # Intermediary update of the plasma
-        # boundary and axis flux
-        self.eq._updateBoundaryPsi(psi)
-        psi_bndry = self.eq.psi_bndry
-        psi_axis = self.eq.psi_axis
-        mask = self.eq.mask
+        # Analyse the equilibrium, finding O- and X-points
+        opt, xpt = critical.find_critical(R, Z, psi)
+        if not opt:
+            raise ValueError("No O-points found!")
+        psi_axis = opt[0][2]
+
+        if psi_bndry is not None:
+            mask = critical.core_mask(R, Z, psi, opt, xpt, psi_bndry)
+        elif xpt:
+            psi_bndry = xpt[0][2]
+            mask = critical.core_mask(R, Z, psi, opt, xpt)
+        else:
+            # No X-points
+            psi_bndry = psi[0, 0]
+            mask = None
 
         dR = R[1, 0] - R[0, 0]
         dZ = Z[0, 1] - Z[0, 0]
 
+        # Calculate normalised psi.
+        # 0 = magnetic axis
+        # 1 = plasma boundary
         psi_norm = (psi - psi_axis) / (psi_bndry - psi_axis)
 
         pprime_shape = self.pprime_spline(psi_norm)
@@ -1217,16 +1254,28 @@ class PaxisFfprimeConstrainedSplineProfiles(Profile):
         Jtor = R*pprime + ffprime/(R * mu0)
         """
 
-        # Intermediary update of the plasma
-        # boundary and axis flux
-        self.eq._updateBoundaryPsi(psi)
-        psi_bndry = self.eq.psi_bndry
-        psi_axis = self.eq.psi_axis
-        mask = self.eq.mask
+        # Analyse the equilibrium, finding O- and X-points
+        opt, xpt = critical.find_critical(R, Z, psi)
+        if not opt:
+            raise ValueError("No O-points found!")
+        psi_axis = opt[0][2]
+
+        if psi_bndry is not None:
+            mask = critical.core_mask(R, Z, psi, opt, xpt, psi_bndry)
+        elif xpt:
+            psi_bndry = xpt[0][2]
+            mask = critical.core_mask(R, Z, psi, opt, xpt)
+        else:
+            # No X-points
+            psi_bndry = psi[0, 0]
+            mask = None
 
         dR = R[1, 0] - R[0, 0]
         dZ = Z[0, 1] - Z[0, 0]
 
+        # Calculate normalised psi.
+        # 0 = magnetic axis
+        # 1 = plasma boundary
         psi_norm = (psi - psi_axis) / (psi_bndry - psi_axis)
 
         pprime_shape = self.pprime_spline(psi_norm)
@@ -1368,16 +1417,28 @@ class PprimeFfprimeConstrainedSplineProfiles(Profile):
         Jtor = R*pprime + ffprime/(R * mu0)
         """
 
-        # Intermediary update of the plasma
-        # boundary and axis flux
-        self.eq._updateBoundaryPsi(psi)
-        psi_bndry = self.eq.psi_bndry
-        psi_axis = self.eq.psi_axis
-        mask = self.eq.mask
+        # Analyse the equilibrium, finding O- and X-points
+        opt, xpt = critical.find_critical(R, Z, psi)
+        if not opt:
+            raise ValueError("No O-points found!")
+        psi_axis = opt[0][2]
+
+        if psi_bndry is not None:
+            mask = critical.core_mask(R, Z, psi, opt, xpt, psi_bndry)
+        elif xpt:
+            psi_bndry = xpt[0][2]
+            mask = critical.core_mask(R, Z, psi, opt, xpt)
+        else:
+            # No X-points
+            psi_bndry = psi[0, 0]
+            mask = None
 
         dR = R[1, 0] - R[0, 0]
         dZ = Z[0, 1] - Z[0, 0]
 
+        # Calculate normalised psi.
+        # 0 = magnetic axis
+        # 1 = plasma boundary
         psi_norm = (psi - psi_axis) / (psi_bndry - psi_axis)
 
         pprime_shape = self.pprime_spline(psi_norm)

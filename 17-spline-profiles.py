@@ -81,7 +81,7 @@ eq2 = freegs.Equilibrium(tokamak=tokamak2,
 #########################################
 # Plasma profiles
 
-profiles2 = freegs.jtor.BetapIpConstrainedSplineProfiles(eq,
+profiles2 = freegs.jtor.BetapIpConstrainedSplineProfiles(eq2,
                                         3.214806e-02, # Poloidal beta
                                         2e5, # Plasma current [Amps]
                                         1.0, # Raxis [m],
@@ -109,7 +109,7 @@ constrain2 = freegs.control.constrain(xpoints=xpoints, isoflux=isoflux)
 freegs.solve(eq2,          # The equilibrium to adjust
              profiles2,    # The toroidal current profile function
              constrain2,
-             show=True)   # Constraint function to set coil currents
+             show=True)    # Constraint function to set coil currents
 
 # eq2 now contains the solution
 

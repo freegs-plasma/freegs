@@ -122,7 +122,6 @@ class Equilibrium:
 
         self._current = current  # Plasma current
         self.Jtor = None
-
         self._updatePlasmaPsi(psi)  # Needs to be after _pgreen
 
         # Create the solver
@@ -430,7 +429,7 @@ class Equilibrium:
         """
         Returns the R,Z of a flux surface specified by a value of psiN. This flux surface is closed on itself.
         """
-
+        
         surf = critical.find_separatrix(self, opoint=None, xpoint=None, ntheta=npoints, psi=None, axis=None, psival=psiN)
 
         Rsurf = [point[0] for point in surf]
@@ -637,7 +636,7 @@ class Equilibrium:
         self.psi_func = interpolate.RectBivariateSpline(
             self.R[:, 0], self.Z[0, :], plasma_psi
         )
-
+        
         # Update the plasma axis and boundary flux as well as mask
         self._updateBoundaryPsi()
 
