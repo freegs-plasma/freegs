@@ -405,7 +405,7 @@ def find_separatrix(
         opoint, xpoint = find_critical(eq.R, eq.Z, psi)
 
     psinorm = (psi - opoint[0][2]) / (eq.psi_bndry - opoint[0][2])
-
+    
     psifunc = interpolate.RectBivariateSpline(eq.R[:, 0], eq.Z[0, :], psinorm)
 
     r0, z0 = opoint[0][0:2]
