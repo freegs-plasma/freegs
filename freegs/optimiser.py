@@ -77,39 +77,47 @@ def pickUnique(N, m, e):
 
 
 def optimise(obj, controls, measure, maxgen=10, N=10, CR=0.3, F=1.0, monitor=None):
-    """Use Differential Evolution to optimise an object
+    """Use Differential Evolution to optimise an Equilibrium
     https://en.wikipedia.org/wiki/Differential_evolution
 
-    obj  is an object to be used as starting solution
-         These objects are deep copied, and passed as arguments
-         to controls and measure functions
+    Parameters
+    ----------
+    eq:
+        `Equilibrium` to be used as starting solution. These are deep
+        copied, and passed as arguments to controls and measure
+        functions
+    controls:
+        List of control objects. These objects must have methods:
 
-    controls   A list of control objects. These objects must
-               have methods:
-         .set(object, value) which modifies the given object
-         .get(object)  which returns the value from the object
+        - ``.set(eq, value)`` which modifies the given `Equilibrium`
+        - ``.get(eq)``  which returns the value from the `Equilibrium`
 
-    measure(object) is a function which returns a score (value) for a
-                    given object. The optimiser tries to minimise this
-                    value.
+    measure(eq):
+        Function which returns a score (value) for a given
+        `Equilibrium`. The optimiser tries to minimise this value.
+    maxgen:
+        Maximum number of generations
+    N:
+        Population size (must be >= 4)
+    CR:
+        Crossover probability (must be in ``[0,1]``)
+    F:
+        Differential weight (must be in ``[0,2]``)
+    monitor(generation, best, population):
+        A function to be called each generation with the best
+        Equilibrium and the whole population
 
-    maxgen   is the maximum number of generations
+        - generation = integer
+        - best = (score, object)
+        - population = [(score, object)]
 
-    N >= 4 is the population size
-    CR [0,1] is the crossover probability
-    F  [0,2] is the differential weight
-
-    monitor(generation, best, population)
-
-           A function to be called each generation with the best
-           solution and the whole population
-           generation = integer
-           best = (score, object)
-           population = [(score, object)]
-
-    Returns the object with the lowest measure (score).
+    Returns
+    -------
+    ~.Equilibrium:
+        The :class:`~.Equilibrium` with the lowest measure (score).
 
     """
+
     _set_random_seed_if_called_in_pytest()
 
     assert N >= 4

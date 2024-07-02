@@ -66,12 +66,17 @@ class ShapedCoil(Coil):
         """
         Inputs
         ------
-        shape     outline of the coil shape as a list of points [(r1,z1), (r2,z2), ...]
-                  Must have more than two points
-        current   The current in the circuit. The total current is current * turns
-        turns     Number of turns in point coil(s) block. Total block current is current * turns
-        control   enable or disable control system
-        npoints   Number of quadrature points per triangle. Valid choices: 1, 3, 6
+        shape:
+            Outline of the coil shape as a list of points ``[(r1,z1),
+            (r2,z2), ...]``. Must have more than two points
+        current:
+            The current in the circuit. The total current is current * turns
+        turns:
+            Number of turns in point coil(s) block. Total block current is current * turns
+        control:
+            enable or disable control system
+        npoints:
+            Number of quadrature points per triangle. Valid choices: 1, 3, 6
 
         """
         assert len(shape) > 2

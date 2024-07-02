@@ -148,9 +148,15 @@ class FieldTracer(object):
 
 class LineCoordinates:
     """Coordinates of a field line
-    R   Major radius [m]
-    Z   Height [m]
-    length   Field line length [m]
+
+    Attributes
+    ----------
+    R:
+        Major radius [m]
+    Z:
+        Height [m]
+    length:
+        Field line length [m]
 
     All {R, Z, length} are NumPy arrays of the same shape
     """
@@ -166,26 +172,30 @@ def traceFieldLines(eq, solwidth=0.03, nlines=10, nturns=50, npoints=200, axis=N
 
     Inputs
     ------
-
-    eq          Equilibrium object
-    solwidth    The width of the SOL in meters
-    nlines      Number of field lines to follow
-    nturns      Number of times around the tokamak to follow
-    npoints     Maximum number of points per line. May hit a wall
-
-    axis        Matplotlib figure Axis. If given, field lines
-                are plotted on the axis
+    eq:
+        Equilibrium object
+    solwidth:
+        The width of the SOL in meters
+    nlines:
+        Number of field lines to follow
+    nturns:
+        Number of times around the tokamak to follow
+    npoints:
+        Maximum number of points per line. May hit a wall
+    axis:
+        Matplotlib figure Axis. If given, field lines are plotted on the axis
 
     Returns
     -------
+    forward: LineCoordinates
+        The forward field line coordinates
+    backward: LineCoordinates
+        The backward field line coordinates
 
-    The forward and backward field line coordinates
-    stored in LineCoordinates objects
+    Example
+    -------
 
-    >>> forward, backward = traceFieldLines(eq)
-
-    forward and backward have data members
-    R, Z, length  2D arrays of shape (npoints, nlines)
+        >>> forward, backward = traceFieldLines(eq)
 
     """
     ft = FieldTracer(eq)
