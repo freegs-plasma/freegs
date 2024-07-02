@@ -58,13 +58,10 @@ def find_critical(R, Z, psi, discard_xpoints=True):
 
     Returns
     -------
-    opoint, xpoint:
-        Two lists of critical points.
-
-        Each of these is a list of tuples with (R, Z, psi) points
-
-        The first tuple is the primary O-point (magnetic axis)
-        and primary X-point (separatrix)
+    opoint: list
+        List of O-points (magnetic axes) consisting of ``(R, Z, psi)`` tuples
+    xpoint: list
+        List of X-points (magnetic axes) consisting of ``(R, Z, psi)`` tuples
 
     """
 
@@ -255,7 +252,7 @@ def core_mask(R, Z, psi, opoint, xpoint=[], psi_bndry=None):
 
     Returns
     -------
-    array:
+    numpy.ndarray
         A 2D array [nx,ny] which is 1 inside the core, 0 outside
 
     """

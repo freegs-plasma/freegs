@@ -199,8 +199,8 @@ class Equilibrium:
 
         Returns
         -------
-
-        Solution psi
+        float:
+            Solution psi
 
         """
         return self._solver(psi, rhs)
@@ -455,18 +455,19 @@ class Equilibrium:
             An object describing the plasma profiles.
             At minimum this must have methods:
 
-            - `.Jtor(R, Z, psi, psi_bndry) -> [nx, ny]`
-            - `.pprime(psinorm)`
-            - `.ffprime(psinorm)`
-            - `.pressure(psinorm)`
-            - `.fpol(psinorm)`
+            - ``.Jtor(R, Z, psi, psi_bndry) -> [nx, ny]``
+            - ``.pprime(psinorm)``
+            - ``.ffprime(psinorm)``
+            - ``.pressure(psinorm)``
+            - ``.fpol(psinorm)``
 
-        Jtor : 2D array
-            If supplied, specifies the toroidal current at each (R,Z) point
-            If not supplied, Jtor is calculated from profiles by finding O,X-points
+        Jtor :
+            If supplied, a 2D array specifying the toroidal current at each
+            (R,Z) point.  If not supplied, Jtor is calculated from profiles by
+            finding O,X-points
         psi_bndry:
-            Poloidal flux to use as the separatrix (plasma
-            boundary). If not given then X-point locations are used.
+            Poloidal flux to use as the separatrix (plasma boundary). If not
+            given then X-point locations are used.
         """
 
         self._profiles = profiles

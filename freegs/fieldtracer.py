@@ -148,9 +148,15 @@ class FieldTracer(object):
 
 class LineCoordinates:
     """Coordinates of a field line
-    R   Major radius [m]
-    Z   Height [m]
-    length   Field line length [m]
+
+    Attributes
+    ----------
+    R:
+        Major radius [m]
+    Z:
+        Height [m]
+    length:
+        Field line length [m]
 
     All {R, Z, length} are NumPy arrays of the same shape
     """
@@ -181,14 +187,15 @@ def traceFieldLines(eq, solwidth=0.03, nlines=10, nturns=50, npoints=200, axis=N
 
     Returns
     -------
-    [LineCoordinates, LineCoordinates]:
-        The forward and backward field line coordinates
-        stored in LineCoordinates objects
+    forward: LineCoordinates
+        The forward field line coordinates
+    backward: LineCoordinates
+        The backward field line coordinates
+
+    Example
+    -------
 
         >>> forward, backward = traceFieldLines(eq)
-
-        forward and backward have data members
-        R, Z, length  2D arrays of shape (npoints, nlines)
 
     """
     ft = FieldTracer(eq)

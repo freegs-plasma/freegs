@@ -175,9 +175,11 @@ def read(
     fit_sol: bool=False,
     maxits: int=50,
     current_bounds: Optional[list]=None,
-):
+) -> Equilibrium:
     """
     Reads a G-EQDSK format file
+
+    A nonlinear solve will be performed, using Picard iteration
 
     Parameters
     ----------
@@ -200,14 +202,13 @@ def read(
         COordinate COnventions. Not fully handled yet,
         only whether psi is divided by 2pi or not.
         if < 10 then psi is divided by 2pi, otherwise not.
-    domain : list/tuple of 4 elements
-        Sets the (R,Z) domain to solve for
-        (Rmin, Rmax, Zmin, Zmax)
-    blend : float between 0 and 1
+    domain :
+        Sets the (R,Z) domain to solve for ``(Rmin, Rmax, Zmin, Zmax)``
+    blend :
         Weighting of the previous poloidal flux at each step of the
         Picard iteration. The default (0.0) is to use no blending.
         Blending slows convergence, but can stabilise some oscillating
-        unstable solutions.
+        unstable solutions. Must be in ``[0, 1]``
     fit_sol :
         If False (default) then only the poloidal flux inside the
         separatrix is used to constrain the coil currents.
@@ -218,17 +219,15 @@ def read(
     maxits :
         Maximum number of iterations. Set to None for no limit.
         If this limit is exceeded then a RuntimeError is raised.
-    current_bounds: List of tuples
+    current_bounds:
         Optional list of tuples representing constraints on coil currents to be used
         when reconstructing the equilibrium from the geqdsk file.
         ``[(l1,u1),(l2,u2)...(lN,uN)]``
 
-    A nonlinear solve will be performed, using Picard iteration
-
     Returns
     -------
-    Equilibrium:
-        An Equilibrium object eq. In addition, the following is available:
+    eq: ~.Equilibrium
+        An :class:`~.Equilibrium` object. In addition, the following is available:
 
         - eq.control   - The control system
         - eq._profiles - The profiles object

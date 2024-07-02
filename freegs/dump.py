@@ -108,7 +108,7 @@ class OutputFile(object):
     def __exit__(self, type, value, traceback):
         self.close()
 
-    def write_equilibrium(self, equilibrium):
+    def write_equilibrium(self, equilibrium: Equilibrium):
         """
         Write ``equilbrium`` to file
         """
@@ -181,14 +181,9 @@ class OutputFile(object):
             # type to restore it to later
             coils_group[label].attrs["freegs type"] = coil.__class__.__name__
 
-    def read_equilibrium(self):
+    def read_equilibrium(self) -> Equilibrium:
         """
         Read an equilibrium from the file
-
-        Returns
-        -------
-        Equilibrium
-            A new `Equilibrium` object
         """
 
         equilibrium_group = self.handle[self.EQUILIBRIUM_GROUP_NAME]

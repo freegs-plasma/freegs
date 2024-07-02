@@ -99,10 +99,10 @@ def optimise(obj, controls, measure, maxgen=10, N=10, CR=0.3, F=1.0, monitor=Non
         Maximum number of generations
     N:
         Population size (must be >= 4)
-    CR: [0,1]
-        Crossover probability
-    F:  [0,2] 
-        Differential weight
+    CR:
+        Crossover probability (must be in ``[0,1]``)
+    F:
+        Differential weight (must be in ``[0,2]``)
     monitor(generation, best, population):
         A function to be called each generation with the best
         Equilibrium and the whole population
@@ -113,7 +113,8 @@ def optimise(obj, controls, measure, maxgen=10, N=10, CR=0.3, F=1.0, monitor=Non
 
     Returns
     -------
-    The `Equilibrium` with the lowest measure (score).
+    ~.Equilibrium:
+        The :class:`~.Equilibrium` with the lowest measure (score).
 
     """
 
