@@ -6,6 +6,9 @@ name: Benchmarks
 
 on: pull_request
 
+env:
+  PR_HEAD_LABEL: ${{ github.event.pull_request.head.label }}
+
 jobs:
   benchmark:
     runs-on: ubuntu-latest
@@ -38,7 +41,7 @@ jobs:
           asv machine --yes
 
           echo "Baseline:  ${{ github.event.pull_request.base.sha }} (${{ github.event.pull_request.base.label }})"
-          echo "Contender: ${GITHUB_SHA} (${{ github.event.pull_request.head.label }})"
+          echo "Contender: ${GITHUB_SHA} ($PR_HEAD_LABEL)"
 
           # Run benchmarks for current commit against base
           ASV_OPTIONS="--split --show-stderr --factor $ASV_FACTOR"
