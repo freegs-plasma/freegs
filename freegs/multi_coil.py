@@ -30,10 +30,11 @@ from .gradshafranov import Greens, GreensBr, GreensBz
 class MultiCoil(Coil):
     """
     This class is multifunctional and can model several coil arrangements:
+
     1. A single PF coil
     2. A block of several PF coil filaments, modelled as
-        a) a single point in (R,Z)
-        b) a list of (R,Z) points for each filament in the block
+        a. a single point in (R,Z)
+        b. a list of (R,Z) points for each filament in the block
 
     In both cases, the specified coil(s) can also be mirrored in Z=0 and
     connected in a circuit sharing the same power supply. In such a case,
@@ -44,13 +45,20 @@ class MultiCoil(Coil):
     public members
     --------------
 
-    R, Z - Location of the point coil/Locations of coil filaments
-    current - current in the coil(s) in Amps
-    turns   - Number of turns if using point coils
-    control - enable or disable control system
-    mirror - enable or disable mirroring of coil block in Z=0
-    polarity - wiring of coil blocks in circuit
-    area    - Cross-section area in m^2
+    R, Z:
+        Location of the point coil/Locations of coil filaments
+    current:
+        current in the coil(s) in Amps
+    turns:
+        Number of turns if using point coils
+    control:
+        enable or disable control system
+    mirror:
+        enable or disable mirroring of coil block in Z=0
+    polarity:
+        wiring of coil blocks in circuit
+    area:
+        Cross-section area in m^2
 
     For multiple point coils, the total toroidal current carried by the
     point coil block is current * turns
@@ -82,28 +90,38 @@ class MultiCoil(Coil):
         area=AreaCurrentLimit(),
     ):
         """
-        R, Z       - Location of the coil centre. If modified moves all filaments
-        Rfil, Zfil - Locations of coil filaments (lists)
-
-        current - current in each turn of the coil in Amps
-        turns   - Number of turns in point coil(s) block. Total block current is current * turns
-                  This is only used if R,Z are a single point
-        control - enable or disable control system
-        mirror - mirror the point/detailed coil block in Z=0, creating a circuit
-        polarity - Wiring of the circuit: same or opposite direction, [Block 1, Block 2]
-        area    - Cross-section area of block in m^2
-
         Area can be a fixed value (e.g. 0.025 for 5x5cm coil), or can be specified
         using a function which takes a coil as an input argument.
         To specify a current density limit, use:
 
-        area = AreaCurrentLimit(current_density)
+            area = AreaCurrentLimit(current_density)
 
         where current_density is in A/m^2. The area of the coil will be recalculated
         as the coil current is changed.
 
         The most important effect of the area is on the coil self-force:
         The smaller the area the larger the hoop force for a given current.
+
+        Parameters
+        ----------
+        R, Z:
+            Location of the coil centre. If modified moves all filaments
+        Rfil, Zfil:
+            Locations of coil filaments (lists)
+        current:
+            current in each turn of the coil in Amps
+        turns:
+            Number of turns in point coil(s) block. Total block current is ``current * turns``.
+            This is only used if R,Z are a single point
+        control:
+            enable or disable control system
+        mirror:
+            mirror the point/detailed coil block in Z=0, creating a circuit
+        polarity:
+            Wiring of the circuit: same or opposite direction, ``[Block 1, Block 2]``
+        area:
+            Cross-section area of block in m^2
+
         """
         # Store locations as an internal list
         if hasattr(R, "__len__"):

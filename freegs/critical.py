@@ -49,22 +49,19 @@ def find_critical(R, Z, psi, discard_xpoints=True):
 
     Inputs
     ------
-
-    R - R(nr, nz) 2D array of major radii
-    Z - Z(nr, nz) 2D array of heights
-    psi - psi(nr, nz) 2D array of psi values
+    R:
+        R(nr, nz) 2D array of major radii
+    Z:
+        Z(nr, nz) 2D array of heights
+    psi:
+        psi(nr, nz) 2D array of psi values
 
     Returns
     -------
-
-    Two lists of critical points
-
-    opoint, xpoint
-
-    Each of these is a list of tuples with (R, Z, psi) points
-
-    The first tuple is the primary O-point (magnetic axis)
-    and primary X-point (separatrix)
+    opoint: list
+        List of O-points (magnetic axes) consisting of ``(R, Z, psi)`` tuples
+    xpoint: list
+        List of X-points (magnetic axes) consisting of ``(R, Z, psi)`` tuples
 
     """
 
@@ -241,19 +238,22 @@ def core_mask(R, Z, psi, opoint, xpoint=[], psi_bndry=None):
     Inputs
     ------
 
-    R[nx,ny] - 2D array of major radius (R) values
-    Z[nx,ny] - 2D array of height (Z) values
-    psi[nx,ny] - 2D array of poloidal flux
-
-    opoint, xpoint  - Values returned by find_critical
+    R[nx,ny]:
+        2D array of major radius (R) values
+    Z[nx,ny]:
+        2D array of height (Z) values
+    psi[nx,ny]:
+        2D array of poloidal flux
+    opoint, xpoint :
+        Values returned by find_critical
 
     If psi_bndry is not None, then that is used to find the
     separatrix, not the X-points.
 
     Returns
     -------
-
-    A 2D array [nx,ny] which is 1 inside the core, 0 outside
+    numpy.ndarray
+        A 2D array [nx,ny] which is 1 inside the core, 0 outside
 
     """
 

@@ -43,20 +43,29 @@ from numpy import (
 )
 import math
 import numpy as np
+from typing import Optional, TYPE_CHECKING
 
 from scipy.integrate import romb
+
+if TYPE_CHECKING:
+    import matplotlib.pyplot as plt
 
 
 def write(eq, fh, label=None, oxpoints=None, fileformat=geqdsk.write):
     """
     Write a GEQDSK equilibrium file, given a FreeGS Equilibrium object
 
-    eq - Equilibrium object
-    fh - file handle
-
-    label - Text label to put in the file
-    oxpoints - O- and X-points  (opoint, xpoint) returned by critical.find_critical
-          If not given, it will be calculated using critical.find_critical
+    Parameters
+    ----------
+    eq:
+        Equilibrium object
+    fh:
+        file handle
+    label:
+        Text label to put in the file
+    oxpoints:
+        O- and X-points ``(opoint, xpoint)`` returned by `critical.find_critical`.
+        If not given, it will be calculated using `critical.find_critical`
     """
     # Get poloidal flux
     psi = eq.psi()
@@ -155,70 +164,73 @@ def ceilPow2(val):
 def read(
     fh,
     machine,
-    rtol=1e-3,
-    ntheta=8,
-    show=False,
-    axis=None,
-    pause=0.0001,
-    cocos=1,
-    domain=None,
-    blend=0.0,
-    fit_sol=False,
-    maxits=50,
-    current_bounds=None,
-):
+    rtol: float=1e-3,
+    ntheta: int=8,
+    show: bool=False,
+    axis: Optional["plt.Axes"] =None,
+    pause: float=0.0001,
+    cocos: int=1,
+    domain: Optional[list]=None,
+    blend: float=0.0,
+    fit_sol: bool=False,
+    maxits: int=50,
+    current_bounds: Optional[list]=None,
+) -> Equilibrium:
     """
     Reads a G-EQDSK format file
 
-    fh : File handle
-    machine : Machine object defining coil locations
-    rtol : float
+    A nonlinear solve will be performed, using Picard iteration
+
+    Parameters
+    ----------
+    fh :
+        File handle
+    machine :
+        Machine object defining coil locations
+    rtol :
         Relative error in nonlinear solve
-    ntheta : integer
+    ntheta :
         Number of points in poloidal angle on the separatrix
         this is used to constrain the plasma shape
-    show : Boolean
+    show :
         Set to true to show solution in a new figure
-    axis : Matplotlib Axis object
-       Set to an axis for plotting. Implies show=True
-    pause : float
-       Delay between output plots. If negative, waits for window to be closed
-    cocos : integer
+    axis :
+        Set to an axis for plotting. Implies show=True
+    pause :
+        Delay between output plots. If negative, waits for window to be closed
+    cocos :
         COordinate COnventions. Not fully handled yet,
         only whether psi is divided by 2pi or not.
         if < 10 then psi is divided by 2pi, otherwise not.
-    domain : list/tuple of 4 elements
-        Sets the (R,Z) domain to solve for
-        (Rmin, Rmax, Zmin, Zmax)
-    blend : float between 0 and 1
+    domain :
+        Sets the (R,Z) domain to solve for ``(Rmin, Rmax, Zmin, Zmax)``
+    blend :
         Weighting of the previous poloidal flux at each step of the
         Picard iteration. The default (0.0) is to use no blending.
         Blending slows convergence, but can stabilise some oscillating
-        unstable solutions.
-    fit_sol : Boolean
+        unstable solutions. Must be in ``[0, 1]``
+    fit_sol :
         If False (default) then only the poloidal flux inside the
         separatrix is used to constrain the coil currents.
         This is particularly for reading SCENE input, which is not valid
         outside the separatrix.
         If True, the whole domain is used in the fitting.
         This is useful if the locations of strike points need to be constrained.
-    maxits : integer
+    maxits :
         Maximum number of iterations. Set to None for no limit.
         If this limit is exceeded then a RuntimeError is raised.
-    current_bounds: List of tuples
+    current_bounds:
         Optional list of tuples representing constraints on coil currents to be used
         when reconstructing the equilibrium from the geqdsk file.
-        [(l1,u1),(l2,u2)...(lN,uN)]
-
-    A nonlinear solve will be performed, using Picard iteration
+        ``[(l1,u1),(l2,u2)...(lN,uN)]``
 
     Returns
     -------
+    eq: ~.Equilibrium
+        An :class:`~.Equilibrium` object. In addition, the following is available:
 
-    An Equilibrium object eq. In addition, the following is available:
-
-    eq.control   - The control system
-    eq._profiles - The profiles object
+        - eq.control   - The control system
+        - eq._profiles - The profiles object
 
     """
 

@@ -175,8 +175,8 @@ def restrict(orig, out=None, avg=False):
 
     Returns
     -------
-
-    A 2D numpy array of size [(nx-1)/2+1, (ny-1)/2+1]
+    numpy.ndarray
+        A 2D numpy array of size [(nx-1)/2+1, (ny-1)/2+1]
     """
 
     nx = orig.shape[0]

@@ -14,3 +14,4 @@ venv
 freegs/_version.py
 asv_bench/.asv/
 docs/_build
+docs/generated

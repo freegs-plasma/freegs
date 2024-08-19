@@ -204,21 +204,27 @@ class FilamentCoil(Coil):
         """
         Inputs
         ------
-        shape   - Outline of the coil shape as a list of points [(r1,z1), (r2,z2), ...]
-                  Must have more than two points. If not provided, plotting the coil
-        may not be entirely accurate.
+        shape:
+            Outline of the coil shape as a list of points ``[(r1,z1),
+            (r2,z2), ...]`` Must have more than two points. If not
+            provided, plotting the coil may not be entirely accurate.
+        Rfil, Zfil:
+            Locations of coil filaments (lists/arrays). This is optional.
+            If these are not provided then the filaments themselves are populated
+            automatically across the cross-section of the coil.
+        current :
+            Current in each turn of the coil in Amps
+        Nfils   :
+            Number of filaments. Only used when Rfil is None.
+        turns   :
+            Number of turns in point coil(s) block. Total block current is current * turns
+        control :
+            Enable or disable control system.
 
-        Rfil, Zfil - Locations of coil filaments (lists/arrays). This is optional.
-        If these are not provided then the filaments themselves are populated
-        automatically across the cross-section of the coil.
-
-        current - current in each turn of the coil in Amps
-        Nfils   - Number of filaments. Only used when Rfil is None.
-        turns   - Number of turns in point coil(s) block. Total block current is current * turns
-        control - enable or disable control system.
-
-        Note: The number of filaments does not equal the number of turns; each turn
-        of the coil might consist of multiple filaments.
+        Note
+        ----
+        The number of filaments does not equal the number of turns;
+        each turn of the coil might consist of multiple filaments.
 
         """
 

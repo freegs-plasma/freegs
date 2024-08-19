@@ -3,6 +3,8 @@ Defines class to represent the equilibrium
 state, including plasma and coil currents
 """
 
+from typing import Optional
+
 from numpy import pi, meshgrid, linspace, exp, array
 import numpy as np
 from scipy import interpolate
@@ -29,62 +31,68 @@ class Equilibrium:
     Represents the equilibrium state, including
     plasma and coil currents
 
-    Data members
-    ------------
-
-    These can be read, but should not be modified directly
-
-    R[nx,ny]
-    Z[nx,ny]
-
-    Rmin, Rmax
-    Zmin, Zmax
-
-    tokamak - The coils and circuits
-
-    Private data members
-
-    _applyBoundary()
-    _solver - Grad-Shafranov elliptic solver
-    _profiles     An object which calculates the toroidal current
-    _constraints  Control system which adjusts coil currents to meet constraints
-                  e.g. X-point location and flux values
+    Attributes
+    ----------
+    R[nx,ny]:
+        Read-only
+    Z[nx,ny]:
+        Read-only
+    Rmin, Rmax:
+        Read-only
+    Zmin, Zmax:
+        Read-only
+    tokamak:
+        The coils and circuits
+    _applyBoundary:
+    _solver:
+        Grad-Shafranov elliptic solver
+    _profiles:
+         An object which calculates the toroidal current
+    _constraints:
+        Control system which adjusts coil currents to meet constraints
+        e.g. X-point location and flux values
     """
 
     def __init__(
         self,
-        tokamak=machine.EmptyTokamak(),
-        Rmin=0.1,
-        Rmax=2.0,
-        Zmin=-1.0,
-        Zmax=1.0,
-        nx=65,
-        ny=65,
+        tokamak: machine.Machine = machine.EmptyTokamak(),
+        Rmin: float = 0.1,
+        Rmax: float = 2.0,
+        Zmin: float = -1.0,
+        Zmax: float = 1.0,
+        nx: int = 65,
+        ny: int = 65,
         boundary=freeBoundary,
-        psi=None,
-        current=0.0,
-        order=4,
-        check_limited=False,
+        psi: Optional[float] = None,
+        current: float = 0.0,
+        order: int = 4,
+        check_limited: bool = False,
     ):
         """Initialises a plasma equilibrium
 
-        Rmin, Rmax  - Range of major radius R [m]
-        Zmin, Zmax  - Range of height Z [m]
-
-        nx - Resolution in R. This must be 2^n + 1
-        ny - Resolution in Z. This must be 2^m + 1
-
-        boundary - The boundary condition, either freeBoundary or fixedBoundary
-
-        psi - Magnetic flux. If None, use concentric circular flux
-              surfaces as starting guess
-
-        current - Plasma current (default = 0.0)
-
-        order - The order of the differential operators to use.
-                Valid values are 2 or 4.
-
-        check_limited - Boolean, checks if the plasma is limited.
+        Parameters
+        ----------
+        tokamak:
+            The set of coils and currents
+        Rmin, Rmax:
+            Range of major radius R [m]
+        Zmin, Zmax:
+            Range of height Z [m]
+        nx:
+            Resolution in R. This must be ``2^n + 1``
+        ny:
+            Resolution in Z. This must be ``2^m + 1``
+        boundary:
+            The boundary condition, either `freeBoundary` or `fixedBoundary`
+        psi:
+            Magnetic flux. If None, use concentric circular flux
+            surfaces as starting guess
+        current:
+            Plasma current
+        order:
+            The order of the differential operators to use. Valid values are 2 or 4
+        check_limited:
+            Checks if the plasma is limited
         """
 
         self.tokamak = tokamak
@@ -113,7 +121,7 @@ class Equilibrium:
         if psi is None:
             # Starting guess for psi
             xx, yy = meshgrid(linspace(0, 1, nx), linspace(0, 1, ny), indexing="ij")
-            psi = exp(-((xx - 0.5) ** 2 + (yy - 0.5) ** 2) / 0.4 ** 2)
+            psi = exp(-((xx - 0.5) ** 2 + (yy - 0.5) ** 2) / 0.4**2)
 
             psi[0, :] = 0.0
             psi[:, 0] = 0.0
@@ -183,13 +191,16 @@ class Equilibrium:
         """
         Calls the psi solver, passing the initial guess and RHS arrays
 
-        psi   Initial guess for the solution (used if iterative)
-        rhs
+        Parameters
+        ----------
+        psi:
+            Initial guess for the solution (used if iterative)
+        rhs:
 
         Returns
         -------
-
-        Solution psi
+        float:
+            Solution psi
 
         """
         return self._solver(psi, rhs)
@@ -352,13 +363,13 @@ class Equilibrium:
             psinorm_inner = np.linspace(0.01, 0.99, num=npsi)
             q_inner = critical.find_safety(self, psinorm=psinorm_inner)
 
-            interp = interpolate.interp1d(psinorm_inner, q_inner,
-                                          kind = "quadratic",
-                                          fill_value = "extrapolate")
+            interp = interpolate.interp1d(
+                psinorm_inner, q_inner, kind="quadratic", fill_value="extrapolate"
+            )
             result = interp(psinorm)
         else:
             result = critical.find_safety(self, psinorm=psinorm)
-        
+
         # Convert to a scalar if only one result
         if np.size(result) == 1:
             return float(result)
@@ -385,7 +396,8 @@ class Equilibrium:
         """
         Calculates normalised toroidal flux at specified values of
         poloidal flux.
-         >>> rhotor = sqrt ( tor_flux/max(tor_flux)).
+
+        >>> rhotor = sqrt ( tor_flux/max(tor_flux)).
 
         Maximum toroidal flux shoud be at LCFS.
         """
@@ -437,20 +449,25 @@ class Equilibrium:
 
         This performs the linear Grad-Shafranov solve
 
-        profiles  - An object describing the plasma profiles.
-                    At minimum this must have methods:
-             .Jtor(R, Z, psi, psi_bndry)   -> [nx, ny]
-             .pprime(psinorm)
-             .ffprime(psinorm)
-             .pressure(psinorm)
-             .fpol(psinorm)
+        Parameters
+        ----------
+        profiles:
+            An object describing the plasma profiles.
+            At minimum this must have methods:
 
-        Jtor : 2D array
-            If supplied, specifies the toroidal current at each (R,Z) point
-            If not supplied, Jtor is calculated from profiles by finding O,X-points
+            - ``.Jtor(R, Z, psi, psi_bndry) -> [nx, ny]``
+            - ``.pprime(psinorm)``
+            - ``.ffprime(psinorm)``
+            - ``.pressure(psinorm)``
+            - ``.fpol(psinorm)``
 
-        psi_bndry  - Poloidal flux to use as the separatrix (plasma boundary)
-                     If not given then X-point locations are used.
+        Jtor :
+            If supplied, a 2D array specifying the toroidal current at each
+            (R,Z) point.  If not supplied, Jtor is calculated from profiles by
+            finding O,X-points
+        psi_bndry:
+            Poloidal flux to use as the separatrix (plasma boundary). If not
+            given then X-point locations are used.
         """
 
         self._profiles = profiles
@@ -630,18 +647,18 @@ class Equilibrium:
         # Update the plasma axis and boundary flux as well as mask
         self._updateBoundaryPsi()
 
-    def plot(self, axis=None, show=True, oxpoints=True):
+    def plot(self, axis=None, show=True, oxpoints=True) -> plt.Axes:
         """
         Plot the equilibrium flux surfaces
 
-        axis     - Specify the axis on which to plot
-        show     - Call matplotlib.pyplot.show() before returning
-        oxpoints - Plot X points as red circles, O points as green circles
-
-        Returns
-        -------
-
-        axis  object from Matplotlib
+        Parameters
+        ----------
+        axis :
+            Specify the axis on which to plot
+        show :
+            Call matplotlib.pyplot.show() before returning
+        oxpoints :
+            Plot X points as red circles, O points as green circles
 
         """
         from .plotting import plotEquilibrium
@@ -1374,7 +1391,6 @@ def newDomain(eq, Rmin=None, Rmax=None, Zmin=None, Zmax=None, nx=None, ny=None):
 
 
 if __name__ == "__main__":
-
     # Test the different spline interpolation routines
 
     from numpy import ravel
