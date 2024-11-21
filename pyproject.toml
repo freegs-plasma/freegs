@@ -31,6 +31,8 @@ dependencies = [
     "h5py>=2.10.0",
     "Shapely>=1.7.1",
     "freeqdsk>=0.1.0",
+    "omas>=0.56.0",
+
 ]
 dynamic = ["version"]
 
