@@ -4,7 +4,7 @@ Classes and routines to represent coils and circuits
 License
 -------
 
-Copyright 2016-2019 Ben Dudson, University of York. Email: benjamin.dudson@york.ac.uk
+Copyright 2016-2025 FreeGS contributors.
 
 This file is part of FreeGS.
 
@@ -637,15 +637,18 @@ class Machine:
 
     """
 
-    def __init__(self, coils, wall=None, sensors=None, nlimit=500):
+    def __init__(self, coils, wall=None, sensors=None, nlimit=500, R0=1.0):
         """
         coils - A list of coils [(label, Coil|Circuit|Solenoid)]
         sensors - A list of sensors
+        R0 - The major radius to be written to GEQDSK [meters].
+             By convention EFIT has a value of R0 for each tokamak.
         """
 
         self.coils = coils
         self.wall = wall
         self.sensors = sensors
+        self.R0 = R0
 
         self.limit_points_R = None
         self.limit_points_Z = None
@@ -1018,7 +1021,8 @@ def DIIID():
         -1.00000e-03,0.00000e+00])
     wall = Wall(R,Z)
 
-    return Machine(coils,wall=wall)
+    # Note: Using same R0 convention as EFIT on DIII-D.
+    return Machine(coils, wall=wall, R0=1.6995)
 
 
 def MAST():

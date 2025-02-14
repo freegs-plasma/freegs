@@ -4,7 +4,7 @@ Handles reading and writing of Equilibrium objects
 Writing is relatively straightforward, but reading requires inferring
 the currents in the PF coils
 
-Copyright 2016 Ben Dudson, University of York. Email: benjamin.dudson@york.ac.uk
+Copyright 2016-2025 FreeGS contributors
 
 This file is part of FreeGS.
 
@@ -85,7 +85,7 @@ def write(eq, fh, label=None, oxpoints=None, fileformat=geqdsk.write):
     zmax = eq.Zmax
 
     fvac = eq.fvac()  # Vacuum f = R*Bt
-    R0 = 1.0  # Reference location
+    R0 = eq.tokamak.R0  # Reference location
 
     data = {
         "nx": nx,
@@ -336,6 +336,9 @@ def read(
     # 0 = magnetic axis
     # 1 = plasma boundary
     psi_norm = clip((psi - psi_axis) / (psi_bndry - psi_axis), 0.0, 1.1)
+
+    # rcentr reference location
+    machine.R0 = data["rcentr"]
 
     # Create an Equilibrium object
     eq = Equilibrium(
