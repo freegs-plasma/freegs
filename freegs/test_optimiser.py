@@ -130,7 +130,6 @@ if __name__ == "__main__":
     def monitor(generation, best, pop):
         global best_point
         global pop_points
-        global axis
 
         # Change the color of the previous points
         # to grey and light red
