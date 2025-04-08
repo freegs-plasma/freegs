@@ -3,5 +3,4 @@ scipy>=1.0.0
 matplotlib>=2.0.0
 h5py>=2.10.0
 Shapely>=1.7.1
-importlib-metadata<4.3,>=1.1.0
 freeqdsk
