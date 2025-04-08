@@ -41,7 +41,7 @@ tests = [
 docs = [
     "sphinx >= 5.3",
     "sphinx_autodoc_typehints >= 1.19",
-    "sphinx-book-theme >= 0.4.0rc1",
+    "sphinx-book-theme >= 1.1.0",
 ]
 
 [tool.setuptools]
