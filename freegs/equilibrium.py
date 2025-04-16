@@ -934,7 +934,7 @@ class Equilibrium:
         return (R0 - R_P2) / a
 
     def triangularityLower(self, npoints=360):
-        """Calculates plasma upper triangularity, delta_u.
+        """Calculates plasma lower triangularity, delta_u.
         P4 is the point at the lower extent of the plasma.
 
         tri_l = (R0 - R(P4))/a
@@ -945,14 +945,14 @@ class Equilibrium:
         Rlcfs = np.array([i[0] for i in separatrix])
         Zlcfs = np.array([i[1] for i in separatrix])
 
-        ind_P2 = np.argmax(Zlcfs)
+        ind_P4 = np.argmin(Zlcfs)
 
-        R_P2 = Rlcfs[ind_P2]
+        R_P4 = Rlcfs[ind_P4]
 
         R0 = self.Rgeometric(npoints=npoints)
         a = self.minorRadius(npoints=npoints)
 
-        return (R0 - R_P2) / a
+        return (R0 - R_P4) / a
 
     def triangularity(self, npoints=360):
         """Calculates plasma triangularity, delta.
