@@ -47,4 +47,4 @@ from . import plotting
 
 
 __version__ = metadata(__package__)["Version"]
-__author__ = metadata(__package__)["Author"]
+__author__ = "Ben Dudson <benjamin.dudson@york.ac.uk>"
