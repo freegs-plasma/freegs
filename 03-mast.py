@@ -69,4 +69,5 @@ with open("mast.geqdsk", "w") as f:
 
 # Call matplotlib show so plot pauses
 import matplotlib.pyplot as plt
+
 plt.show()

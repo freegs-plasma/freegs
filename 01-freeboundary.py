@@ -60,7 +60,7 @@ eq.printForces()
 
 print("\nSafety factor:\n\tpsi \t q")
 for psi in [0.01, 0.9, 0.95]:
-    print("\t{:.2f}\t{:.2f}".format(psi, eq.q(psi)))
+    print(f"\t{psi:.2f}\t{eq.q(psi):.2f}")
 
 ##############################################
 # Save to G-EQDSK file
@@ -80,6 +80,7 @@ constrain.plot(axis=axis, show=True)
 # Safety factor
 
 import matplotlib.pyplot as plt
+
 plt.plot(*eq.q())
 plt.xlabel(r"Normalised $\psi$")
 plt.ylabel("Safety factor")

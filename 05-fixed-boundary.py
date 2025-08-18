@@ -28,11 +28,12 @@ freegs.solve(eq,           # The equilibrium to adjust
 print("Done!")
 
 # Some diagnostics
-print("Poloidal beta: {}".format(eq.poloidalBeta()))
-print("Pressure on axis: {} Pa".format(eq.pressure(0.0)))
+print(f"Poloidal beta: {eq.poloidalBeta()}")
+print(f"Pressure on axis: {eq.pressure(0.0)} Pa")
 
 # Plot equilibrium
 from freegs.plotting import plotEquilibrium
+
 plotEquilibrium(eq)
 
 

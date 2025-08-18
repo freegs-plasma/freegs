@@ -121,18 +121,18 @@ def plot_convergence(axis, title, values=None, diffs=None):
     axis.set_xscale("log")
 
     for x, y, order in zip(resolutions[2:], diffs[1:], orders):
-        axis.text(x, y, "{:.1f}".format(order))
+        axis.text(x, y, f"{order:.1f}")
 
     resolution_list = list(resolutions[1:] - 1)
     axis.set_xticks(resolution_list)
-    axis.set_xticklabels(["{:d}".format(r) for r in resolution_list])
+    axis.set_xticklabels([f"{r:d}" for r in resolution_list])
     axis.set_xticks([], minor=True)
 
 
-plot_convergence(axes[0, 0], r"Change in $\psi$ at {}".format(location), values=psivals)
+plot_convergence(axes[0, 0], rf"Change in $\psi$ at {location}", values=psivals)
 plot_convergence(axes[0, 1], r"$\psi$ difference $l_2$ norm", diffs=l2vals)
 plot_convergence(axes[0, 2], r"$\psi$ difference $l_\infty$ norm", diffs=linfvals)
-plot_convergence(axes[1, 0], "Br at {}".format(location), values=brvals)
+plot_convergence(axes[1, 0], f"Br at {location}", values=brvals)
 plot_convergence(axes[1, 1], "Plasma volume", values=volumevals)
 plot_convergence(axes[1, 2], "P1L coil current", values=coilcurrents)
 

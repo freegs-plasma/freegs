@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # FreeGS documentation build configuration file, created by
 # sphinx-quickstart on Thu May 18 23:46:05 2017.
@@ -18,7 +17,6 @@
 #
 import os
 import sys
-
 from importlib.metadata import version as get_version
 
 sys.path.insert(0, os.path.abspath(".."))
