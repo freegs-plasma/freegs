@@ -20,10 +20,10 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 
 """
 
-from .gradshafranov import Greens
 from numpy import concatenate, sqrt
-
 from scipy.integrate import romb  # Romberg integration
+
+from .gradshafranov import Greens
 
 
 def fixedBoundary(eq, Jtor, psi):

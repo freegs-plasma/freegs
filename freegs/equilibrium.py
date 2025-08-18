@@ -4,25 +4,18 @@ state, including plasma and coil currents
 """
 
 
-from numpy import pi, meshgrid, linspace, exp, array
+import matplotlib.pyplot as plt
 import numpy as np
+from numpy import array, exp, linspace, meshgrid, pi
 from scipy import interpolate
-from scipy.integrate import romb, cumulative_trapezoid
-
-from .boundary import fixedBoundary, freeBoundary
-from . import critical
-
-from . import polygons
-
-# Operators which define the G-S equation
-from .gradshafranov import mu0, GSsparse, GSsparse4thOrder
+from scipy.integrate import cumulative_trapezoid, romb
 
 # Multigrid solver
-from . import multigrid
+from . import critical, machine, multigrid, polygons
+from .boundary import fixedBoundary, freeBoundary
 
-from . import machine
-
-import matplotlib.pyplot as plt
+# Operators which define the G-S equation
+from .gradshafranov import GSsparse, GSsparse4thOrder, mu0
 
 
 class Equilibrium:
@@ -1387,10 +1380,9 @@ def newDomain(eq, Rmin=None, Rmax=None, Zmin=None, Zmax=None, nx=None, ny=None):
 if __name__ == "__main__":
     # Test the different spline interpolation routines
 
-    from numpy import ravel
-    import matplotlib.pyplot as plt
-
     import machine
+    import matplotlib.pyplot as plt
+    from numpy import ravel
 
     tokamak = machine.TestTokamak()
 

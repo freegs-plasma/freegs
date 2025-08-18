@@ -23,8 +23,9 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import numpy as np
-from . import polygons
 from shapely import geometry
+
+from . import polygons
 from .coil import Coil
 from .gradshafranov import Greens, GreensBr, GreensBz
 

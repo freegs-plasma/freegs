@@ -1,4 +1,4 @@
-from freegs import machine, equilibrium, control, jtor, boundary, solve
+from freegs import boundary, control, equilibrium, jtor, machine, solve
 
 tokamak = machine.TestTokamakSensor()
 

@@ -2,9 +2,9 @@
 Tests of the linear solver
 """
 
-from . import multigrid
-
 import numpy as np
+
+from . import multigrid
 
 # Laplacian in 2D
 

@@ -4,11 +4,9 @@ Then reconstructs the equilibrium from the geqdsk using
 constraints on coil currents.
 '''
 
-from freegs import geqdsk
-from freegs import machine
-from freegs.plotting import plotEquilibrium
-
 import freegs
+from freegs import geqdsk
+from freegs.plotting import plotEquilibrium
 
 #########################################
 # Create the machine, which specifies coil locations
@@ -62,7 +60,6 @@ psi1 = eq.psi()
 
 # Save to G-EQDSK file
 
-from freegs import geqdsk
 
 with open("lsn.geqdsk", "w+") as f:
     geqdsk.write(eq, f)
@@ -90,7 +87,6 @@ psi2 = eq2.psi()
 
 pct_change = abs(100.0*(psi2 - psi1)/psi1)
 
-import numpy as np
 import matplotlib.pyplot as plt
 
 fig, ax = plt.subplots()

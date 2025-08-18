@@ -3,11 +3,10 @@
 # and compares the result
 
 
-import freegs
-
-from numpy import linspace, amin, amax, meshgrid, exp
-
 import matplotlib.pyplot as plt
+from numpy import amax, amin, exp, linspace, meshgrid
+
+import freegs
 
 tokamak = freegs.machine.TestTokamak()
 

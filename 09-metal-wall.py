@@ -4,8 +4,9 @@
 # This is done by creating a ring of coils, with feedback control setting
 # the poloidal flux to zero at the location of each coil.
 
-import freegs
 import numpy as np
+
+import freegs
 
 #########################################
 # Create a circular metal wall by using a ring of coils and psi constraints

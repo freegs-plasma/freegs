@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 import freegs
-from freegs.plotting import plotConstraints
 
 #########################################
 # Create the machine, which specifies coil locations
@@ -143,4 +142,5 @@ with open("mast-upgrade.geqdsk", "w") as f:
 
 # Call matplotlib show so plot pauses
 import matplotlib.pyplot as plt
+
 plt.show()

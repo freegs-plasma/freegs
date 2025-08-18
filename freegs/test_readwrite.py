@@ -1,7 +1,8 @@
-import freegs
-
 import io
+
 from numpy import allclose
+
+import freegs
 
 
 def test_readwrite():

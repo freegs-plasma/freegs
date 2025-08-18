@@ -23,29 +23,25 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 
 """
 
-from . import critical
-from .equilibrium import Equilibrium
-from .machine import Wall
-from . import jtor
-from . import control
-from . import picard
-from .gradshafranov import mu0
-
-
-from freeqdsk import geqdsk
-from scipy import interpolate
-from numpy import (
-    linspace,
-    reshape,
-    ravel,
-    zeros,
-    clip,
-)
 import math
-import numpy as np
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
+import numpy as np
+from freeqdsk import geqdsk
+from numpy import (
+    clip,
+    linspace,
+    ravel,
+    reshape,
+    zeros,
+)
+from scipy import interpolate
 from scipy.integrate import romb
+
+from . import control, critical, jtor, picard
+from .equilibrium import Equilibrium
+from .gradshafranov import mu0
+from .machine import Wall
 
 if TYPE_CHECKING:
     import matplotlib.pyplot as plt

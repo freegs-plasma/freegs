@@ -2,12 +2,12 @@
 #
 # Example demonstrating functions for creating and finding X-points
 
+import matplotlib.pyplot as plt
+
 import freegs
 
 # Plotting routines
-from freegs.plotting import plotEquilibrium, plotCoils, plotConstraints
-
-import matplotlib.pyplot as plt
+from freegs.plotting import plotCoils, plotConstraints, plotEquilibrium
 
 tokamak = freegs.machine.TestTokamak()
 eq = freegs.Equilibrium(tokamak=tokamak, nx=256,ny=256)
@@ -37,7 +37,8 @@ plt.show()
 # 
 # 
 
-import freegs.critical as critical
+from freegs import critical
+
 opt, xpt = critical.find_critical(eq.R, eq.Z, psi)
 
 print("=> Found O- and X-points")

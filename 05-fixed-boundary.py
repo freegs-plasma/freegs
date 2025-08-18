@@ -8,7 +8,7 @@
 import freegs
 
 # Boundary conditions
-import freegs.boundary as boundary
+from freegs import boundary
 
 eq = freegs.Equilibrium(Rmin=0.1, Rmax=2.0,
                         Zmin=-1.0, Zmax=1.0,

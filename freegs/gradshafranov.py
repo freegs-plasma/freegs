@@ -20,14 +20,11 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 
 """
 
-from numpy import zeros
+from numpy import clip, pi, sqrt, zeros
+from scipy.sparse import eye, lil_matrix
 
 # Elliptic integrals of first and second kind (K and E)
-from scipy.special import ellipk, ellipe
-
-from numpy import sqrt, pi, clip
-
-from scipy.sparse import lil_matrix, eye
+from scipy.special import ellipe, ellipk
 
 # Physical constants
 mu0 = 4e-7 * pi

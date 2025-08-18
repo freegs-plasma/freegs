@@ -22,15 +22,14 @@ You should have received a copy of the GNU Lesser General Public License
 along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-from .gradshafranov import Greens, GreensBr, GreensBz
 import numpy as np
 from scipy.interpolate import interp1d
-
-from .coil import Coil, AreaCurrentLimit
-from .shaped_coil import ShapedCoil
-from .filament_coil import FilamentCoil
-
 from shapely.geometry.polygon import Polygon
+
+from .coil import AreaCurrentLimit, Coil
+from .filament_coil import FilamentCoil
+from .gradshafranov import Greens, GreensBr, GreensBz
+from .shaped_coil import ShapedCoil
 
 # We need this for the `label` part of the Circuit dtype for writing
 # to HDF5 files. See the following for information:

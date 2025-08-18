@@ -27,9 +27,9 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 
 """
 
-from numpy import zeros, max, abs, reshape
-from scipy.sparse.linalg import factorized
+from numpy import abs, max, reshape, zeros
 from scipy.sparse import eye
+from scipy.sparse.linalg import factorized
 
 
 class MGDirect:
@@ -370,10 +370,10 @@ class LaplaceSparse:
 if __name__ == "__main__":
     # Test case
 
-    from numpy import meshgrid, exp, linspace
-    import matplotlib.pyplot as plt
-
     from timeit import default_timer as timer
+
+    import matplotlib.pyplot as plt
+    from numpy import exp, linspace, meshgrid
 
     nx = 65
     ny = 65

@@ -1,12 +1,11 @@
 #!/usr/bin/env python
 
-import freegs
-import freegs.critical as critical
-from freegs import geqdsk
-from freegs.plotting import plotEquilibrium
-
 import matplotlib.pyplot as plt
 import numpy as np
+
+import freegs
+from freegs import critical, geqdsk
+from freegs.plotting import plotEquilibrium
 
 '''
 First creates a limited plasma and solves, before
@@ -104,7 +103,6 @@ ax.set_xlabel('R(m)')
 ax.set_ylabel('Z(m)')
 plt.show()
 
-from freegs import geqdsk
 
 with open("limited.geqdsk", "w") as f:
     geqdsk.write(eq, f)

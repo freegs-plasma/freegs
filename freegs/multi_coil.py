@@ -23,7 +23,8 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import numpy as np
-from .coil import Coil, AreaCurrentLimit
+
+from .coil import AreaCurrentLimit, Coil
 from .gradshafranov import Greens, GreensBr, GreensBz
 
 

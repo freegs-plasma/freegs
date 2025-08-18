@@ -24,8 +24,9 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 
 import numpy as np
 from scipy.interpolate import RectBivariateSpline
-from .coil import Coil
+
 from . import polygons
+from .coil import Coil
 
 
 class PreCalcCoil(Coil):

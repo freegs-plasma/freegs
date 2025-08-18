@@ -24,10 +24,11 @@ You should have received a copy of the GNU Lesser General Public License
 along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-from numpy import random
-import copy
 import bisect
+import copy
 import sys
+
+from numpy import random
 
 RANDOM_SEED_FOR_PYTEST = 101
 

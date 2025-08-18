@@ -23,14 +23,12 @@ You should have received a copy of the GNU Lesser General Public License
 along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-from . import quadrature
-from . import polygons
-from .gradshafranov import Greens, GreensBr, GreensBz
+import numpy as np
 from shapely.geometry import Polygon
 
-import numpy as np
-
+from . import polygons, quadrature
 from .coil import Coil
+from .gradshafranov import Greens, GreensBr, GreensBz
 
 
 class ShapedCoil(Coil):

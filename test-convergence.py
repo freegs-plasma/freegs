@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 
-import freegs
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
+
+import freegs
 
 start_resolution = 17
 nrefinements = 5  # Number of refinements. Minimum 2

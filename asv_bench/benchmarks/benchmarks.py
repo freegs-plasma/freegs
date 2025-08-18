@@ -1,10 +1,10 @@
+from io import BytesIO
+
 import freegs
 from freegs import Equilibrium, fieldtracer, solve
-from freegs.boundary import freeBoundaryHagenow, fixedBoundary
+from freegs.boundary import fixedBoundary, freeBoundaryHagenow
 from freegs.control import constrain
 from freegs.machine import TestTokamak
-
-from io import BytesIO
 
 STANDARD_PARAMS = dict(Rmin=0.1, Rmax=2.0, Zmin=-1.0, Zmax=1.0, nx=17, ny=17)
 

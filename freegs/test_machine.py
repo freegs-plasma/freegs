@@ -2,9 +2,11 @@
 # Test calculation of magnetic field due to coils
 # and forces between coils
 
-from . import machine
-import numpy as np
 import math
+
+import numpy as np
+
+from . import machine
 
 mu0 = 4e-7 * np.pi
 

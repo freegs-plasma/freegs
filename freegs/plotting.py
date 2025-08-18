@@ -20,7 +20,8 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 
 """
 
-from numpy import linspace, amin, amax
+from numpy import amax, amin, linspace
+
 from . import critical
 
 

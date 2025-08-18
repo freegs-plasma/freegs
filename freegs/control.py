@@ -4,9 +4,9 @@ Plasma control system
 Use constraints to adjust coil currents
 """
 
-from numpy import dot, transpose, eye, array, inf
-from numpy.linalg import inv, norm
 import numpy as np
+from numpy import array, dot, eye, inf, transpose
+from numpy.linalg import inv, norm
 from scipy import optimize
 
 

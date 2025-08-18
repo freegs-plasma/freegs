@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 
-import freegs
 import matplotlib.pyplot as plt
+
+import freegs
 
 #########################################
 # Create the machine, which specifies coil locations

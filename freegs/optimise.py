@@ -21,13 +21,12 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 
 """
 
-from . import optimiser
-from . import picard
-
 import matplotlib.pyplot as plt
+from numpy import inf, sqrt
+
 from freegs.plotting import plotEquilibrium
 
-from numpy import sqrt, inf
+from . import optimiser, picard
 
 # Measures which operate on Equilibrium objects
 

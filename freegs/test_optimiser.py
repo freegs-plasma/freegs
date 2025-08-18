@@ -1,6 +1,6 @@
-from . import optimiser
-
 import numpy as np
+
+from . import optimiser
 
 # Tests and example of solving optimisation problem
 #

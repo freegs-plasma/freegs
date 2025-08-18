@@ -20,26 +20,27 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 
 """
 
-from scipy import interpolate
-from numpy import zeros
-from numpy.linalg import inv
+from warnings import warn
+
+import numpy as np
 from numpy import (
-    dot,
-    linspace,
-    argmax,
-    argmin,
     abs,
-    clip,
-    sin,
-    cos,
-    pi,
     amax,
     arctan2,
+    argmax,
+    argmin,
+    clip,
+    cos,
+    dot,
+    linspace,
+    pi,
+    sin,
     sqrt,
     sum,
+    zeros,
 )
-import numpy as np
-from warnings import warn
+from numpy.linalg import inv
+from scipy import interpolate
 
 
 def find_critical(R, Z, psi, discard_xpoints=True):

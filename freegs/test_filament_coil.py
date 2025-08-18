@@ -1,8 +1,8 @@
-from .filament_coil import FilamentCoil
-from .coil import Coil
-from .machine import Circuit
-
 import numpy as np
+
+from .coil import Coil
+from .filament_coil import FilamentCoil
+from .machine import Circuit
 
 
 def test_single():

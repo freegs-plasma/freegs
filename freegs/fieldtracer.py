@@ -2,8 +2,8 @@
 
 
 import numpy as np
-from scipy.integrate import odeint
 from scipy import interpolate
+from scipy.integrate import odeint
 
 from . import critical
 

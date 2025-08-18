@@ -1,6 +1,6 @@
-from .shaped_coil import ShapedCoil
-
 import numpy as np
+
+from .shaped_coil import ShapedCoil
 
 
 def test_area():

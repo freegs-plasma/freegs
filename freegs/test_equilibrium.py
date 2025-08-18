@@ -1,9 +1,6 @@
-from . import equilibrium
-from . import boundary
-from . import jtor
-from . import picard
-
 import numpy as np
+
+from . import boundary, equilibrium, jtor, picard
 
 
 def test_inoutseparatrix():

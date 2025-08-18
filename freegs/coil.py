@@ -24,11 +24,13 @@ You should have received a copy of the GNU Lesser General Public License
 along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-from .gradshafranov import Greens, GreensBr, GreensBz, mu0
-import numpy as np
 import numbers
-from shapely.geometry import Point
 import warnings
+
+import numpy as np
+from shapely.geometry import Point
+
+from .gradshafranov import Greens, GreensBr, GreensBz, mu0
 
 
 class AreaCurrentLimit:

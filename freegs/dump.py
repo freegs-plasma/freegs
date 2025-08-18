@@ -35,12 +35,11 @@ except ImportError:
 
 import numpy as np
 
+from . import boundary, machine
 from .equilibrium import Equilibrium
-from .machine import Coil, Circuit, Solenoid, Wall, Machine
-from .shaped_coil import ShapedCoil
 from .filament_coil import FilamentCoil
-from . import boundary
-from . import machine
+from .machine import Circuit, Coil, Machine, Solenoid, Wall
+from .shaped_coil import ShapedCoil
 
 
 class OutputFormatNotAvailableError(Exception):

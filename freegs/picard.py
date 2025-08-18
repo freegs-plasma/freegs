@@ -19,8 +19,8 @@ You should have received a copy of the GNU Lesser General Public License
 along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-from numpy import amin, amax, array
 import numpy as np
+from numpy import amax, amin, array
 
 
 def solve(
@@ -89,6 +89,7 @@ def solve(
 
     if show:
         import matplotlib.pyplot as plt
+
         from .plotting import plotEquilibrium
 
         if pause > 0.0 and axis is None:

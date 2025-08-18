@@ -1,7 +1,6 @@
 import numpy as np
 
-from . import jtor
-from . import equilibrium
+from . import equilibrium, jtor
 
 
 def test_psinorm_range():

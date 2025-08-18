@@ -1,7 +1,8 @@
-import freegs
 import numpy as np
-from scipy.special import ellipk, ellipe
 from scipy.constants import mu_0
+from scipy.special import ellipe, ellipk
+
+import freegs
 
 
 def test_offaxis_Bfield():
