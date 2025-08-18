@@ -9,7 +9,7 @@ from scipy import interpolate
 from . import critical
 
 
-class FieldTracer(object):
+class FieldTracer:
     """A class for following magnetic field lines"""
 
     def __init__(self, eq):

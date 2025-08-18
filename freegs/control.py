@@ -10,7 +10,7 @@ import numpy as np
 from scipy import optimize
 
 
-class constrain(object):
+class constrain:
     """
     Adjust coil currents using constraints. To use this class,
     first create an instance by specifying the constraints
@@ -205,7 +205,7 @@ class constrain(object):
         return plotConstraints(self, axis=axis, show=show)
 
 
-class ConstrainPsi2D(object):
+class ConstrainPsi2D:
     """
     Adjusts coil currents to minimise the square differences
     between psi[R,Z] and a target psi.
@@ -262,7 +262,7 @@ class ConstrainPsi2D(object):
         ).ravel()  # flatten array
 
 
-class ConstrainPsiNorm2D(object):
+class ConstrainPsiNorm2D:
     """
     Adjusts coil currents to minimise the square differences
     between normalised psi[R,Z] and a target normalised psi.
@@ -321,7 +321,7 @@ class ConstrainPsiNorm2D(object):
         ).ravel()  # flatten array
 
 
-class ConstrainPsi2DAdvanced(object):
+class ConstrainPsi2DAdvanced:
     """
     Adjusts coil currents to minimise the square differences
     between psi[R,Z] and a target psi.
@@ -418,7 +418,7 @@ class ConstrainPsi2DAdvanced(object):
         return sum_square_diff
 
 
-class ConstrainPsiNorm2DAdvanced(object):
+class ConstrainPsiNorm2DAdvanced:
     """
     Adjusts coil currents to minimise the square differences
     between normalised psi[R,Z] and a target normalised psi.

@@ -54,7 +54,7 @@ class OutputFormatNotAvailableError(Exception):
         self.message = f"Sorry, {file_format} is not available!"
 
 
-class OutputFile(object):
+class OutputFile:
     """
     Read/write freegs Equilibrium objects to file
 
