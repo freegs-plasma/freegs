@@ -508,7 +508,7 @@ class ProfilesPprimeFfprime(Profile):
             return self.p_func(psinorm)
 
         # If not, use base class to integrate
-        return super(ProfilesPprimeFfprime, self).pressure(psinorm, out)
+        return super().pressure(psinorm, out)
 
     def fpol(self, psinorm, out=None):
         """
@@ -520,7 +520,7 @@ class ProfilesPprimeFfprime(Profile):
             return self.f_func(psinorm)
 
         # If not, use base class to integrate
-        return super(ProfilesPprimeFfprime, self).fpol(psinorm, out)
+        return super().fpol(psinorm, out)
 
     def fvac(self):
         return self._fvac
