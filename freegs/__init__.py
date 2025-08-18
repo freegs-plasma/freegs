@@ -40,10 +40,10 @@ __version__ = metadata(__package__)["Version"]
 
 __all__ = [
     "Equilibrium",
+    "OutputFile",
+    "control",
     "jtor",
     "machine",
-    "control",
-    "solve",
-    "OutputFile",
     "plotting",
+    "solve",
 ]

@@ -89,8 +89,8 @@ def test_pick_all():
     vals = optimiser.pickUnique(10, 10, [])
     # Should be a scrambled list of [0...10]
 
-    assert vals != list(range(0, 10))  # Probably not sorted
-    assert sorted(vals) == list(range(0, 10))
+    assert vals != list(range(10))  # Probably not sorted
+    assert sorted(vals) == list(range(10))
 
 
 def test_pick_different():

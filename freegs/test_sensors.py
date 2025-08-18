@@ -287,7 +287,7 @@ def test_rog_with_plasma():
     """
     Testing Rog around a plasma profile
     """
-    tokamak = freegs.machine.EmptyTokamak()  #
+    tokamak = freegs.machine.EmptyTokamak()
     tokamak.sensors = [freegs.machine.RogowskiSensor([0.1, 0.1, 2, 2], [-1, 1, 1, -1])]
 
     eq = freegs.Equilibrium(
