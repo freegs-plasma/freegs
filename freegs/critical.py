@@ -155,7 +155,7 @@ def find_critical(R, Z, psi, discard_xpoints=True):
                     count += 1
                     # If (R1,Z1) is too far from (R0,Z0) then discard
                     # or if we've taken too many iterations
-                    if ((R1 - R0) ** 2 + (Z1 - Z0) ** 2 > radius_sq) or (count > 100):
+                    if (radius_sq < (R1 - R0) ** 2 + (Z1 - Z0) ** 2) or (count > 100):
                         # Discard this point
                         break
 

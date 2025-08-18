@@ -33,8 +33,8 @@ class FieldTracer:
 
         evolving[
             np.logical_or(
-                np.logical_or((R < self._eq.Rmin + eps), (R > self._eq.Rmax - eps)),
-                np.logical_or((Z < self._eq.Zmin + eps), (Z > self._eq.Zmax - eps)),
+                np.logical_or((self._eq.Rmin + eps > R), (self._eq.Rmax - eps < R)),
+                np.logical_or((self._eq.Zmin + eps > Z), (self._eq.Zmax - eps < Z)),
             )
         ] = 0.0
         return evolving

@@ -95,9 +95,9 @@ class CoilRadius:
         self.maximum = maximum
 
     def set(self, eq, R):
-        if self.minimum and (R < self.minimum):
+        if self.minimum and (self.minimum > R):
             R = self.minimum
-        if self.maximum and (R > self.maximum):
+        if self.maximum and (self.maximum < R):
             R = self.maximum
         eq.tokamak[self.label].R = R
 
@@ -119,9 +119,9 @@ class CoilHeight:
         self.maximum = maximum
 
     def set(self, eq, Z):
-        if self.minimum and (Z < self.minimum):
+        if self.minimum and (self.minimum > Z):
             Z = self.minimum
-        if self.maximum and (Z > self.maximum):
+        if self.maximum and (self.maximum < Z):
             Z = self.maximum
         eq.tokamak[self.label].Z = Z
 
