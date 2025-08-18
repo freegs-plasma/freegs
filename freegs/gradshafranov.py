@@ -20,14 +20,11 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 
 """
 
-from numpy import zeros
+from numpy import clip, pi, sqrt, zeros
+from scipy.sparse import eye, lil_matrix
 
 # Elliptic integrals of first and second kind (K and E)
-from scipy.special import ellipk, ellipe
-
-from numpy import sqrt, pi, clip
-
-from scipy.sparse import lil_matrix, eye
+from scipy.special import ellipe, ellipk
 
 # Physical constants
 mu0 = 4e-7 * pi
@@ -71,8 +68,8 @@ class GSElliptic:
 
         b = zeros([nx, ny])
 
-        invdR2 = 1.0 / dR ** 2
-        invdZ2 = 1.0 / dZ ** 2
+        invdR2 = 1.0 / dR**2
+        invdZ2 = 1.0 / dZ**2
 
         for x in range(1, nx - 1):
             R = self.Rmin + dR * x  # Major radius of this point
@@ -92,7 +89,7 @@ class GSElliptic:
         Return the diagonal elements
 
         """
-        return -2.0 / dR ** 2 - 2.0 / dZ ** 2
+        return -2.0 / dR**2 - 2.0 / dZ**2
 
 
 class GSsparse:
@@ -122,8 +119,8 @@ class GSsparse:
         # Create a linked list sparse matrix
         A = eye(N, format="lil")
 
-        invdR2 = 1.0 / dR ** 2
-        invdZ2 = 1.0 / dZ ** 2
+        invdR2 = 1.0 / dR**2
+        invdZ2 = 1.0 / dZ**2
 
         for x in range(1, nx - 1):
             R = self.Rmin + dR * x  # Major radius of this point
@@ -159,34 +156,34 @@ class GSsparse4thOrder:
     # Coefficients for first derivatives
     # (index offset, weight)
 
-    centred_1st = [(-2, 1.0 / 12), (-1, -8.0 / 12), (1, 8.0 / 12), (2, -1.0 / 12)]
+    centred_1st = ((-2, 1.0 / 12), (-1, -8.0 / 12), (1, 8.0 / 12), (2, -1.0 / 12))
 
-    offset_1st = [
+    offset_1st = (
         (-1, -3.0 / 12),
         (0, -10.0 / 12),
         (1, 18.0 / 12),
         (2, -6.0 / 12),
         (3, 1.0 / 12),
-    ]
+    )
 
     # Coefficients for second derivatives
     # (index offset, weight)
-    centred_2nd = [
+    centred_2nd = (
         (-2, -1.0 / 12),
         (-1, 16.0 / 12),
         (0, -30.0 / 12),
         (1, 16.0 / 12),
         (2, -1.0 / 12),
-    ]
+    )
 
-    offset_2nd = [
+    offset_2nd = (
         (-1, 10.0 / 12),
         (0, -15.0 / 12),
         (1, -4.0 / 12),
         (2, 14.0 / 12),
         (3, -6.0 / 12),
         (4, 1.0 / 12),
-    ]
+    )
 
     def __init__(self, Rmin, Rmax, Zmin, Zmax):
         self.Rmin = Rmin
@@ -210,8 +207,8 @@ class GSsparse4thOrder:
         # Create a linked list sparse matrix
         A = lil_matrix((N, N))
 
-        invdR2 = 1.0 / dR ** 2
-        invdZ2 = 1.0 / dZ ** 2
+        invdR2 = 1.0 / dR**2
+        invdZ2 = 1.0 / dZ**2
 
         for x in range(1, nx - 1):
             R = self.Rmin + dR * x  # Major radius of this point

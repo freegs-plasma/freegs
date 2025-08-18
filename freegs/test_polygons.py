@@ -1,5 +1,6 @@
-from . import polygons
 import numpy as np
+
+from . import polygons
 
 
 def test_nointersect():

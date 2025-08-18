@@ -22,21 +22,14 @@ You should have received a copy of the GNU Lesser General Public License
 along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-from .gradshafranov import Greens, GreensBr, GreensBz
 import numpy as np
-import scipy.linalg
 from scipy.interpolate import interp1d
-from scipy.special import ellipk, ellipe
-from scipy.constants import mu_0
-
-from .coil import Coil, AreaCurrentLimit
-from .shaped_coil import ShapedCoil
-from .pre_calc_coil import PreCalcCoil
-from .filament_coil import FilamentCoil
-from .multi_coil import MultiCoil
-
-from shapely.geometry import Point, LinearRing, LineString
 from shapely.geometry.polygon import Polygon
+
+from .coil import AreaCurrentLimit, Coil
+from .filament_coil import FilamentCoil
+from .gradshafranov import Greens, GreensBr, GreensBz
+from .shaped_coil import ShapedCoil
 
 # We need this for the `label` part of the Circuit dtype for writing
 # to HDF5 files. See the following for information:
@@ -71,14 +64,14 @@ class Circuit:
         except NameError:
             string_dtype = h5py.special_dtype(vlen=str)
     else:
-        string_dtype = np.dtype(str("S"))
+        string_dtype = np.dtype("S")
 
     # A dtype for converting to Numpy array and storing in HDF5 files
     dtype = np.dtype(
         [
-            (str("label"), string_dtype),
-            (str("coil"), Coil.dtype),
-            (str("multiplier"), np.float64),
+            ("label", string_dtype),
+            ("coil", Coil.dtype),
+            ("multiplier", np.float64),
         ]
     )
 
@@ -90,15 +83,15 @@ class Circuit:
         self.coils = coils
         self.current = current
         self.control = control
-    
+
     def __getitem__(self, name):
         """Returns a coil in the circuit using circuit[coil_name]"""
 
         for label, coil, _ in self.coils:
             if label == name:
                 return coil
-        raise KeyError("Circuit does not contain coil with label '{0}'".format(name))
-    
+        raise KeyError(f"Circuit does not contain coil with label '{name}'")
+
     @property
     def current(self) -> float:
         return self._current
@@ -130,7 +123,7 @@ class Circuit:
         Calculate poloidal flux at (R,Z)
         """
         psival = 0.0
-        for label, coil, multiplier in self.coils:
+        for _, coil, multiplier in self.coils:
             coil.current = self.current * multiplier
             psival += coil.psi(R, Z)
         return psival
@@ -140,7 +133,7 @@ class Circuit:
         Calculate Greens functions
         """
         pgreen = {}
-        for label, coil, multiplier in self.coils:
+        for label, coil, _ in self.coils:
             pgreen[label] = coil.createPsiGreens(R, Z)
         return pgreen
 
@@ -160,7 +153,7 @@ class Circuit:
         Calculate radial magnetic field Br at (R,Z)
         """
         result = 0.0
-        for label, coil, multiplier in self.coils:
+        for _, coil, multiplier in self.coils:
             coil.current = self.current * multiplier
             result += coil.Br(R, Z)
         return result
@@ -170,7 +163,7 @@ class Circuit:
         Calculate vertical magnetic field Bz at (R,Z)
         """
         result = 0.0
-        for label, coil, multiplier in self.coils:
+        for _, coil, multiplier in self.coils:
             coil.current = self.current * multiplier
             result += coil.Bz(R, Z)
         return result
@@ -180,7 +173,7 @@ class Circuit:
         Calculate poloidal flux at (R,Z) due to a unit current
         """
         result = 0.0
-        for label, coil, multiplier in self.coils:
+        for _, coil, multiplier in self.coils:
             result += multiplier * coil.controlPsi(R, Z)
         return result
 
@@ -189,7 +182,7 @@ class Circuit:
         Calculate radial magnetic field Br at (R,Z) due to a unit current
         """
         result = 0.0
-        for label, coil, multiplier in self.coils:
+        for _, coil, multiplier in self.coils:
             result += multiplier * coil.controlBr(R, Z)
         return result
 
@@ -198,7 +191,7 @@ class Circuit:
         Calculate vertical magnetic field Bz at (R,Z) due to a unit current
         """
         result = 0.0
-        for label, coil, multiplier in self.coils:
+        for _, coil, multiplier in self.coils:
             result += multiplier * coil.controlBz(R, Z)
         return result
 
@@ -209,23 +202,22 @@ class Circuit:
         Returns a dictionary of coil label -> force
         """
         forces = {}
-        for label, coil, multiplier in self.coils:
+        for label, coil, _ in self.coils:
             forces[label] = coil.getForces(equilibrium)
         return forces
 
     def inShape(self, polygon):
-        return sum(coil.inShape(polygon)*multiplier for label, coil, multiplier in self.coils)
+        return sum(
+            coil.inShape(polygon) * multiplier for label, coil, multiplier in self.coils
+        )
 
     def __repr__(self):
-        result = "Circuit(["
         coils = [
-            '("{0}", {1}, {2})'.format(label, coil, multiplier)
+            f'("{label}", {coil}, {multiplier})'
             for label, coil, multiplier in self.coils
         ]
-        result += ", ".join(coils)
-        return result + "], current={0}, control={1})".format(
-            self.current, self.control
-        )
+        result = ", ".join(coils)
+        return f"Circuit([{result}], current={self.current}, control={self.control})"
 
     def __eq__(self, other):
         return (
@@ -253,9 +245,7 @@ class Circuit:
     def from_numpy_array(cls, value):
         if value.dtype != cls.dtype:
             raise ValueError(
-                "Can't create {this} from dtype: {got} (expected: {dtype})".format(
-                    this=type(cls), got=value.dtype, dtype=cls.dtype
-                )
+                f"Can't create {type(cls)} from dtype: {value.dtype} (expected: {cls.dtype})"
             )
 
         # HDF5 reads strings as bytes by default, so convert to string
@@ -281,7 +271,7 @@ class Circuit:
         Plot the coils in the circuit
         Returns the axis used
         """
-        for label, coil, multiplier in self.coils:
+        for _, coil, _ in self.coils:
             axis = coil.plot(axis=axis, show=False)
         if show:
             import matplotlib.pyplot as plt
@@ -329,12 +319,12 @@ class Solenoid:
     # A dtype for converting to Numpy array and storing in HDF5 files
     dtype = np.dtype(
         [
-            (str("Rs"), np.float64),
-            (str("Zsmin"), np.float64),
-            (str("Zsmax"), np.float64),
-            (str("Ns"), np.float64),
-            (str("current"), np.float64),
-            (str("control"), bool),
+            ("Rs", np.float64),
+            ("Zsmin", np.float64),
+            ("Zsmax", np.float64),
+            ("Ns", np.float64),
+            ("current", np.float64),
+            ("control", bool),
         ]
     )
 
@@ -423,8 +413,9 @@ class Solenoid:
         return {}
 
     def __repr__(self):
-        return "Solenoid(Rs={0}, Zsmin={1}, Zsmax={2}, current={3}, Ns={4}, control={5})".format(
-            self.Rs, self.Zsmin, self.Zsmax, self.current, self.Ns, self.control
+        return (
+            f"Solenoid(Rs={self.Rs}, Zsmin={self.Zsmin}, Zsmax={self.Zsmax}, "
+            f"current={self.current}, Ns={self.Ns}, control={self.control})"
         )
 
     def __eq__(self, other):
@@ -453,9 +444,7 @@ class Solenoid:
     def from_numpy_array(cls, value):
         if value.dtype != cls.dtype:
             raise ValueError(
-                "Can't create {this} from dtype: {got} (expected: {dtype})".format(
-                    this=type(cls), got=value.dtype, dtype=cls.dtype
-                )
+                f"Can't create {type(cls)} from dtype: {value.dtype} (expected: {cls.dtype})"
             )
         return Solenoid(*value[()])
 
@@ -475,7 +464,7 @@ class Wall:
         self.Z = Z
 
     def __repr__(self):
-        return "Wall(R={R}, Z={Z})".format(R=self.R, Z=self.Z)
+        return f"Wall(R={self.R}, Z={self.Z})"
 
     def __eq__(self, other):
         return np.allclose(self.R, other.R) and np.allclose(self.Z, other.Z)
@@ -489,8 +478,8 @@ class Sensor:
     Parent class for the sensors
     Contains general attributes that apply to all sensors
     """
-    def __init__(self, R, Z, name=None, weight=1, status=True, measurement=None):
 
+    def __init__(self, R, Z, name=None, weight=1, status=True, measurement=None):
         self.R = R
         self.Z = Z
         self.status = status
@@ -500,9 +489,8 @@ class Sensor:
         if self.status:
             self.measurement = measurement
 
-
     def __repr__(self):
-        return "R={R}, Z={Z}".format(R=self.R, Z=self.Z)
+        return f"R={self.R}, Z={self.Z}"
 
     def __eq__(self, other):
         return np.allclose(self.R, other.R) and np.allclose(self.Z, other.Z)
@@ -518,10 +506,10 @@ class RogowskiSensor(Sensor):
     Returns current inside the loop
     """
 
-    def __init__(self, R, Z, name=None, weight=1, status=True,
-                 measurement=None):
-
-        Sensor.__init__(self, R, Z, name=name, weight=weight, status=status, measurement=measurement)
+    def __init__(self, R, Z, name=None, weight=1, status=True, measurement=None):
+        Sensor.__init__(
+            self, R, Z, name=name, weight=weight, status=status, measurement=measurement
+        )
 
         polygonlist = [(r, z) for r, z in zip(self.R, self.Z)]
         self.polygon = Polygon(polygonlist)
@@ -534,33 +522,35 @@ class RogowskiSensor(Sensor):
         """
 
         if self.status:
-
             # coil current
             coil_current = 0
-            for label, coil in tokamak.coils:
+            for _, coil in tokamak.coils:
                 coil_current += coil.inShape(self.polygon) * coil.current
 
             # plasma current
             plasma_current = 0
             if eq is not None:
-                for index, (R, Z) in enumerate(zip(eq.R.flatten(order = 'F'), eq.Z.flatten(order='F'))):
-                    gridpoint = Polygon([(R - eq.dR / 2,
-                                          Z + eq.dZ / 2), (
-                                             R + eq.dR / 2,
-                                             Z + eq.dZ / 2), (
-                                             R + eq.dR / 2,
-                                             Z - eq.dZ / 2), (
-                                             R - eq.dR / 2,
-                                             Z - eq.dZ / 2)])
+                for index, (R, Z) in enumerate(
+                    zip(eq.R.flatten(order="F"), eq.Z.flatten(order="F"))
+                ):
+                    gridpoint = Polygon(
+                        [
+                            (R - eq.dR / 2, Z + eq.dZ / 2),
+                            (R + eq.dR / 2, Z + eq.dZ / 2),
+                            (R + eq.dR / 2, Z - eq.dZ / 2),
+                            (R - eq.dR / 2, Z - eq.dZ / 2),
+                        ]
+                    )
 
-                    plasma_current += eq.Jtor.flatten(order='F')[index] \
-                                      * self.polygon.intersection(gridpoint).area
+                    plasma_current += (
+                        eq.Jtor.flatten(order="F")[index]
+                        * self.polygon.intersection(gridpoint).area
+                    )
 
             self.measurement = plasma_current + coil_current
 
     def plot(self, axis):
-        axis.plot(list(self.R) + [self.R[0]],
-                  list(self.Z) + [self.Z[0]], "b")
+        axis.plot([*list(self.R), self.R[0]], [*list(self.Z), self.Z[0]], "b")
 
 
 class PoloidalFieldSensor(Sensor):
@@ -569,12 +559,15 @@ class PoloidalFieldSensor(Sensor):
     Consists a single (R,Z) point, and an angle Theta
     At which the field is measured at
     """
+
     def __init__(self, R, Z, theta, name=None, weight=1, status=True, measurement=None):
-        Sensor.__init__(self, R, Z, name=name, weight=weight, status=status,measurement=measurement)
+        Sensor.__init__(
+            self, R, Z, name=name, weight=weight, status=status, measurement=measurement
+        )
         self.theta = theta
 
     def __repr__(self):
-        return "R={R}, Z={Z}, Theta={Theta}".format(R=self.R, Z=self.Z, Theta=self.theta)
+        return f"R={self.R}, Z={self.Z}, Theta={self.theta}"
 
     def get_measure(self, tokamak, eq):
         """
@@ -583,18 +576,20 @@ class PoloidalFieldSensor(Sensor):
         """
 
         if self.status:
-
-            field = (tokamak.Br(self.R, self.Z)) * np.cos(self.theta) + (tokamak.Bz(self.R, self.Z)) * np.sin(self.theta)
+            field = (tokamak.Br(self.R, self.Z)) * np.cos(self.theta) + (
+                tokamak.Bz(self.R, self.Z)
+            ) * np.sin(self.theta)
 
             if eq is not None:
-                field += (eq.plasmaBr(self.R, self.Z)) * np.cos(self.theta) + (eq.plasmaBz(self.R, self.Z)) * np.sin(self.theta)
+                field += (eq.plasmaBr(self.R, self.Z)) * np.cos(self.theta) + (
+                    eq.plasmaBz(self.R, self.Z)
+                ) * np.sin(self.theta)
 
             self.measurement = field
 
     def plot(self, axis):
-        axis.plot(self.R, self.Z, 'mo')
-        axis.arrow(self.R, self.Z, 0.1 * np.cos(self.theta),
-                   0.1 * np.sin(self.theta))
+        axis.plot(self.R, self.Z, "mo")
+        axis.arrow(self.R, self.Z, 0.1 * np.cos(self.theta), 0.1 * np.sin(self.theta))
 
 
 class FluxLoopSensor(Sensor):
@@ -603,25 +598,28 @@ class FluxLoopSensor(Sensor):
     Consists a single (R,Z) point, describing the position of the probe
     Contains a method to find the value of flux (psi) at the position
     """
+
     def __init__(self, R, Z, name=None, weight=1, status=True, measurement=None):
-        Sensor.__init__(self, R, Z, name=name, weight=weight, status=status, measurement=measurement)
+        Sensor.__init__(
+            self, R, Z, name=name, weight=weight, status=status, measurement=measurement
+        )
 
     def get_measure(self, tokamak, eq):
         """
-            Updates flux attribute with
-            poloidal flux at the point of measurement
-            if sensor is on
+        Updates flux attribute with
+        poloidal flux at the point of measurement
+        if sensor is on
         """
         if self.status:
             if eq is not None:
-                psi = eq.psiRZ(self.R,self.Z)
+                psi = eq.psiRZ(self.R, self.Z)
             else:
                 psi = tokamak.psi(self.R, self.Z)
 
             self.measurement = psi
 
     def plot(self, axis):
-        axis.plot(self.R, self.Z, 'ro')
+        axis.plot(self.R, self.Z, "ro")
 
 
 class Machine:
@@ -659,9 +657,7 @@ class Machine:
             )
 
     def __repr__(self):
-        return "Machine(coils={coils}, wall={wall})".format(
-            coils=self.coils, wall=self.wall
-        )
+        return f"Machine(coils={self.coils}, wall={self.wall})"
 
     def __eq__(self, other):
         # Other Machine might be equivalent except for order of
@@ -675,7 +671,7 @@ class Machine:
         for label, coil in self.coils:
             if label == name:
                 return coil
-        raise KeyError("Machine does not contain coil with label '{0}'".format(name))
+        raise KeyError(f"Machine does not contain coil with label '{name}'")
 
     def generate_limit_points(self, nlimit):
         """
@@ -704,7 +700,7 @@ class Machine:
         Poloidal flux due to coils
         """
         psi_coils = 0.0
-        for label, coil in self.coils:
+        for _, coil in self.coils:
             psi_coils += coil.psi(R, Z)
         return psi_coils
 
@@ -735,7 +731,7 @@ class Machine:
         Radial magnetic field at given points
         """
         Br = 0.0
-        for label, coil in self.coils:
+        for _, coil in self.coils:
             Br += coil.Br(R, Z)
 
         return Br
@@ -745,7 +741,7 @@ class Machine:
         Vertical magnetic field
         """
         Bz = 0.0
-        for label, coil in self.coils:
+        for _, coil in self.coils:
             Bz += coil.Bz(R, Z)
 
         return Bz
@@ -821,13 +817,21 @@ class Machine:
         self.takeMeasurements(eq=eq)
         for sensor in self.sensors:
             if sensor.name is not None:
-                print(sensor.name + ' '+ str(sensor) + ", Measurement=" + str(
-                    sensor.measurement))
+                print(
+                    sensor.name
+                    + " "
+                    + str(sensor)
+                    + ", Measurement="
+                    + str(sensor.measurement)
+                )
             else:
-                print(str(type(sensor)) + str(sensor) + " Measurement=" + str(
-                    sensor.measurement))
+                print(
+                    str(type(sensor))
+                    + str(sensor)
+                    + " Measurement="
+                    + str(sensor.measurement)
+                )
         print("==========================")
-        return
 
     def getForces(self, equilibrium=None):
         """
@@ -859,7 +863,7 @@ class Machine:
         """
         Plot the machine coils
         """
-        for label, coil in self.coils:
+        for _, coil in self.coils:
             axis = coil.plot(axis=axis, show=False)
         if show:
             import matplotlib.pyplot as plt
@@ -891,7 +895,8 @@ def TestTokamak():
     ]
 
     wall = Wall(
-        [0.75, 0.75, 1.5, 1.8, 1.8, 1.5], [-0.85, 0.85, 0.85, 0.25, -0.25, -0.85]  # R
+        [0.75, 0.75, 1.5, 1.8, 1.8, 1.5],
+        [-0.85, 0.85, 0.85, 0.25, -0.25, -0.85],  # R
     )  # Z
 
     return Machine(coils, wall)
@@ -913,7 +918,8 @@ def TestTokamakLimited():
     ]
 
     wall = Wall(
-        [0.93, 0.93, 1.5, 1.8, 1.8, 1.5], [-0.85, 0.85, 0.85, 0.25, -0.25, -0.85]  # R
+        [0.93, 0.93, 1.5, 1.8, 1.8, 1.5],
+        [-0.85, 0.85, 0.85, 0.25, -0.25, -0.85],  # R
     )  # Z
 
     return Machine(coils, wall)
@@ -927,32 +933,36 @@ def TestTokamakSensor():
     coils = [
         (
             "P1L",
-            ShapedCoil(
-                [(0.95, -1.15), (0.95, -1.05), (1.05, -1.05), (1.05, -1.15)]),
+            ShapedCoil([(0.95, -1.15), (0.95, -1.05), (1.05, -1.05), (1.05, -1.15)]),
         ),
-        ("P1U",
-         ShapedCoil([(0.95, 1.15), (0.95, 1.05), (1.05, 1.05), (1.05, 1.15)])),
+        ("P1U", ShapedCoil([(0.95, 1.15), (0.95, 1.05), (1.05, 1.05), (1.05, 1.15)])),
         ("P2L", Coil(1.75, -0.6)),
         ("P2U", Coil(1.75, 0.6)),
     ]
 
-    wall = Wall([0.75, 0.75, 1.5, 1.8, 1.8, 1.5],[-0.85, 0.85, 0.85, 0.25, -0.25, -0.85])
+    wall = Wall(
+        [0.75, 0.75, 1.5, 1.8, 1.8, 1.5], [-0.85, 0.85, 0.85, 0.25, -0.25, -0.85]
+    )
 
-    sensors = [RogowskiSensor([0.77, 0.77, 1.48, 1.78, 1.78, 1.48],
-                              [-0.83, 0.83, 0.83, 0.23, -0.23, -0.83], name='Rog1')
-        , PoloidalFieldSensor(1.8, 0.14, 2.2, name='BP1')
-        , PoloidalFieldSensor(1.8, -0.14, -2.2, name='BP2')
-        , PoloidalFieldSensor(1.7, 0.475, 2.2, name='BP3')
-        , PoloidalFieldSensor(1.7, -0.475, -2.2, name='BP4')
-        , PoloidalFieldSensor(1.5, 0.85, 2.2, name='BP5')
-        , PoloidalFieldSensor(1.5, -0.85, -2.2, name='BP6')
-        , FluxLoopSensor(1.8, 0.2, name='FL1')
-        , FluxLoopSensor(1.8, -0.2, name='FL2')
-        , FluxLoopSensor(1.65, 0.52, name='FL3')
-        , FluxLoopSensor(1.65, -0.52, name='FL4')
-        , FluxLoopSensor(1.1, 0.85, name='FL5')
-        , FluxLoopSensor(1.1, -0.85, name='FL6')
-               ]
+    sensors = [
+        RogowskiSensor(
+            [0.77, 0.77, 1.48, 1.78, 1.78, 1.48],
+            [-0.83, 0.83, 0.83, 0.23, -0.23, -0.83],
+            name="Rog1",
+        ),
+        PoloidalFieldSensor(1.8, 0.14, 2.2, name="BP1"),
+        PoloidalFieldSensor(1.8, -0.14, -2.2, name="BP2"),
+        PoloidalFieldSensor(1.7, 0.475, 2.2, name="BP3"),
+        PoloidalFieldSensor(1.7, -0.475, -2.2, name="BP4"),
+        PoloidalFieldSensor(1.5, 0.85, 2.2, name="BP5"),
+        PoloidalFieldSensor(1.5, -0.85, -2.2, name="BP6"),
+        FluxLoopSensor(1.8, 0.2, name="FL1"),
+        FluxLoopSensor(1.8, -0.2, name="FL2"),
+        FluxLoopSensor(1.65, 0.52, name="FL3"),
+        FluxLoopSensor(1.65, -0.52, name="FL4"),
+        FluxLoopSensor(1.1, 0.85, name="FL5"),
+        FluxLoopSensor(1.1, -0.85, name="FL6"),
+    ]
 
     return Machine(coils, wall, sensors)
 
@@ -962,64 +972,434 @@ def DIIID():
     PF coil set and boundary from g file and GA webpage
     """
     coils = [
-        ("FC1",ShapedCoil([[1.6042, -1.64455], [1.7736, -1.64455], [1.7736, -1.51145], [1.6042, -1.51145]])),
-        ("FC2",ShapedCoil([[0.8354, 0.00777], [0.8862, 0.00777], [0.8862, 0.32883], [0.8354, 0.32883]])),
-        ("FC3",ShapedCoil([[0.836, 0.34757], [0.8868, 0.34757], [0.8868, 0.66863], [0.836, 0.66863]])),
-        ("FC4",ShapedCoil([[0.8374, 0.68857], [0.8882, 0.68857], [0.8882, 1.00963], [0.8374, 1.00963]])),
-        ("FC5",ShapedCoil([[0.8357, 1.02937], [0.8865, 1.02937], [0.8865, 1.35043], [0.8357, 1.35043]])),
-        ("FC6",ShapedCoil([[0.9345, 1.3876], [1.0737, 1.5268], [1.0737, 1.6462], [0.9345, 1.507]])),
-        ("FC7",ShapedCoil([[2.5298, 0.3403], [2.703, 0.3403], [2.6949, 0.5349], [2.5217, 0.5349]])),
-        ("FC8",ShapedCoil([[2.5387, 1.0325], [2.7267, 1.0325], [2.2078, 1.2017], [2.0198, 1.2017]])),
-        ("FC9",ShapedCoil([[1.13435, 1.55935], [1.36925, 1.55935], [1.36925, 1.64445], [1.13435, 1.64445]])),
-        ("FC10",ShapedCoil([[1.6043, 1.52085], [1.7737, 1.52085], [1.7737, 1.65395], [1.6043, 1.65395]])),
-        ("FC11",ShapedCoil([[0.8354, -0.33423], [0.8862, -0.33423], [0.8862, -0.01317], [0.8354, -0.01317]])),
-        ("FC12",ShapedCoil([[0.8353, -0.67403], [0.8861, -0.67403], [0.8861, -0.35297], [0.8353, -0.35297]])),
-        ("FC13",ShapedCoil([[0.8357, -1.01483], [0.8865, -1.01483], [0.8865, -0.69377], [0.8357, -0.69377]])),
-        ("FC14",ShapedCoil([[0.8376, -1.35623], [0.8884, -1.35623], [0.8884, -1.03517], [0.8376, -1.03517]])),
-        ("FC15",ShapedCoil([[0.9329, -1.507], [1.0721, -1.6462], [1.0721, -1.5268], [0.9329, -1.3876]])),
-        ("FC16",ShapedCoil([[2.5217, -0.5349], [2.6949, -0.5349], [2.703, -0.3403], [2.5298, -0.3403]])),
-        ("FC17",ShapedCoil([[2.0299, -1.2017], [2.2179, -1.2017], [2.7368, -1.0325], [2.5488, -1.0325]])),
-        ("FC18",ShapedCoil([[1.13495, -1.64525], [1.36985, -1.64525], [1.36985, -1.56015], [1.13495, -1.56015]]))
+        (
+            "FC1",
+            ShapedCoil(
+                [
+                    [1.6042, -1.64455],
+                    [1.7736, -1.64455],
+                    [1.7736, -1.51145],
+                    [1.6042, -1.51145],
+                ]
+            ),
+        ),
+        (
+            "FC2",
+            ShapedCoil(
+                [
+                    [0.8354, 0.00777],
+                    [0.8862, 0.00777],
+                    [0.8862, 0.32883],
+                    [0.8354, 0.32883],
+                ]
+            ),
+        ),
+        (
+            "FC3",
+            ShapedCoil(
+                [
+                    [0.836, 0.34757],
+                    [0.8868, 0.34757],
+                    [0.8868, 0.66863],
+                    [0.836, 0.66863],
+                ]
+            ),
+        ),
+        (
+            "FC4",
+            ShapedCoil(
+                [
+                    [0.8374, 0.68857],
+                    [0.8882, 0.68857],
+                    [0.8882, 1.00963],
+                    [0.8374, 1.00963],
+                ]
+            ),
+        ),
+        (
+            "FC5",
+            ShapedCoil(
+                [
+                    [0.8357, 1.02937],
+                    [0.8865, 1.02937],
+                    [0.8865, 1.35043],
+                    [0.8357, 1.35043],
+                ]
+            ),
+        ),
+        (
+            "FC6",
+            ShapedCoil(
+                [[0.9345, 1.3876], [1.0737, 1.5268], [1.0737, 1.6462], [0.9345, 1.507]]
+            ),
+        ),
+        (
+            "FC7",
+            ShapedCoil(
+                [[2.5298, 0.3403], [2.703, 0.3403], [2.6949, 0.5349], [2.5217, 0.5349]]
+            ),
+        ),
+        (
+            "FC8",
+            ShapedCoil(
+                [[2.5387, 1.0325], [2.7267, 1.0325], [2.2078, 1.2017], [2.0198, 1.2017]]
+            ),
+        ),
+        (
+            "FC9",
+            ShapedCoil(
+                [
+                    [1.13435, 1.55935],
+                    [1.36925, 1.55935],
+                    [1.36925, 1.64445],
+                    [1.13435, 1.64445],
+                ]
+            ),
+        ),
+        (
+            "FC10",
+            ShapedCoil(
+                [
+                    [1.6043, 1.52085],
+                    [1.7737, 1.52085],
+                    [1.7737, 1.65395],
+                    [1.6043, 1.65395],
+                ]
+            ),
+        ),
+        (
+            "FC11",
+            ShapedCoil(
+                [
+                    [0.8354, -0.33423],
+                    [0.8862, -0.33423],
+                    [0.8862, -0.01317],
+                    [0.8354, -0.01317],
+                ]
+            ),
+        ),
+        (
+            "FC12",
+            ShapedCoil(
+                [
+                    [0.8353, -0.67403],
+                    [0.8861, -0.67403],
+                    [0.8861, -0.35297],
+                    [0.8353, -0.35297],
+                ]
+            ),
+        ),
+        (
+            "FC13",
+            ShapedCoil(
+                [
+                    [0.8357, -1.01483],
+                    [0.8865, -1.01483],
+                    [0.8865, -0.69377],
+                    [0.8357, -0.69377],
+                ]
+            ),
+        ),
+        (
+            "FC14",
+            ShapedCoil(
+                [
+                    [0.8376, -1.35623],
+                    [0.8884, -1.35623],
+                    [0.8884, -1.03517],
+                    [0.8376, -1.03517],
+                ]
+            ),
+        ),
+        (
+            "FC15",
+            ShapedCoil(
+                [
+                    [0.9329, -1.507],
+                    [1.0721, -1.6462],
+                    [1.0721, -1.5268],
+                    [0.9329, -1.3876],
+                ]
+            ),
+        ),
+        (
+            "FC16",
+            ShapedCoil(
+                [
+                    [2.5217, -0.5349],
+                    [2.6949, -0.5349],
+                    [2.703, -0.3403],
+                    [2.5298, -0.3403],
+                ]
+            ),
+        ),
+        (
+            "FC17",
+            ShapedCoil(
+                [
+                    [2.0299, -1.2017],
+                    [2.2179, -1.2017],
+                    [2.7368, -1.0325],
+                    [2.5488, -1.0325],
+                ]
+            ),
+        ),
+        (
+            "FC18",
+            ShapedCoil(
+                [
+                    [1.13495, -1.64525],
+                    [1.36985, -1.64525],
+                    [1.36985, -1.56015],
+                    [1.13495, -1.56015],
+                ]
+            ),
+        ),
     ]
 
-    R = np.array([1.016,1.016,1.016,1.016,1.016,1.016,1.016,1.016,1.016,
-        1.016,1.016,1.012,1.001,1.029,1.042,1.046,1.056,1.097,
-        1.108,1.116,1.134,1.148,1.162,1.181,1.182,1.185,1.19,
-        1.195,1.201,1.209,1.215,1.222,1.228,1.234,1.239,1.242,
-        1.248,1.258,1.263,1.28,1.28,1.28,1.31,1.328,1.361,
-        1.38,1.419,1.419,1.372,1.37167,1.37003,1.36688,1.36719,1.37178,
-        1.37224,1.38662,1.38708,1.40382,1.41127,1.41857,1.421,1.48663,1.4973,
-        1.49762,1.49745,1.49275,1.4926,1.49261,1.49279,1.4934,1.4947,1.49622,
-        1.47981,1.48082,1.48149,1.48646,1.49095,1.50305,1.59697,1.6255,1.63752,
-        1.647,1.785,2.07,2.128,2.245,2.33956,2.34708,2.34913,2.35103,
-        2.35158,2.35125,2.35051,2.34965,2.3487,2.3476,2.3402,2.32942,2.134,
-        1.786,1.768,1.768,1.682,1.372,1.372,1.42,1.42,1.273,
-        1.153,1.016,1.016,1.016,1.016,1.016,1.016,1.016,1.016])
-    Z = np.array([ 0.00000e+00,9.64000e-01,9.68000e-01,1.00100e+00,1.01900e+00,
-        1.07700e+00,1.07000e+00,1.09600e+00,1.11300e+00,1.13800e+00,
-        1.14700e+00,1.16500e+00,1.21700e+00,1.21700e+00,1.16240e+00,
-        1.16238e+00,1.16260e+00,1.16450e+00,1.16594e+00,1.16591e+00,
-        1.16896e+00,1.17175e+00,1.17556e+00,1.18300e+00,1.18350e+00,
-        1.18500e+00,1.18800e+00,1.19100e+00,1.19600e+00,1.20200e+00,
-        1.20800e+00,1.21400e+00,1.22100e+00,1.23100e+00,1.23800e+00,
-        1.24400e+00,1.25400e+00,1.27800e+00,1.29000e+00,1.33100e+00,
-        1.34700e+00,1.34800e+00,1.34800e+00,1.34800e+00,1.34800e+00,
-        1.34800e+00,1.34800e+00,1.31000e+00,1.31000e+00,1.29238e+00,
-        1.28268e+00,1.25644e+00,1.22955e+00,1.19576e+00,1.19402e+00,
-        1.16487e+00,1.16421e+00,1.15696e+00,1.15730e+00,1.16132e+00,
-        1.16400e+00,1.24050e+00,1.23458e+00,1.23428e+00,1.23174e+00,
-        1.21330e+00,1.21061e+00,1.20486e+00,1.20214e+00,1.19642e+00,
-        1.18511e+00,1.16070e+00,1.12426e+00,1.12256e+00,1.12138e+00,
-        1.11692e+00,1.11439e+00,1.11244e+00,1.09489e+00,1.08530e+00,
-        1.07988e+00,1.07700e+00,1.07700e+00,1.04000e+00,9.93000e-01,
-        7.09000e-01,4.61430e-01,4.15830e-01,2.72180e-01,1.70180e-01,
-        7.01200e-02, -3.17900e-02, -1.44350e-01, -2.14830e-01, -3.26690e-01,
-        -3.86770e-01, -4.53040e-01, -4.77570e-01, -9.73000e-01, -1.17400e+00,
-        -1.21100e+00, -1.25000e+00, -1.25000e+00, -1.25000e+00, -1.32900e+00,
-        -1.32900e+00, -1.36300e+00, -1.36300e+00, -1.36300e+00, -1.22300e+00,
-        -1.22300e+00, -8.30000e-01, -8.00000e-01, -4.15000e-01, -4.00000e-01,
-        -1.00000e-03,0.00000e+00])
-    wall = Wall(R,Z)
+    R = np.array(
+        [
+            1.016,
+            1.016,
+            1.016,
+            1.016,
+            1.016,
+            1.016,
+            1.016,
+            1.016,
+            1.016,
+            1.016,
+            1.016,
+            1.012,
+            1.001,
+            1.029,
+            1.042,
+            1.046,
+            1.056,
+            1.097,
+            1.108,
+            1.116,
+            1.134,
+            1.148,
+            1.162,
+            1.181,
+            1.182,
+            1.185,
+            1.19,
+            1.195,
+            1.201,
+            1.209,
+            1.215,
+            1.222,
+            1.228,
+            1.234,
+            1.239,
+            1.242,
+            1.248,
+            1.258,
+            1.263,
+            1.28,
+            1.28,
+            1.28,
+            1.31,
+            1.328,
+            1.361,
+            1.38,
+            1.419,
+            1.419,
+            1.372,
+            1.37167,
+            1.37003,
+            1.36688,
+            1.36719,
+            1.37178,
+            1.37224,
+            1.38662,
+            1.38708,
+            1.40382,
+            1.41127,
+            1.41857,
+            1.421,
+            1.48663,
+            1.4973,
+            1.49762,
+            1.49745,
+            1.49275,
+            1.4926,
+            1.49261,
+            1.49279,
+            1.4934,
+            1.4947,
+            1.49622,
+            1.47981,
+            1.48082,
+            1.48149,
+            1.48646,
+            1.49095,
+            1.50305,
+            1.59697,
+            1.6255,
+            1.63752,
+            1.647,
+            1.785,
+            2.07,
+            2.128,
+            2.245,
+            2.33956,
+            2.34708,
+            2.34913,
+            2.35103,
+            2.35158,
+            2.35125,
+            2.35051,
+            2.34965,
+            2.3487,
+            2.3476,
+            2.3402,
+            2.32942,
+            2.134,
+            1.786,
+            1.768,
+            1.768,
+            1.682,
+            1.372,
+            1.372,
+            1.42,
+            1.42,
+            1.273,
+            1.153,
+            1.016,
+            1.016,
+            1.016,
+            1.016,
+            1.016,
+            1.016,
+            1.016,
+            1.016,
+        ]
+    )
+    Z = np.array(
+        [
+            0.00000e00,
+            9.64000e-01,
+            9.68000e-01,
+            1.00100e00,
+            1.01900e00,
+            1.07700e00,
+            1.07000e00,
+            1.09600e00,
+            1.11300e00,
+            1.13800e00,
+            1.14700e00,
+            1.16500e00,
+            1.21700e00,
+            1.21700e00,
+            1.16240e00,
+            1.16238e00,
+            1.16260e00,
+            1.16450e00,
+            1.16594e00,
+            1.16591e00,
+            1.16896e00,
+            1.17175e00,
+            1.17556e00,
+            1.18300e00,
+            1.18350e00,
+            1.18500e00,
+            1.18800e00,
+            1.19100e00,
+            1.19600e00,
+            1.20200e00,
+            1.20800e00,
+            1.21400e00,
+            1.22100e00,
+            1.23100e00,
+            1.23800e00,
+            1.24400e00,
+            1.25400e00,
+            1.27800e00,
+            1.29000e00,
+            1.33100e00,
+            1.34700e00,
+            1.34800e00,
+            1.34800e00,
+            1.34800e00,
+            1.34800e00,
+            1.34800e00,
+            1.34800e00,
+            1.31000e00,
+            1.31000e00,
+            1.29238e00,
+            1.28268e00,
+            1.25644e00,
+            1.22955e00,
+            1.19576e00,
+            1.19402e00,
+            1.16487e00,
+            1.16421e00,
+            1.15696e00,
+            1.15730e00,
+            1.16132e00,
+            1.16400e00,
+            1.24050e00,
+            1.23458e00,
+            1.23428e00,
+            1.23174e00,
+            1.21330e00,
+            1.21061e00,
+            1.20486e00,
+            1.20214e00,
+            1.19642e00,
+            1.18511e00,
+            1.16070e00,
+            1.12426e00,
+            1.12256e00,
+            1.12138e00,
+            1.11692e00,
+            1.11439e00,
+            1.11244e00,
+            1.09489e00,
+            1.08530e00,
+            1.07988e00,
+            1.07700e00,
+            1.07700e00,
+            1.04000e00,
+            9.93000e-01,
+            7.09000e-01,
+            4.61430e-01,
+            4.15830e-01,
+            2.72180e-01,
+            1.70180e-01,
+            7.01200e-02,
+            -3.17900e-02,
+            -1.44350e-01,
+            -2.14830e-01,
+            -3.26690e-01,
+            -3.86770e-01,
+            -4.53040e-01,
+            -4.77570e-01,
+            -9.73000e-01,
+            -1.17400e00,
+            -1.21100e00,
+            -1.25000e00,
+            -1.25000e00,
+            -1.25000e00,
+            -1.32900e00,
+            -1.32900e00,
+            -1.36300e00,
+            -1.36300e00,
+            -1.36300e00,
+            -1.22300e00,
+            -1.22300e00,
+            -8.30000e-01,
+            -8.00000e-01,
+            -4.15000e-01,
+            -4.00000e-01,
+            -1.00000e-03,
+            0.00000e00,
+        ]
+    )
+    wall = Wall(R, Z)
 
     # Note: Using same R0 convention as EFIT on DIII-D.
     return Machine(coils, wall=wall, R0=1.6995)

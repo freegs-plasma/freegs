@@ -24,11 +24,13 @@ You should have received a copy of the GNU Lesser General Public License
 along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-from .gradshafranov import Greens, GreensBr, GreensBz, mu0
-import numpy as np
 import numbers
-from shapely.geometry import Point
 import warnings
+
+import numpy as np
+from shapely.geometry import Point
+
+from .gradshafranov import Greens, GreensBr, GreensBz, mu0
 
 
 class AreaCurrentLimit:
@@ -73,11 +75,11 @@ class Coil:
     # A dtype for converting to Numpy array and storing in HDF5 files
     dtype = np.dtype(
         [
-            (str("R"), np.float64),
-            (str("Z"), np.float64),
-            (str("current"), np.float64),
-            (str("turns"), int),
-            (str("control"), bool),
+            ("R", np.float64),
+            ("Z", np.float64),
+            ("current", np.float64),
+            ("turns", int),
+            ("control", bool),
         ]
     )
 
@@ -194,7 +196,7 @@ class Coil:
         # Force per unit length.
         # In cgs units f = I^2/(c^2 * R) * (ln(8*R/a) - 1 + xi/2)
         # In SI units f = mu0 * I^2 / (4*pi*R) * (ln(8*R/a) - 1 + xi/2)
-        self_fr = (mu0 * total_current ** 2 / (4.0 * np.pi * self.R)) * (
+        self_fr = (mu0 * total_current**2 / (4.0 * np.pi * self.R)) * (
             np.log(8.0 * self.R / minor_radius) - 1 + self_inductance / 2.0
         )
 
@@ -210,13 +212,10 @@ class Coil:
     def inShape(self, polygon):
         if polygon.contains(Point(self.R, self.Z)):
             return 1
-        else:
-            return 0
+        return 0
 
     def __repr__(self):
-        return "Coil(R={0}, Z={1}, current={2:.1f}, turns={3}, control={4})".format(
-            self.R, self.Z, self.current, self.turns, self.control
-        )
+        return f"Coil(R={self.R}, Z={self.Z}, current={self.current:.1f}, turns={self.turns}, control={self.control})"
 
     def __eq__(self, other):
         return (
@@ -242,9 +241,7 @@ class Coil:
     def from_numpy_array(cls, value):
         if value.dtype != cls.dtype:
             raise ValueError(
-                "Can't create {this} from dtype: {got} (expected: {dtype})".format(
-                    this=type(cls), got=value.dtype, dtype=cls.dtype
-                )
+                f"Can't create {type(cls)} from dtype: {value.dtype} (expected: {cls.dtype})"
             )
         return Coil(*value[()])
 
@@ -255,12 +252,12 @@ class Coil:
         """
         if isinstance(self._area, numbers.Number):
             if not self._area > 0:
-                warnings.warn(f"Coil area {self._area:3.2f} <= 0")
+                warnings.warn(f"Coil area {self._area:3.2f} <= 0", stacklevel=2)
             return self._area
         # Calculate using functor
         area = self._area(self)
         if not area > 0:
-            warnings.warn(f"Coil area {area:3.2f} <= 0")
+            warnings.warn(f"Coil area {area:3.2f} <= 0", stacklevel=2)
         return area
 
     @area.setter

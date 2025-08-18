@@ -1,5 +1,6 @@
-from . import optimise
 import numpy as np
+
+from . import optimise
 
 
 class DummyCoil:

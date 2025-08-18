@@ -20,10 +20,10 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 
 """
 
-from .gradshafranov import Greens
 from numpy import concatenate, sqrt
-
 from scipy.integrate import romb  # Romberg integration
+
+from .gradshafranov import Greens
 
 
 def fixedBoundary(eq, Jtor, psi):
@@ -159,7 +159,7 @@ def freeBoundaryHagenow(eq, Jtor, psi):
         sum([weight * psi_fixed[:, -(1 + index)] for index, weight in coeffs]) / dZ
     )  # Upper boundary
 
-    dd = sqrt(dR ** 2 + dZ ** 2)  # Diagonal spacing
+    dd = sqrt(dR**2 + dZ**2)  # Diagonal spacing
 
     # Left down corner
     dUdn_L[0] = dUdn_D[0] = (
@@ -193,21 +193,15 @@ def freeBoundaryHagenow(eq, Jtor, psi):
     # where change in R,Z puts the observation point outside the boundary
     # to avoid the singularity in G(R,R') when R'=R
 
-    bndry_indices = concatenate(
-        [
-            [(x, 0, 0.0, -eps) for x in range(nx)],  # Down boundary
-            [(x, ny - 1, 0.0, eps) for x in range(nx)],  # Upper boundary
-            [(0, y, -eps, 0.0) for y in range(ny)],  # Left boundary
-            [(nx - 1, y, eps, 0.0) for y in range(ny)],
-        ]
-    )  # Right boundary
+    bndry_indices = [
+        *[(x, 0, 0.0, -eps) for x in range(nx)],  # Down boundary
+        *[(x, ny - 1, 0.0, eps) for x in range(nx)],  # Upper boundary
+        *[(0, y, -eps, 0.0) for y in range(ny)],  # Left boundary
+        *[(nx - 1, y, eps, 0.0) for y in range(ny)],  # Right boundary
+    ]
 
     # Loop through points on boundary
     for x, y, Reps, Zeps in bndry_indices:
-        # x and y can be floats here (Python 3.6.4)
-        x = int(round(x))
-        y = int(round(y))
-
         Rpos = R[x, y] + Reps
         Zpos = Z[x, y] + Zeps
 

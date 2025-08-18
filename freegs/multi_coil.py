@@ -23,7 +23,8 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import numpy as np
-from .coil import Coil, AreaCurrentLimit
+
+from .coil import AreaCurrentLimit, Coil
 from .gradshafranov import Greens, GreensBr, GreensBz
 
 
@@ -67,14 +68,14 @@ class MultiCoil(Coil):
     # A dtype for converting to Numpy array and storing in HDF5 files
     dtype = np.dtype(
         [
-            (str("RZlen"), int),  # Length of R and Z arrays
-            (str("R"), "500f8"),  # Up to 100 points
-            (str("Z"), "500f8"),
-            (str("current"), np.float64),
-            (str("turns"), int),
-            (str("control"), bool),
-            (str("mirror"), bool),
-            (str("polarity"), "2f8"),
+            ("RZlen", int),  # Length of R and Z arrays
+            ("R", "500f8"),  # Up to 100 points
+            ("Z", "500f8"),
+            ("current", np.float64),
+            ("turns", int),
+            ("control", bool),
+            ("mirror", bool),
+            ("polarity", "2f8"),
         ]
     )
 
@@ -86,7 +87,7 @@ class MultiCoil(Coil):
         turns=1,
         control=True,
         mirror=False,
-        polarity=[1.0, 1.0],
+        polarity=None,
         area=AreaCurrentLimit(),
     ):
         """
@@ -124,6 +125,8 @@ class MultiCoil(Coil):
 
         """
         # Store locations as an internal list
+        if polarity is None:
+            polarity = [1.0, 1.0]
         if hasattr(R, "__len__"):
             assert len(R) == len(Z)
             self.Rfil = R
@@ -186,14 +189,9 @@ class MultiCoil(Coil):
         return result
 
     def __repr__(self):
-        return "MultiCoil(R={0}, Z={1}, current={2:.1f}, turns={3}, control={4}, mirror={5}, polarity={6})".format(
-            self.Rfil,
-            self.Zfil,
-            self.current,
-            self.turns,
-            self.control,
-            self.mirror,
-            self.polarity,
+        return (
+            f"MultiCoil(R={self.Rfil}, Z={self.Zfil}, current={self.current:.1f}, "
+            f"turns={self.turns}, control={self.control}, mirror={self.mirror}, polarity={self.polarity})"
         )
 
     def __eq__(self, other):
@@ -238,9 +236,7 @@ class MultiCoil(Coil):
     def from_numpy_array(cls, value):
         if value.dtype != cls.dtype:
             raise ValueError(
-                "Can't create {this} from dtype: {got} (expected: {dtype})".format(
-                    this=type(cls), got=value.dtype, dtype=cls.dtype
-                )
+                f"Can't create {type(cls)} from dtype: {value.dtype} (expected: {cls.dtype})"
             )
         RZlen = value["RZlen"]
         R = value["R"][:RZlen]

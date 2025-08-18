@@ -11,7 +11,7 @@ Free boundary Grad-Shafranov solver
 License
 -------
 
-Copyright 2016-2021 Ben Dudson, University of York and other contributors. 
+Copyright 2016-2021 Ben Dudson, University of York and other contributors.
 Email: benjamin.dudson@york.ac.uk
 
 FreeGS is free software: you can redistribute it and/or modify
@@ -31,19 +31,19 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 
 from importlib.metadata import metadata
 
+from . import control, jtor, machine, plotting
+from .dump import OutputFile
 from .equilibrium import Equilibrium
-
-from . import jtor
-
-from . import machine
-
-from . import control
-
 from .picard import solve
 
-from .dump import OutputFile
-
-from . import plotting
-
-
 __version__ = metadata(__package__)["Version"]
+
+__all__ = [
+    "Equilibrium",
+    "OutputFile",
+    "control",
+    "jtor",
+    "machine",
+    "plotting",
+    "solve",
+]

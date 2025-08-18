@@ -1,6 +1,6 @@
-from . import optimiser
-
 import numpy as np
+
+from . import optimiser
 
 # Tests and example of solving optimisation problem
 #
@@ -89,8 +89,8 @@ def test_pick_all():
     vals = optimiser.pickUnique(10, 10, [])
     # Should be a scrambled list of [0...10]
 
-    assert vals != list(range(0, 10))  # Probably not sorted
-    assert sorted(vals) == list(range(0, 10))
+    assert vals != list(range(10))  # Probably not sorted
+    assert sorted(vals) == list(range(10))
 
 
 def test_pick_different():
@@ -100,7 +100,7 @@ def test_pick_different():
 
 
 def test_pick_excludes():
-    for i in range(20):
+    for _i in range(20):
         vals = optimiser.pickUnique(10, 3, [1, 8])
         assert 1 not in vals
         assert 8 not in vals
@@ -147,7 +147,7 @@ if __name__ == "__main__":
         best_point = axis.scatter([best[1][0]], [best[1][1]], c="red")
 
         axis.figure.canvas.draw()
-        axis.set_title("Generation: {}, Best score: {}".format(generation, best[0]))
+        axis.set_title(f"Generation: {generation}, Best score: {best[0]}")
         plt.pause(0.5)
 
     result = optimiser.optimise(

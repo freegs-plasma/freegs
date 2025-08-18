@@ -4,14 +4,13 @@ Plasma control system
 Use constraints to adjust coil currents
 """
 
-from numpy import dot, transpose, eye, array, inf
-from numpy.linalg import inv, norm
 import numpy as np
+from numpy import array, dot, eye, inf, transpose
+from numpy.linalg import inv, norm
 from scipy import optimize
-from . import critical
 
 
-class constrain(object):
+class constrain:
     """
     Adjust coil currents using constraints. To use this class,
     first create an instance by specifying the constraints
@@ -48,16 +47,22 @@ class constrain(object):
 
     def __init__(
         self,
-        xpoints=[],
+        xpoints=None,
         gamma=1e-12,
-        isoflux=[],
-        psivals=[],
+        isoflux=None,
+        psivals=None,
         current_lims=None,
         max_total_current=None,
     ):
         """
         Create an instance, specifying the constraints to apply
         """
+        if psivals is None:
+            psivals = []
+        if isoflux is None:
+            isoflux = []
+        if xpoints is None:
+            xpoints = []
         self.xpoints = xpoints
         self.gamma = gamma
         self.isoflux = isoflux
@@ -130,7 +135,7 @@ class constrain(object):
 
         # Calculate the change in coil current
         self.current_change = dot(
-            inv(dot(transpose(A), A) + self.gamma ** 2 * eye(ncontrols)),
+            inv(dot(transpose(A), A) + self.gamma**2 * eye(ncontrols)),
             dot(transpose(A), b),
         )
 
@@ -145,8 +150,10 @@ class constrain(object):
             for i in range(ncontrols):
                 current_change_bounds.append((-inf, inf))
         else:
-            assert len(self.current_lims) == len(tokamak.coils), \
-                f"Should provide current limits for all coils. Provided {len(self.current_lims)} limits for {len(tokamak.coils)} coils."
+            assert len(self.current_lims) == len(tokamak.coils), (
+                "Should provide current limits for all coils. "
+                f"Provided {len(self.current_lims)} limits for {len(tokamak.coils)} coils."
+            )
             for i, (_, coil) in enumerate(tokamak.coils):
                 if coil.control:
                     lower_lim = self.current_lims[i][0] - coil.current
@@ -181,7 +188,11 @@ class constrain(object):
         if self.current_change.shape[0] > 0:
             x0 = self.current_change
             sol = optimize.minimize(
-                objective, x0, method="SLSQP", bounds=current_change_bnds, constraints=cons
+                objective,
+                x0,
+                method="SLSQP",
+                bounds=current_change_bnds,
+                constraints=cons,
             )
 
             self.current_change = sol.x
@@ -206,7 +217,7 @@ class constrain(object):
         return plotConstraints(self, axis=axis, show=show)
 
 
-class ConstrainPsi2D(object):
+class ConstrainPsi2D:
     """
     Adjusts coil currents to minimise the square differences
     between psi[R,Z] and a target psi.
@@ -263,7 +274,7 @@ class ConstrainPsi2D(object):
         ).ravel()  # flatten array
 
 
-class ConstrainPsiNorm2D(object):
+class ConstrainPsiNorm2D:
     """
     Adjusts coil currents to minimise the square differences
     between normalised psi[R,Z] and a target normalised psi.
@@ -322,7 +333,7 @@ class ConstrainPsiNorm2D(object):
         ).ravel()  # flatten array
 
 
-class ConstrainPsi2DAdvanced(object):
+class ConstrainPsi2DAdvanced:
     """
     Adjusts coil currents to minimise the square differences
     between psi[R,Z] and a target psi.
@@ -414,12 +425,10 @@ class ConstrainPsi2DAdvanced(object):
 
         psi_av = np.average(psi, weights=self.weights)
         diff = (psi - psi_av - self.target_psi) * self.weights
-        sum_square_diff = np.sum(diff * diff)
-
-        return sum_square_diff
+        return np.sum(diff * diff)
 
 
-class ConstrainPsiNorm2DAdvanced(object):
+class ConstrainPsiNorm2DAdvanced:
     """
     Adjusts coil currents to minimise the square differences
     between normalised psi[R,Z] and a target normalised psi.
@@ -515,6 +524,4 @@ class ConstrainPsiNorm2DAdvanced(object):
         # 1 = plasma boundary
         psi_norm = (psi - psi_axis) / (psi_bndry - psi_axis)
         diff = (psi_norm - self.target_psinorm) * self.weights
-        sum_square_diff = np.sum(diff * diff)
-
-        return sum_square_diff
+        return np.sum(diff * diff)

@@ -23,29 +23,25 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 
 """
 
-from . import critical
-from .equilibrium import Equilibrium
-from .machine import Wall
-from . import jtor
-from . import control
-from . import picard
-from .gradshafranov import mu0
-
-
-from freeqdsk import geqdsk
-from scipy import interpolate
-from numpy import (
-    linspace,
-    reshape,
-    ravel,
-    zeros,
-    clip,
-)
 import math
-import numpy as np
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
+import numpy as np
+from freeqdsk import geqdsk
+from numpy import (
+    clip,
+    linspace,
+    ravel,
+    reshape,
+    zeros,
+)
+from scipy import interpolate
 from scipy.integrate import romb
+
+from . import control, critical, jtor, picard
+from .equilibrium import Equilibrium
+from .gradshafranov import mu0
+from .machine import Wall
 
 if TYPE_CHECKING:
     import matplotlib.pyplot as plt
@@ -164,17 +160,17 @@ def ceilPow2(val):
 def read(
     fh,
     machine,
-    rtol: float=1e-3,
-    ntheta: int=8,
-    show: bool=False,
-    axis: Optional["plt.Axes"] =None,
-    pause: float=0.0001,
-    cocos: int=1,
-    domain: Optional[list]=None,
-    blend: float=0.0,
-    fit_sol: bool=False,
-    maxits: int=50,
-    current_bounds: Optional[list]=None,
+    rtol: float = 1e-3,
+    ntheta: int = 8,
+    show: bool = False,
+    axis: Optional["plt.Axes"] = None,
+    pause: float = 0.0001,
+    cocos: int = 1,
+    domain: list | None = None,
+    blend: float = 0.0,
+    fit_sol: bool = False,
+    maxits: int = 50,
+    current_bounds: list | None = None,
 ) -> Equilibrium:
     """
     Reads a G-EQDSK format file
@@ -258,9 +254,7 @@ def read(
     psi = data["psi"]
 
     if not (isPow2(nx - 1) and isPow2(ny - 1)):
-        print(
-            "Warning: Input grid size %d x %d has sizes which are not 2^n+1" % (nx, ny)
-        )
+        print(f"Warning: Input grid size {nx} x {ny} has sizes which are not 2^n+1")
 
         rin = linspace(0, 1, nx)
         zin = linspace(0, 1, ny)
@@ -269,7 +263,7 @@ def read(
         # Ensure that newnx, newny is 2^n + 1
         nx = ceilPow2(nx - 1) + 1
         ny = ceilPow2(ny - 1) + 1
-        print("   => Resizing to %d x %d" % (nx, ny))
+        print(f"   => Resizing to {nx} x {ny}")
 
         rnew = linspace(0, 1, nx)
         znew = linspace(0, 1, ny)
@@ -380,7 +374,7 @@ def read(
             newny = int(ceilPow2(fnewny - 1)) + 1
 
         if (newnx != nx) or (newny != ny):
-            print("Changing resolution: {} x {}".format(newnx, newny))
+            print(f"Changing resolution: {newnx} x {newny}")
 
         # Create an interpolation function for Jtor and the input psi
         Jtor_func = interpolate.RectBivariateSpline(eq.R[:, 0], eq.Z[0, :], Jtor)
@@ -424,7 +418,7 @@ def read(
     eq.solve(profiles, Jtor=Jtor)
 
     print(
-        "Plasma current: {0} Amps, input: {1} Amps".format(
+        "Plasma current: {} Amps, input: {} Amps".format(
             eq.plasmaCurrent(), data["cpasma"]
         )
     )
@@ -463,14 +457,13 @@ def read(
             )
         else:
             controlsystem = control.ConstrainPsi2D(psi)
+    # Remove SOL from fitting
+    elif current_bounds is not None:
+        controlsystem = control.ConstrainPsi2DAdvanced(
+            psi, weights=mask, current_lims=current_bounds
+        )
     else:
-        # Remove SOL from fitting
-        if current_bounds is not None:
-            controlsystem = control.ConstrainPsi2DAdvanced(
-                psi, weights=mask, current_lims=current_bounds
-            )
-        else:
-            controlsystem = control.ConstrainPsi2D(psi, weights=mask)
+        controlsystem = control.ConstrainPsi2D(psi, weights=mask)
 
     # Run control system to find coil currents
     controlsystem(eq)
@@ -508,11 +501,11 @@ def read(
     )
 
     print(
-        "Plasma current: {0} Amps, input: {1} Amps".format(
+        "Plasma current: {} Amps, input: {} Amps".format(
             eq.plasmaCurrent(), data["cpasma"]
         )
     )
-    print("Plasma pressure on axis: {0} Pascals".format(eq.pressure(0.0)))
+    print(f"Plasma pressure on axis: {eq.pressure(0.0)} Pascals")
     machine.printCurrents()
 
     # Attempt to find O- and X-points

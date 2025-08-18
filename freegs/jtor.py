@@ -18,13 +18,15 @@ GNU Lesser General Public License for more details.
 You should have received a copy of the GNU Lesser General Public License
 along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 """
-from scipy.integrate import romb, quad  # Romberg integration
+
+import abc
+
+import numpy as np
+from numpy import clip, reshape, sqrt, zeros
+from scipy.integrate import quad, romb  # Romberg integration
+
 from . import critical
 from .gradshafranov import mu0
-
-from numpy import clip, zeros, reshape, sqrt
-import numpy as np
-import abc
 
 
 class Profile(abc.ABC):
@@ -118,22 +120,18 @@ class Profile(abc.ABC):
         self, R: np.ndarray, Z: np.ndarray, psi: np.ndarray, psi_bndry=None
     ) -> np.ndarray:
         """Return a numpy array of toroidal current density [J/m^2]"""
-        pass
 
     @abc.abstractmethod
     def pprime(self, psinorm: float) -> float:
         """Return p' at the given normalised psi"""
-        pass
 
     @abc.abstractmethod
     def ffprime(self, psinorm: float) -> float:
         """Return ff' at the given normalised psi"""
-        pass
 
     @abc.abstractmethod
     def fvac(self) -> float:
         """Return f = R*Bt in vacuum"""
-        pass
 
 
 class ConstrainBetapIp(Profile):
@@ -268,7 +266,7 @@ class ConstrainBetapIp(Profile):
         L = self.Ip / I_R - LBeta0 * (IR / I_R - 1)
         Beta0 = LBeta0 / L
 
-        # print("Constraints: L = %e, Beta0 = %e" % (L, Beta0))
+        # print("Constraints: L = {:e}, Beta0 = {:e}".format(L, Beta0))
 
         # Toroidal current
         Jtor = L * (Beta0 * R / self.Raxis + (1 - Beta0) * self.Raxis / R) * jtorshape
@@ -405,7 +403,7 @@ class ConstrainPaxisIp(Profile):
         L = self.Ip / I_R - LBeta0 * (IR / I_R - 1)
         Beta0 = LBeta0 / L
 
-        # print("Constraints: L = %e, Beta0 = %e" % (L, Beta0))
+        # print("Constraints: L = {:e}, Beta0 = {:e}".format(L, Beta0))
 
         # Toroidal current
         Jtor = L * (Beta0 * R / self.Raxis + (1 - Beta0) * self.Raxis / R) * jtorshape
@@ -508,7 +506,7 @@ class ProfilesPprimeFfprime(Profile):
             return self.p_func(psinorm)
 
         # If not, use base class to integrate
-        return super(ProfilesPprimeFfprime, self).pressure(psinorm, out)
+        return super().pressure(psinorm, out)
 
     def fpol(self, psinorm, out=None):
         """
@@ -520,7 +518,7 @@ class ProfilesPprimeFfprime(Profile):
             return self.f_func(psinorm)
 
         # If not, use base class to integrate
-        return super(ProfilesPprimeFfprime, self).fpol(psinorm, out)
+        return super().fpol(psinorm, out)
 
     def fvac(self):
         return self._fvac

@@ -1,15 +1,14 @@
 # Field line tracing
 
-from builtins import object
 
 import numpy as np
-from scipy.integrate import odeint
 from scipy import interpolate
+from scipy.integrate import odeint
 
 from . import critical
 
 
-class FieldTracer(object):
+class FieldTracer:
     """A class for following magnetic field lines"""
 
     def __init__(self, eq):
@@ -34,8 +33,8 @@ class FieldTracer(object):
 
         evolving[
             np.logical_or(
-                np.logical_or((R < self._eq.Rmin + eps), (R > self._eq.Rmax - eps)),
-                np.logical_or((Z < self._eq.Zmin + eps), (Z > self._eq.Zmax - eps)),
+                np.logical_or((self._eq.Rmin + eps > R), (self._eq.Rmax - eps < R)),
+                np.logical_or((self._eq.Zmin + eps > Z), (self._eq.Zmax - eps < Z)),
             )
         ] = 0.0
         return evolving
@@ -102,7 +101,7 @@ class FieldTracer(object):
         Bz = self._eq.Bz(R, Z)
         Btor = self._eq.Btor(R, Z)
 
-        B = np.sqrt(Br ** 2 + Bz ** 2 + Btor ** 2)
+        B = np.sqrt(Br**2 + Bz**2 + Btor**2)
 
         # Detect when the boundary has been reached
         self.updateEvolving(R, Z, evolving)

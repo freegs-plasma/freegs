@@ -1,14 +1,14 @@
-import freegs
-
 import io
+
 from numpy import allclose
+
+import freegs
 
 
 def test_readwrite():
     """Test reading/writing to a file round-trip"""
 
     for tokamak in [freegs.machine.TestTokamak(), freegs.machine.MAST_sym()]:
-
         eq = freegs.Equilibrium(
             tokamak=tokamak,
             Rmin=0.1,

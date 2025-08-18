@@ -20,27 +20,27 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 
 """
 
+from warnings import warn
 
-from scipy import interpolate
-from numpy import zeros
-from numpy.linalg import inv
+import numpy as np
 from numpy import (
-    dot,
-    linspace,
-    argmax,
-    argmin,
     abs,
-    clip,
-    sin,
-    cos,
-    pi,
     amax,
     arctan2,
+    argmax,
+    argmin,
+    clip,
+    cos,
+    dot,
+    linspace,
+    pi,
+    sin,
     sqrt,
     sum,
+    zeros,
 )
-import numpy as np
-from warnings import warn
+from numpy.linalg import inv
+from scipy import interpolate
 
 
 def find_critical(R, Z, psi, discard_xpoints=True):
@@ -69,13 +69,13 @@ def find_critical(R, Z, psi, discard_xpoints=True):
     f = interpolate.RectBivariateSpline(R[:, 0], Z[0, :], psi)
 
     # Find candidate locations, based on minimising Bp^2
-    Bp2 = (f(R, Z, dx=1, grid=False) ** 2 + f(R, Z, dy=1, grid=False) ** 2) / R ** 2
+    Bp2 = (f(R, Z, dx=1, grid=False) ** 2 + f(R, Z, dy=1, grid=False) ** 2) / R**2
 
     # Get grid resolution, which determines a reasonable tolerance
     # for the Newton iteration search area
     dR = R[1, 0] - R[0, 0]
     dZ = Z[0, 1] - Z[0, 0]
-    radius_sq = 9 * (dR ** 2 + dZ ** 2)
+    radius_sq = 9 * (dR**2 + dZ**2)
 
     # Find local minima
 
@@ -97,7 +97,6 @@ def find_critical(R, Z, psi, discard_xpoints=True):
                 and (Bp2[i, j] < Bp2[i, j + 1])
                 and (Bp2[i, j] < Bp2[i, j - 1])
             ):
-
                 # Found local minimum
 
                 R0 = R[i, j]
@@ -110,11 +109,10 @@ def find_critical(R, Z, psi, discard_xpoints=True):
 
                 count = 0
                 while True:
-
                     Br = -f(R1, Z1, dy=1, grid=False) / R1
                     Bz = f(R1, Z1, dx=1, grid=False) / R1
 
-                    if Br ** 2 + Bz ** 2 < 1e-6:
+                    if Br**2 + Bz**2 < 1e-6:
                         # Found a minimum. Classify as either
                         # O-point or X-point
 
@@ -130,7 +128,7 @@ def find_critical(R, Z, psi, discard_xpoints=True):
                             (psi[i + 2, j + 2] - psi[i + 2, j - 2]) / (4.0 * dZ)
                             - (psi[i - 2, j + 2] - psi[i - 2, j - 2]) / (4.0 * dZ)
                         ) / (4.0 * dR)
-                        D = d2dr2 * d2dz2 - d2drdz ** 2
+                        D = d2dr2 * d2dz2 - d2drdz**2
 
                         if D < 0.0:
                             # Found X-point
@@ -157,14 +155,14 @@ def find_critical(R, Z, psi, discard_xpoints=True):
                     count += 1
                     # If (R1,Z1) is too far from (R0,Z0) then discard
                     # or if we've taken too many iterations
-                    if ((R1 - R0) ** 2 + (Z1 - Z0) ** 2 > radius_sq) or (count > 100):
+                    if (radius_sq < (R1 - R0) ** 2 + (Z1 - Z0) ** 2) or (count > 100):
                         # Discard this point
                         break
 
     # Remove duplicates
     def remove_dup(points):
         result = []
-        for n, p in enumerate(points):
+        for _n, p in enumerate(points):
             dup = False
             for p2 in result:
                 if (p[0] - p2[0]) ** 2 + (p[1] - p2[1]) ** 2 < 1e-5:
@@ -231,7 +229,7 @@ def find_critical(R, Z, psi, discard_xpoints=True):
     return opoint, xpoint
 
 
-def core_mask(R, Z, psi, opoint, xpoint=[], psi_bndry=None):
+def core_mask(R, Z, psi, opoint, xpoint=None, psi_bndry=None):
     """
     Mark the parts of the domain which are in the core
 
@@ -257,6 +255,8 @@ def core_mask(R, Z, psi, opoint, xpoint=[], psi_bndry=None):
 
     """
 
+    if xpoint is None:
+        xpoint = []
     mask = zeros(psi.shape)
     nx, ny = psi.shape
 
@@ -368,12 +368,17 @@ def find_psisurface(eq, psifunc, r0, z0, r1, z1, psival=1.0, n=100, axis=None):
             # Changed 1.0 to psival in f
             # make f gradient to psival surface
             f = (pnorm[ind] - psival) / (pnorm[ind] - pnorm[ind - 1])
-            
+
             # Interpolate between points
             r = (1.0 - f) * r[ind] + f * r[ind - 1]
             z = (1.0 - f) * z[ind] + f * z[ind - 1]
 
-            if f > 1.0: warn(f"find_psisurface has encountered an extrapolation. This will probably result in a point where you don't expect it.")
+            if f > 1.0:
+                warn(
+                    "find_psisurface has encountered an extrapolation. "
+                    "This will probably result in a point where you don't expect it.",
+                    stacklevel=2,
+                )
 
     if axis is not None:
         axis.plot(r, z, "bo")
@@ -421,7 +426,7 @@ def find_separatrix(
     # How close in theta to allow theta grid points to the X-point
     TOLERANCE = 1.0e-3
     if any(abs(theta_grid - xpoint_theta) < TOLERANCE):
-        warn("Theta grid too close to X-point, shifting by half-step")
+        warn("Theta grid too close to X-point, shifting by half-step", stacklevel=2)
         theta_grid += dtheta / 2
 
     isoflux = []
@@ -469,8 +474,7 @@ def find_safety(
     if (xpoint is None) or (len(xpoint) == 0):
         # No X-point
         raise ValueError("No X-point so no separatrix")
-    else:
-        psinormal = (psi - opoint[0][2]) / (xpoint[0][2] - opoint[0][2])
+    psinormal = (psi - opoint[0][2]) / (xpoint[0][2] - opoint[0][2])
 
     psifunc = interpolate.RectBivariateSpline(eq.R[:, 0], eq.Z[0, :], psinormal)
 
@@ -488,7 +492,7 @@ def find_safety(
     TOLERANCE = 1.0e-3
 
     if any(abs(theta_grid - xpoint_theta) < TOLERANCE):
-        warn("Theta grid too close to X-point, shifting by half-step")
+        warn("Theta grid too close to X-point, shifting by half-step", stacklevel=2)
         theta_grid += dtheta / 2
 
     if psinorm is None:
@@ -527,19 +531,17 @@ def find_safety(
     fpol = eq.fpol(psirange[:]).reshape(npsi, 1)
     Br = eq.Br(r, z)
     Bz = eq.Bz(r, z)
-    Bthe = sqrt(Br ** 2 + Bz ** 2)
+    Bthe = sqrt(Br**2 + Bz**2)
 
     # Differentiate location w.r.t. index
     dr_di = (np.roll(r, 1, axis=1) - np.roll(r, -1, axis=1)) / 2.0
     dz_di = (np.roll(z, 1, axis=1) - np.roll(z, -1, axis=1)) / 2.0
 
     # Distance between points
-    dl = sqrt(dr_di ** 2 + dz_di ** 2)
+    dl = sqrt(dr_di**2 + dz_di**2)
 
     # Integrand - Btor/(R*Bthe) = Fpol/(R**2*Bthe)
-    qint = fpol / (r ** 2 * Bthe)
+    qint = fpol / (r**2 * Bthe)
 
     # Integral
-    q = sum(qint * dl, axis=1) / (2 * pi)
-
-    return q
+    return sum(qint * dl, axis=1) / (2 * pi)

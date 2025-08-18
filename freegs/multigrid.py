@@ -27,9 +27,9 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 
 """
 
-from numpy import zeros, max, abs, reshape
-from scipy.sparse.linalg import factorized
+from numpy import abs, max, reshape, zeros
 from scipy.sparse import eye
+from scipy.sparse.linalg import factorized
 
 
 class MGDirect:
@@ -81,9 +81,9 @@ class MGJacobi:
         if niter is None:
             niter = self.niter
 
-        for c in range(ncycle):
+        for _c in range(ncycle):
             # Jacobi smoothing
-            for i in range(niter):
+            for _i in range(niter):
                 x += (b - self.A.dot(x)) / self.diag
 
             if self.subsolver:
@@ -103,7 +103,7 @@ class MGJacobi:
                 x += reshape(self.xupdate, -1)
 
             # Jacobi smoothing
-            for i in range(niter):
+            for _i in range(niter):
                 x += (b - self.A.dot(x)) / self.diag
 
         return x.reshape(xi.shape)
@@ -158,9 +158,7 @@ def smoothJacobi(A, x, b, dx, dy):
     if b.shape != x.shape:
         raise ValueError("b and x have different shapes")
 
-    smooth = x + (b - A(x, dx, dy)) / A.diag(dx, dy)
-
-    return smooth
+    return x + (b - A(x, dx, dy)) / A.diag(dx, dy)
 
 
 def restrict(orig, out=None, avg=False):
@@ -188,7 +186,7 @@ def restrict(orig, out=None, avg=False):
             return orig
         out.resize(orig.shape)
         out[:, :] = orig
-        return
+        return None
 
     # Dividing x and y in 2
     nx = (nx - 1) // 2 + 1
@@ -265,7 +263,7 @@ def smoothVcycle(A, x, b, dx, dy, niter=10, sublevels=0, direct=True):
     """
 
     # Smooth
-    for i in range(niter):
+    for _i in range(niter):
         x = smoothJacobi(A, x, b, dx, dy)
 
     if sublevels > 0:
@@ -285,7 +283,7 @@ def smoothVcycle(A, x, b, dx, dy, niter=10, sublevels=0, direct=True):
         x = x + xupdate
 
     # Smooth
-    for i in range(niter):
+    for _i in range(niter):
         x = smoothJacobi(A, x, b, dx, dy)
 
     return x
@@ -293,19 +291,13 @@ def smoothVcycle(A, x, b, dx, dy, niter=10, sublevels=0, direct=True):
 
 def smoothMG(A, x, b, dx, dy, niter=10, sublevels=1, ncycle=2):
     error = b - A(x, dx, dy)
-    print("Starting max residual: %e" % (max(abs(error)),))
+    print(f"Starting max residual: {max(abs(error)):e}")
 
     for c in range(ncycle):
         x = smoothVcycle(A, x, b, dx, dy, niter, sublevels)
 
         error = b - A(x, dx, dy)
-        print(
-            "Cycle %d : %e"
-            % (
-                c,
-                max(abs(error)),
-            )
-        )
+        print(f"Cycle {c} : {max(abs(error))}")
     return x
 
 
@@ -325,14 +317,14 @@ class LaplacianOp:
             for y in range(1, ny - 1):
                 # Loop over points in the domain
 
-                b[x, y] = (f[x - 1, y] - 2 * f[x, y] + f[x + 1, y]) / dx ** 2 + (
+                b[x, y] = (f[x - 1, y] - 2 * f[x, y] + f[x + 1, y]) / dx**2 + (
                     f[x, y - 1] - 2 * f[x, y] + f[x, y + 1]
-                ) / dy ** 2
+                ) / dy**2
 
         return b
 
     def diag(self, dx, dy):
-        return -2.0 / dx ** 2 - 2.0 / dy ** 2
+        return -2.0 / dx**2 - 2.0 / dy**2
 
 
 class LaplaceSparse:
@@ -350,31 +342,30 @@ class LaplaceSparse:
         for x in range(1, nx - 1):
             for y in range(1, ny - 1):
                 row = x * ny + y
-                A[row, row] = -2.0 / dx ** 2 - 2.0 / dy ** 2
+                A[row, row] = -2.0 / dx**2 - 2.0 / dy**2
 
                 # y-1
-                A[row, row - 1] = 1.0 / dy ** 2
+                A[row, row - 1] = 1.0 / dy**2
 
                 # y+1
-                A[row, row + 1] = 1.0 / dy ** 2
+                A[row, row + 1] = 1.0 / dy**2
 
                 # x-1
-                A[row, row - ny] = 1.0 / dx ** 2
+                A[row, row - ny] = 1.0 / dx**2
 
                 # x+1
-                A[row, row + ny] = 1.0 / dx ** 2
+                A[row, row + ny] = 1.0 / dx**2
         # Convert to Compressed Sparse Row (CSR) format
         return A.tocsr()
 
 
 if __name__ == "__main__":
-
     # Test case
 
-    from numpy import meshgrid, exp, linspace
-    import matplotlib.pyplot as plt
-
     from timeit import default_timer as timer
+
+    import matplotlib.pyplot as plt
+    from numpy import exp, linspace, meshgrid
 
     nx = 65
     ny = 65
@@ -384,7 +375,7 @@ if __name__ == "__main__":
 
     xx, yy = meshgrid(linspace(0, 1, nx), linspace(0, 1, ny))
 
-    rhs = exp(-((xx - 0.5) ** 2 + (yy - 0.5) ** 2) / 0.4 ** 2)
+    rhs = exp(-((xx - 0.5) ** 2 + (yy - 0.5) ** 2) / 0.4**2)
 
     rhs[0, :] = 0.0
     rhs[:, 0] = 0.0
@@ -404,7 +395,7 @@ if __name__ == "__main__":
         x, x2 = x2, x  # Swap arrays
 
         error = rhs - A(x, dx, dy)
-        print("%d : %e" % (i, max(abs(error))))
+        print(f"%d : {i:e}")
 
     ################ MULTIGRID SOLVER #######################
 
@@ -417,8 +408,8 @@ if __name__ == "__main__":
     end = timer()
 
     error = rhs - A(x, dx, dy)
-    print("Max error : {0}".format(max(abs(error))))
-    print("Run time  : {0} seconds".format(end - start))
+    print(f"Max error : {max(abs(error))}")
+    print(f"Run time  : {end - start} seconds")
 
     ################ SPARSE MATRIX ##########################
 
@@ -437,14 +428,10 @@ if __name__ == "__main__":
     end = timer()
 
     error = rhs - A(x2, dx, dy)
-    print("Max error : {0}".format(max(abs(error))))
-    print(
-        "Setup time: {0}, run time: {1} seconds".format(
-            start_solve - start, end - start_solve
-        )
-    )
+    print(f"Max error : {max(abs(error))}")
+    print(f"Setup time: {start_solve - start}, run time: {end - start_solve} seconds")
 
-    print("Values: {0}, {1}".format(x2[10, 20], x[10, 20]))
+    print(f"Values: {x2[10, 20]}, {x[10, 20]}")
 
     f = plt.figure()
     # plt.contourf(x)

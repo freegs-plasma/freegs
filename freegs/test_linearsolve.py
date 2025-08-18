@@ -2,9 +2,9 @@
 Tests of the linear solver
 """
 
-from . import multigrid
-
 import numpy as np
+
+from . import multigrid
 
 # Laplacian in 2D
 
@@ -21,7 +21,7 @@ def test_direct_laplacian():
 
     xx, yy = np.meshgrid(np.linspace(0, Lx, nx), np.linspace(0, Ly, ny))
 
-    solution = np.exp(-((xx - 0.5) ** 2 + (yy - 0.5) ** 2) / 0.4 ** 2)
+    solution = np.exp(-((xx - 0.5) ** 2 + (yy - 0.5) ** 2) / 0.4**2)
 
     A = multigrid.LaplacianOp()
     rhs = A(solution, dx, dy)
@@ -50,7 +50,7 @@ def test_multigrid_laplacian():
 
     xx, yy = np.meshgrid(np.linspace(0, Lx, nx), np.linspace(0, Ly, ny))
 
-    solution = np.exp(-((xx - 0.5) ** 2 + (yy - 0.5) ** 2) / 0.4 ** 2)
+    solution = np.exp(-((xx - 0.5) ** 2 + (yy - 0.5) ** 2) / 0.4**2)
 
     A = multigrid.LaplacianOp()
     rhs = A(solution, dx, dy)

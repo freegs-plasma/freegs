@@ -50,14 +50,14 @@ def triangle_quad(triangle, n=6):
         # One point in the middle of the triangle
         return [((r1 + r2 + r3) / 3, (z1 + z2 + z3) / 3, 1.0)]
 
-    elif n == 3:
+    if n == 3:
         return [
             ((4 * r1 + r2 + r3) / 6, (4 * z1 + z2 + z3) / 6, 1.0 / 3),
             ((r1 + 4 * r2 + r3) / 6, (z1 + 4 * z2 + z3) / 6, 1.0 / 3),
             ((r1 + r2 + 4 * r3) / 6, (z1 + z2 + 4 * z3) / 6, 1.0 / 3),
         ]
 
-    elif n == 6:
+    if n == 6:
         a = 0.816847572980459
         b = 0.5 * (1.0 - a)
 
@@ -72,8 +72,7 @@ def triangle_quad(triangle, n=6):
             ((d * r1 + c * r2 + d * r3), (d * z1 + c * z2 + d * z3), 0.223381589678011),
             ((d * r1 + d * r2 + c * r3), (d * z1 + d * z2 + c * z3), 0.223381589678011),
         ]
-    else:
-        raise ValueError("Quadrature not available for n={}".format(n))
+    raise ValueError(f"Quadrature not available for n={n}")
 
 
 def polygon_quad(polygon, n=6):

@@ -23,9 +23,10 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import numpy as np
-from . import polygons
 from shapely import geometry
-from .coil import Coil, AreaCurrentLimit
+
+from . import polygons
+from .coil import Coil
 from .gradshafranov import Greens, GreensBr, GreensBz
 
 
@@ -72,7 +73,6 @@ def populate_with_fils(shape, Nfils):
     nInside = 0
 
     while nInside < Nfils:
-
         nInside = 0
         i = 0  # Row counter used for staggering every other row
         # Create the (non-staggered) grid points for the given d(=dR,dZ)
@@ -83,17 +83,14 @@ def populate_with_fils(shape, Nfils):
         nZ = len(Zgrid)
 
         for i in range(nZ):
-
             zpoint = Zgrid[i]
 
             if i % 2:  # Every other row, stagger R coords by 0.5*dR
                 offset = 0.5 * d
             else:
-
                 offset = 0.0
 
             for j in range(nR):
-
                 rpoint = Rgrid[j] + offset
 
                 point = geometry.Point(rpoint, zpoint)
@@ -131,17 +128,14 @@ def populate_with_fils(shape, Nfils):
     nZ = len(Zgrid)
 
     for i in range(nZ):
-
         zpoint = Zgrid[i]
 
         if i % 2:  # Every other row, stagger R coords by 0.5*dR
             offset = 0.5 * d_opt
         else:
-
             offset = 0.0
 
         for j in range(nR):
-
             rpoint = Rgrid[j] + offset
 
             point = geometry.Point(rpoint, zpoint)
@@ -181,13 +175,13 @@ class FilamentCoil(Coil):
     # A dtype for converting to Numpy array and storing in HDF5 files
     dtype = np.dtype(
         [
-            (str("RZlen"), int),  # Length of R and Z arrays
-            (str("R"), "500f8"),  # Up to 100 points
-            (str("Z"), "500f8"),
-            (str("current"), np.float64),
-            (str("turns"), int),
-            (str("control"), bool),
-            (str("npoints"), int),
+            ("RZlen", int),  # Length of R and Z arrays
+            ("R", "500f8"),  # Up to 100 points
+            ("Z", "500f8"),
+            ("current", np.float64),
+            ("turns", int),
+            ("control", bool),
+            ("npoints", int),
         ]
     )
 
@@ -279,8 +273,7 @@ class FilamentCoil(Coil):
         result = 0.0
         for R_fil, Z_fil in self.points:
             result += Greens(R_fil, Z_fil, R, Z)
-        result = result * self.turns / float(self.npoints)
-        return result
+        return result * self.turns / float(self.npoints)
 
     def controlBr(self, R, Z):
         """
@@ -289,8 +282,7 @@ class FilamentCoil(Coil):
         result = 0.0
         for R_fil, Z_fil in self.points:
             result += GreensBr(R_fil, Z_fil, R, Z)
-        result = result * self.turns / float(self.npoints)
-        return result
+        return result * self.turns / float(self.npoints)
 
     def controlBz(self, R, Z):
         """
@@ -299,10 +291,9 @@ class FilamentCoil(Coil):
         result = 0.0
         for R_fil, Z_fil in self.points:
             result += GreensBz(R_fil, Z_fil, R, Z)
-        result = result * self.turns / float(self.npoints)
-        return result
+        return result * self.turns / float(self.npoints)
 
-    def inShape(self,polygon):
+    def inShape(self, polygon):
         counter = 0
         for r, z in self.points:
             if polygon.contains(geometry.Point(r, z)):
@@ -310,9 +301,7 @@ class FilamentCoil(Coil):
         return counter
 
     def __repr__(self):
-        return "FilamentCoil({0}, current={1:.1f}, turns={2}, control={3})".format(
-            self.points, self.current, self.turns, self.control
-        )
+        return f"FilamentCoil({self.points}, current={self.current:.1f}, turns={self.turns}, control={self.control})"
 
     @property
     def R(self):

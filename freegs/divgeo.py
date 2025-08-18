@@ -1,5 +1,4 @@
-from . import _divgeo
-from . import geqdsk
+from . import _divgeo, geqdsk
 
 
 def write(eq, fh, oxpoints=None):

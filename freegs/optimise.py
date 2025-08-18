@@ -21,13 +21,12 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 
 """
 
-from . import optimiser
-from . import picard
-
 import matplotlib.pyplot as plt
+from numpy import inf, sqrt
+
 from freegs.plotting import plotEquilibrium
 
-from numpy import sqrt, inf
+from . import optimiser, picard
 
 # Measures which operate on Equilibrium objects
 
@@ -96,9 +95,9 @@ class CoilRadius:
         self.maximum = maximum
 
     def set(self, eq, R):
-        if self.minimum and (R < self.minimum):
+        if self.minimum and (self.minimum > R):
             R = self.minimum
-        if self.maximum and (R > self.maximum):
+        if self.maximum and (self.maximum < R):
             R = self.maximum
         eq.tokamak[self.label].R = R
 
@@ -120,9 +119,9 @@ class CoilHeight:
         self.maximum = maximum
 
     def set(self, eq, Z):
-        if self.minimum and (Z < self.minimum):
+        if self.minimum and (self.minimum > Z):
             Z = self.minimum
-        if self.maximum and (Z > self.maximum):
+        if self.maximum and (self.maximum < Z):
             Z = self.maximum
         eq.tokamak[self.label].Z = Z
 
@@ -131,6 +130,7 @@ class CoilHeight:
 
 
 # Monitor optimisation solutions
+
 
 # Plot and save the best equilibrium each generation
 class PlotMonitor:
@@ -149,8 +149,8 @@ class PlotMonitor:
         # Update the canvas and pause
         # Note, a short pause is needed to force drawing update
         self.fig.canvas.draw()
-        self.axis.set_title("Generation: {} Score: {}".format(generation, best[0]))
-        self.fig.savefig("generation_{}.pdf".format(generation))
+        self.axis.set_title(f"Generation: {generation} Score: {best[0]}")
+        self.fig.savefig(f"generation_{generation}.pdf")
         plt.pause(0.5)
 
 

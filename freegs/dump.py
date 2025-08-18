@@ -25,7 +25,6 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 # Py2/3 compatibility: h5py needs unicode for group/dataset names
-from __future__ import unicode_literals
 
 try:
     import h5py
@@ -36,12 +35,11 @@ except ImportError:
 
 import numpy as np
 
+from . import boundary, machine
 from .equilibrium import Equilibrium
-from .machine import Coil, Circuit, Solenoid, Wall, Machine
-from .shaped_coil import ShapedCoil
 from .filament_coil import FilamentCoil
-from . import boundary
-from . import machine
+from .machine import Circuit, Coil, Machine, Solenoid, Wall
+from .shaped_coil import ShapedCoil
 
 
 class OutputFormatNotAvailableError(Exception):
@@ -51,10 +49,10 @@ class OutputFormatNotAvailableError(Exception):
     """
 
     def __init__(self, file_format="HDF5"):
-        self.message = "Sorry, {} is not available!".format(file_format)
+        self.message = f"Sorry, {file_format} is not available!"
 
 
-class OutputFile(object):
+class OutputFile:
     """
     Read/write freegs Equilibrium objects to file
 
@@ -238,7 +236,7 @@ class OutputFile(object):
 
         eq_boundary_func = boundary.__dict__[eq_boundary_name]
 
-        equilibrium = Equilibrium(
+        return Equilibrium(
             tokamak=tokamak,
             Rmin=Rmin,
             Rmax=Rmax,
@@ -250,5 +248,3 @@ class OutputFile(object):
             current=current,
             boundary=eq_boundary_func,
         )
-
-        return equilibrium

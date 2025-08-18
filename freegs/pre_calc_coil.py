@@ -24,9 +24,9 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 
 import numpy as np
 from scipy.interpolate import RectBivariateSpline
-from .coil import Coil, AreaCurrentLimit
-from .gradshafranov import Greens, GreensBr, GreensBz
+
 from . import polygons
+from .coil import Coil
 
 
 class PreCalcCoil(Coil):
@@ -55,12 +55,12 @@ class PreCalcCoil(Coil):
     # A dtype for converting to Numpy array and storing in HDF5 files
     dtype = np.dtype(
         [
-            (str("RZlen"), int),  # Length of the R and Z arrays
-            (str("R"), "10f8"),  # Note: Up to 10 points
-            (str("Z"), "10f8"),  # Note: Up to 10 points
-            (str("current"), np.float64),
-            (str("turns"), int),
-            (str("control"), bool),
+            ("RZlen", int),  # Length of the R and Z arrays
+            ("R", "10f8"),  # Note: Up to 10 points
+            ("Z", "10f8"),  # Note: Up to 10 points
+            ("current", np.float64),
+            ("turns", int),
+            ("control", bool),
         ]
     )
 
@@ -123,7 +123,7 @@ class PreCalcCoil(Coil):
         Calculate poloidal flux at (R,Z) due to a unit current.
         """
 
-        if isinstance(R, float) or isinstance(R, int):
+        if isinstance(R, float | int):
             result = self.cPsi(R, Z)[0][0]
         else:
             result = self.cPsi(R, Z, grid=False)
@@ -135,7 +135,7 @@ class PreCalcCoil(Coil):
         Calculate radial magnetic field Br at (R,Z) due to a unit current.
         """
 
-        if isinstance(R, float) or isinstance(R, int):
+        if isinstance(R, float | int):
             result = self.cBr(R, Z)[0][0]
         else:
             result = self.cBr(R, Z, grid=False)
@@ -147,7 +147,7 @@ class PreCalcCoil(Coil):
         Calculate vertical magnetic field Br at (R,Z) due to a unit current.
         """
 
-        if isinstance(R, float) or isinstance(R, int):
+        if isinstance(R, float | int):
             result = self.cBz(R, Z)[0][0]
         else:
             result = self.cBz(R, Z, grid=False)
@@ -155,9 +155,7 @@ class PreCalcCoil(Coil):
         return result
 
     def __repr__(self):
-        return "PreCalcCoil({0}, current={1:.1f}, turns={2}, control={3})".format(
-            self.shape, self.current, self.turns, self.control
-        )
+        return f"PreCalcCoil({self.shape}, current={self.current:.1f}, turns={self.turns}, control={self.control})"
 
     @property
     def R(self):

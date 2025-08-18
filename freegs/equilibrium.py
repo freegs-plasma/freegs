@@ -3,27 +3,18 @@ Defines class to represent the equilibrium
 state, including plasma and coil currents
 """
 
-from typing import Optional
-
-from numpy import pi, meshgrid, linspace, exp, array
+import matplotlib.pyplot as plt
 import numpy as np
+from numpy import array, exp, linspace, meshgrid, pi
 from scipy import interpolate
-from scipy.integrate import romb, cumulative_trapezoid
-
-from .boundary import fixedBoundary, freeBoundary
-from . import critical
-
-from . import polygons
-
-# Operators which define the G-S equation
-from .gradshafranov import mu0, GSsparse, GSsparse4thOrder
+from scipy.integrate import cumulative_trapezoid, romb
 
 # Multigrid solver
-from . import multigrid
+from . import critical, machine, multigrid, polygons
+from .boundary import fixedBoundary, freeBoundary
 
-from . import machine
-
-import matplotlib.pyplot as plt
+# Operators which define the G-S equation
+from .gradshafranov import GSsparse, GSsparse4thOrder, mu0
 
 
 class Equilibrium:
@@ -63,7 +54,7 @@ class Equilibrium:
         nx: int = 65,
         ny: int = 65,
         boundary=freeBoundary,
-        psi: Optional[float] = None,
+        psi: float | None = None,
         current: float = 0.0,
         order: int = 4,
         check_limited: bool = False,
@@ -144,7 +135,7 @@ class Equilibrium:
             generator = GSsparse4thOrder(Rmin, Rmax, Zmin, Zmax)
         else:
             raise ValueError(
-                "Invalid choice of order ({}). Valid values are 2 or 4.".format(order)
+                f"Invalid choice of order ({order}). Valid values are 2 or 4."
             )
         self.order = order
 
@@ -359,7 +350,7 @@ class Equilibrium:
             psinorm = linspace(1.0 / (npsi + 1), 1.0, npsi, endpoint=False)
             return psinorm, critical.find_safety(self, psinorm=psinorm)
 
-        elif np.any((psinorm < 0.01) | (psinorm > 0.99)):
+        if np.any((psinorm < 0.01) | (psinorm > 0.99)):
             psinorm_inner = np.linspace(0.01, 0.99, num=npsi)
             q_inner = critical.find_safety(self, psinorm=psinorm_inner)
 
@@ -688,9 +679,7 @@ class Equilibrium:
                     print(
                         prefix
                         + label
-                        + " : R = {0:.2f} kN , Z = {1:.2f} kN".format(
-                            force[0] * 1e-3, force[1] * 1e-3
-                        )
+                        + f" : R = {force[0] * 1e-3:.2f} kN , Z = {force[1] * 1e-3:.2f} kN"
                     )
 
         print_forces(self.getForces())
@@ -790,9 +779,7 @@ class Equilibrium:
         R0 = P3[0] + 0.5 * (P1[0] - P3[0])
         z0 = 0.5 * (P1[1] + P3[1])
 
-        C = np.array([R0, z0])
-
-        return C
+        return np.array([R0, z0])
 
     def Rgeometric(self, npoints=360):
         """Locates major radius R of the geometric major radius."""
@@ -1203,9 +1190,6 @@ class Equilibrium:
         R = self.R
         Z = self.Z
 
-        # Produce array of Btor in (R,Z)
-        B_torvals_2 = self.Btor(R, Z) ** 2
-
         dR = R[1, 0] - R[0, 0]
         dZ = Z[0, 1] - Z[0, 0]
         dV = 2.0 * np.pi * R * dR * dZ
@@ -1246,9 +1230,7 @@ class Equilibrium:
             dV *= self.mask
 
         pressure_integral = romb(romb(pressure * dV))
-        thermal_energy = (3.0 / 2.0) * pressure_integral
-
-        return thermal_energy
+        return (3.0 / 2.0) * pressure_integral
 
     def qcyl(self):
         """
@@ -1263,9 +1245,7 @@ class Equilibrium:
 
         kappa = self.elongation()
 
-        val = 0.5 * (1 + kappa * kappa) * ((2.0 * np.pi * a * eps * btor) / (mu0 * Ip))
-
-        return val
+        return 0.5 * (1 + kappa * kappa) * ((2.0 * np.pi * a * eps * btor) / (mu0 * Ip))
 
 
 def refine(eq, nx=None, ny=None):
@@ -1393,10 +1373,9 @@ def newDomain(eq, Rmin=None, Rmax=None, Zmin=None, Zmax=None, nx=None, ny=None):
 if __name__ == "__main__":
     # Test the different spline interpolation routines
 
-    from numpy import ravel
-    import matplotlib.pyplot as plt
-
     import machine
+    import matplotlib.pyplot as plt
+    from numpy import ravel
 
     tokamak = machine.TestTokamak()
 

@@ -19,9 +19,8 @@ You should have received a copy of the GNU Lesser General Public License
 along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-from numpy import amin, amax, array
-from . import critical
 import numpy as np
+from numpy import amax, amin, array
 
 
 def solve(
@@ -90,6 +89,7 @@ def solve(
 
     if show:
         import matplotlib.pyplot as plt
+
         from .plotting import plotEquilibrium
 
         if pause > 0.0 and axis is None:
@@ -119,7 +119,6 @@ def solve(
 
     # Start main loop
     while True:
-
         if show:
             # Plot state of plasma equilibrium
             if pause < 0:
@@ -155,7 +154,6 @@ def solve(
             eq.solve(profiles, psi=psi, psi_bndry=eq.psi_bndry)
 
         else:
-
             # Either the user does not wish to check for a limited plasma,
             # or not enough iterations have passed yet.
             eq.check_limited = False
@@ -234,3 +232,4 @@ def solve(
             )
     if convergenceInfo:
         return array(psi_maxchange_iterations), array(psi_relchange_iterations)
+    return None

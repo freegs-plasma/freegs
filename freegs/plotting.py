@@ -20,7 +20,8 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 
 """
 
-from numpy import linspace, amin, amax
+from numpy import amax, amin, linspace
+
 from . import critical
 
 
@@ -69,7 +70,10 @@ def plotConstraints(control, axis=None, show=True):
 
     return axis
 
-def plotEquilibrium(eq, axis=None, show=True, oxpoints=True, wall=True, plot_sensors=True):
+
+def plotEquilibrium(
+    eq, axis=None, show=True, oxpoints=True, wall=True, plot_sensors=True
+):
     """
     Plot the equilibrium flux surfaces
 
@@ -118,18 +122,17 @@ def plotEquilibrium(eq, axis=None, show=True, oxpoints=True, wall=True, plot_sen
 
     if wall and eq.tokamak.wall and len(eq.tokamak.wall.R):
         axis.plot(
-            list(eq.tokamak.wall.R) + [eq.tokamak.wall.R[0]],
-            list(eq.tokamak.wall.Z) + [eq.tokamak.wall.Z[0]],
+            [*list(eq.tokamak.wall.R), eq.tokamak.wall.R[0]],
+            [*list(eq.tokamak.wall.Z), eq.tokamak.wall.Z[0]],
             "k",
         )
 
-    if plot_sensors:
-        if eq.tokamak.sensors is not None :
-            for sensor in eq.tokamak.sensors:
-                sensor.plot(axis)
-            axis.plot([], [], 'b', label='Rogowski Coil')
-            axis.plot([], [], 'mo', label='Poloidal Field Sensor')
-            axis.plot([], [], 'ro', label='Flux Loop Sensor')
+    if plot_sensors and eq.tokamak.sensors is not None:
+        for sensor in eq.tokamak.sensors:
+            sensor.plot(axis)
+        axis.plot([], [], "b", label="Rogowski Coil")
+        axis.plot([], [], "mo", label="Poloidal Field Sensor")
+        axis.plot([], [], "ro", label="Flux Loop Sensor")
 
     if show:
         plt.legend()

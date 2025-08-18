@@ -1,5 +1,4 @@
-from freegs import geqdsk
-from freegs import machine
+from freegs import geqdsk, machine
 from freegs.plotting import plotEquilibrium
 
 tokamak = machine.TestTokamak()
