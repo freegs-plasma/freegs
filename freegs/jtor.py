@@ -266,7 +266,7 @@ class ConstrainBetapIp(Profile):
         L = self.Ip / I_R - LBeta0 * (IR / I_R - 1)
         Beta0 = LBeta0 / L
 
-        # print("Constraints: L = %e, Beta0 = %e" % (L, Beta0))
+        # print("Constraints: L = {:e}, Beta0 = {:e}".format(L, Beta0))
 
         # Toroidal current
         Jtor = L * (Beta0 * R / self.Raxis + (1 - Beta0) * self.Raxis / R) * jtorshape
@@ -403,7 +403,7 @@ class ConstrainPaxisIp(Profile):
         L = self.Ip / I_R - LBeta0 * (IR / I_R - 1)
         Beta0 = LBeta0 / L
 
-        # print("Constraints: L = %e, Beta0 = %e" % (L, Beta0))
+        # print("Constraints: L = {:e}, Beta0 = {:e}".format(L, Beta0))
 
         # Toroidal current
         Jtor = L * (Beta0 * R / self.Raxis + (1 - Beta0) * self.Raxis / R) * jtorshape

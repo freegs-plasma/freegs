@@ -61,10 +61,10 @@ freegs.solve(
 
 print("Done!")
 
-print("Plasma current: %e Amps" % (eq.plasmaCurrent()))
-print("Pressure on axis: %e Pascals" % (eq.pressure(0.0)))
-print("Plasma poloidal beta: %e" % (eq.poloidalBeta()))
-print("Plasma volume: %e m^3" % (eq.plasmaVolume()))
+print(f"Plasma current: {eq.plasmaCurrent():e} Amps")
+print(f"Pressure on axis: {eq.pressure(0.0):e} Pascals")
+print(f"Plasma poloidal beta: {eq.poloidalBeta():e}")
+print(f"Plasma volume: {eq.plasmaVolume():e} m^3")
 
 eq.tokamak.printCurrents()
 

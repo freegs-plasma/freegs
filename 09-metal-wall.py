@@ -78,8 +78,8 @@ freegs.solve(
 
 print("Done!")
 
-print("Plasma current: %e Amps" % (eq.plasmaCurrent()))
-print("Plasma pressure on axis: %e Pascals" % (eq.pressure(0.0)))
+print(f"Plasma current: {eq.plasmaCurrent():e} Amps")
+print(f"Plasma pressure on axis: {eq.pressure(0.0):e} Pascals")
 
 ##############################################
 # Save to G-EQDSK file

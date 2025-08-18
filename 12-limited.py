@@ -72,9 +72,9 @@ freegs.solve(eq, profiles, constrain, show=True, check_limited=True, limit_it=0)
 
 print("Done!")
 
-print("Plasma current: %e Amps" % (eq.plasmaCurrent()))
-print("Plasma pressure on axis: %e Pascals" % (eq.pressure(0.0)))
-print("Poloidal beta: %e" % (eq.poloidalBeta()))
+print(f"Plasma current: {eq.plasmaCurrent():e} Amps")
+print(f"Plasma pressure on axis: {eq.pressure(0.0):e} Pascals")
+print(f"Poloidal beta: {eq.poloidalBeta():e}")
 
 # Currents in the coils
 tokamak.printCurrents()
@@ -176,9 +176,9 @@ freegs.solve(eq2, profiles, constrain, show=True, check_limited=True)
 
 print("Done!")
 
-print("Plasma current: %e Amps" % (eq2.plasmaCurrent()))
-print("Plasma pressure on axis: %e Pascals" % (eq2.pressure(0.0)))
-print("Poloidal beta: %e" % (eq2.poloidalBeta()))
+print(f"Plasma current: {eq2.plasmaCurrent():e} Amps")
+print(f"Plasma pressure on axis: {eq2.pressure(0.0):e} Pascals")
+print(f"Poloidal beta: {eq2.poloidalBeta():e}")
 
 # Currents in the coils
 tokamak.printCurrents()

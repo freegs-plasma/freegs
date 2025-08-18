@@ -254,9 +254,7 @@ def read(
     psi = data["psi"]
 
     if not (isPow2(nx - 1) and isPow2(ny - 1)):
-        print(
-            "Warning: Input grid size %d x %d has sizes which are not 2^n+1" % (nx, ny)
-        )
+        print(f"Warning: Input grid size {nx} x {ny} has sizes which are not 2^n+1")
 
         rin = linspace(0, 1, nx)
         zin = linspace(0, 1, ny)
@@ -265,7 +263,7 @@ def read(
         # Ensure that newnx, newny is 2^n + 1
         nx = ceilPow2(nx - 1) + 1
         ny = ceilPow2(ny - 1) + 1
-        print("   => Resizing to %d x %d" % (nx, ny))
+        print(f"   => Resizing to {nx} x {ny}")
 
         rnew = linspace(0, 1, nx)
         znew = linspace(0, 1, ny)

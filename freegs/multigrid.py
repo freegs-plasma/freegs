@@ -297,13 +297,7 @@ def smoothMG(A, x, b, dx, dy, niter=10, sublevels=1, ncycle=2):
         x = smoothVcycle(A, x, b, dx, dy, niter, sublevels)
 
         error = b - A(x, dx, dy)
-        print(
-            "Cycle %d : %e"
-            % (
-                c,
-                max(abs(error)),
-            )
-        )
+        print(f"Cycle {c} : {max(abs(error))}")
     return x
 
 
@@ -401,7 +395,7 @@ if __name__ == "__main__":
         x, x2 = x2, x  # Swap arrays
 
         error = rhs - A(x, dx, dy)
-        print("%d : %e" % (i, max(abs(error))))
+        print(f"%d : {i:e}")
 
     ################ MULTIGRID SOLVER #######################
 
