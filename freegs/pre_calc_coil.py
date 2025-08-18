@@ -123,7 +123,7 @@ class PreCalcCoil(Coil):
         Calculate poloidal flux at (R,Z) due to a unit current.
         """
 
-        if isinstance(R, float) or isinstance(R, int):
+        if isinstance(R, float | int):
             result = self.cPsi(R, Z)[0][0]
         else:
             result = self.cPsi(R, Z, grid=False)
@@ -135,7 +135,7 @@ class PreCalcCoil(Coil):
         Calculate radial magnetic field Br at (R,Z) due to a unit current.
         """
 
-        if isinstance(R, float) or isinstance(R, int):
+        if isinstance(R, float | int):
             result = self.cBr(R, Z)[0][0]
         else:
             result = self.cBr(R, Z, grid=False)
@@ -147,7 +147,7 @@ class PreCalcCoil(Coil):
         Calculate vertical magnetic field Br at (R,Z) due to a unit current.
         """
 
-        if isinstance(R, float) or isinstance(R, int):
+        if isinstance(R, float | int):
             result = self.cBz(R, Z)[0][0]
         else:
             result = self.cBz(R, Z, grid=False)
