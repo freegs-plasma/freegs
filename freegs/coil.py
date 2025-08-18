@@ -252,12 +252,12 @@ class Coil:
         """
         if isinstance(self._area, numbers.Number):
             if not self._area > 0:
-                warnings.warn(f"Coil area {self._area:3.2f} <= 0")
+                warnings.warn(f"Coil area {self._area:3.2f} <= 0", stacklevel=2)
             return self._area
         # Calculate using functor
         area = self._area(self)
         if not area > 0:
-            warnings.warn(f"Coil area {area:3.2f} <= 0")
+            warnings.warn(f"Coil area {area:3.2f} <= 0", stacklevel=2)
         return area
 
     @area.setter
