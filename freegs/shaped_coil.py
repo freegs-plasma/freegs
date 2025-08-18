@@ -123,7 +123,7 @@ class ShapedCoil(Coil):
         return result * self.turns
 
     def inShape(self, polygon):
-        Shaped_Coil = Polygon([shape for shape in self.shape])
+        Shaped_Coil = Polygon(list(self.shape))
         return (polygon.intersection(Shaped_Coil).area) / (self._area)
 
     def __repr__(self):

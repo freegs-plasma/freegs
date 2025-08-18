@@ -122,8 +122,8 @@ def plotEquilibrium(
 
     if wall and eq.tokamak.wall and len(eq.tokamak.wall.R):
         axis.plot(
-            list(eq.tokamak.wall.R) + [eq.tokamak.wall.R[0]],
-            list(eq.tokamak.wall.Z) + [eq.tokamak.wall.Z[0]],
+            [*list(eq.tokamak.wall.R), eq.tokamak.wall.R[0]],
+            [*list(eq.tokamak.wall.Z), eq.tokamak.wall.Z[0]],
             "k",
         )
 

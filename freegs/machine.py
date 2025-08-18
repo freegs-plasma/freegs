@@ -547,7 +547,7 @@ class RogowskiSensor(Sensor):
             self.measurement = plasma_current + coil_current
 
     def plot(self, axis):
-        axis.plot(list(self.R) + [self.R[0]], list(self.Z) + [self.Z[0]], "b")
+        axis.plot([*list(self.R), self.R[0]], [*list(self.Z), self.Z[0]], "b")
 
 
 class PoloidalFieldSensor(Sensor):
