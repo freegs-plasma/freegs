@@ -427,7 +427,6 @@ class ConstrainPsi2DAdvanced:
         return np.sum(diff * diff)
 
 
-
 class ConstrainPsiNorm2DAdvanced:
     """
     Adjusts coil currents to minimise the square differences
@@ -525,4 +524,3 @@ class ConstrainPsiNorm2DAdvanced:
         psi_norm = (psi - psi_axis) / (psi_bndry - psi_axis)
         diff = (psi_norm - self.target_psinorm) * self.weights
         return np.sum(diff * diff)
-

@@ -161,7 +161,6 @@ def smoothJacobi(A, x, b, dx, dy):
     return x + (b - A(x, dx, dy)) / A.diag(dx, dy)
 
 
-
 def restrict(orig, out=None, avg=False):
     """
     Coarsen the original onto a coarser mesh

@@ -248,4 +248,3 @@ class OutputFile:
             current=current,
             boundary=eq_boundary_func,
         )
-

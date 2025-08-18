@@ -3,7 +3,6 @@ Defines class to represent the equilibrium
 state, including plasma and coil currents
 """
 
-
 import matplotlib.pyplot as plt
 import numpy as np
 from numpy import array, exp, linspace, meshgrid, pi
@@ -782,7 +781,6 @@ class Equilibrium:
 
         return np.array([R0, z0])
 
-
     def Rgeometric(self, npoints=360):
         """Locates major radius R of the geometric major radius."""
         return self.geometricAxis(npoints=npoints)[0]
@@ -1234,7 +1232,6 @@ class Equilibrium:
         pressure_integral = romb(romb(pressure * dV))
         return (3.0 / 2.0) * pressure_integral
 
-
     def qcyl(self):
         """
         Cylindrical safety factor.
@@ -1249,7 +1246,6 @@ class Equilibrium:
         kappa = self.elongation()
 
         return 0.5 * (1 + kappa * kappa) * ((2.0 * np.pi * a * eps * btor) / (mu0 * Ip))
-
 
 
 def refine(eq, nx=None, ny=None):

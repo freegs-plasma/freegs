@@ -375,7 +375,8 @@ def find_psisurface(eq, psifunc, r0, z0, r1, z1, psival=1.0, n=100, axis=None):
 
             if f > 1.0:
                 warn(
-                    "find_psisurface has encountered an extrapolation. This will probably result in a point where you don't expect it.", stacklevel=2
+                    "find_psisurface has encountered an extrapolation. This will probably result in a point where you don't expect it.",
+                    stacklevel=2,
                 )
 
     if axis is not None:
@@ -543,4 +544,3 @@ def find_safety(
 
     # Integral
     return sum(qint * dl, axis=1) / (2 * pi)
-
