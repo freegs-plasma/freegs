@@ -120,22 +120,18 @@ class Profile(abc.ABC):
         self, R: np.ndarray, Z: np.ndarray, psi: np.ndarray, psi_bndry=None
     ) -> np.ndarray:
         """Return a numpy array of toroidal current density [J/m^2]"""
-        pass
 
     @abc.abstractmethod
     def pprime(self, psinorm: float) -> float:
         """Return p' at the given normalised psi"""
-        pass
 
     @abc.abstractmethod
     def ffprime(self, psinorm: float) -> float:
         """Return ff' at the given normalised psi"""
-        pass
 
     @abc.abstractmethod
     def fvac(self) -> float:
         """Return f = R*Bt in vacuum"""
-        pass
 
 
 class ConstrainBetapIp(Profile):
