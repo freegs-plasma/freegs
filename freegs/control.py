@@ -47,16 +47,22 @@ class constrain:
 
     def __init__(
         self,
-        xpoints=[],
+        xpoints=None,
         gamma=1e-12,
-        isoflux=[],
-        psivals=[],
+        isoflux=None,
+        psivals=None,
         current_lims=None,
         max_total_current=None,
     ):
         """
         Create an instance, specifying the constraints to apply
         """
+        if psivals is None:
+            psivals = []
+        if isoflux is None:
+            isoflux = []
+        if xpoints is None:
+            xpoints = []
         self.xpoints = xpoints
         self.gamma = gamma
         self.isoflux = isoflux

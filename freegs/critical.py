@@ -229,7 +229,7 @@ def find_critical(R, Z, psi, discard_xpoints=True):
     return opoint, xpoint
 
 
-def core_mask(R, Z, psi, opoint, xpoint=[], psi_bndry=None):
+def core_mask(R, Z, psi, opoint, xpoint=None, psi_bndry=None):
     """
     Mark the parts of the domain which are in the core
 
@@ -255,6 +255,8 @@ def core_mask(R, Z, psi, opoint, xpoint=[], psi_bndry=None):
 
     """
 
+    if xpoint is None:
+        xpoint = []
     mask = zeros(psi.shape)
     nx, ny = psi.shape
 

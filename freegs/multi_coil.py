@@ -87,7 +87,7 @@ class MultiCoil(Coil):
         turns=1,
         control=True,
         mirror=False,
-        polarity=[1.0, 1.0],
+        polarity=None,
         area=AreaCurrentLimit(),
     ):
         """
@@ -125,6 +125,8 @@ class MultiCoil(Coil):
 
         """
         # Store locations as an internal list
+        if polarity is None:
+            polarity = [1.0, 1.0]
         if hasattr(R, "__len__"):
             assert len(R) == len(Z)
             self.Rfil = R
