@@ -162,7 +162,7 @@ def find_critical(R, Z, psi, discard_xpoints=True):
     # Remove duplicates
     def remove_dup(points):
         result = []
-        for n, p in enumerate(points):
+        for _n, p in enumerate(points):
             dup = False
             for p2 in result:
                 if (p[0] - p2[0]) ** 2 + (p[1] - p2[1]) ** 2 < 1e-5:

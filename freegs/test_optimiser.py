@@ -100,7 +100,7 @@ def test_pick_different():
 
 
 def test_pick_excludes():
-    for i in range(20):
+    for _i in range(20):
         vals = optimiser.pickUnique(10, 3, [1, 8])
         assert 1 not in vals
         assert 8 not in vals

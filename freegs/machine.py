@@ -123,7 +123,7 @@ class Circuit:
         Calculate poloidal flux at (R,Z)
         """
         psival = 0.0
-        for label, coil, multiplier in self.coils:
+        for _, coil, multiplier in self.coils:
             coil.current = self.current * multiplier
             psival += coil.psi(R, Z)
         return psival
@@ -133,7 +133,7 @@ class Circuit:
         Calculate Greens functions
         """
         pgreen = {}
-        for label, coil, multiplier in self.coils:
+        for label, coil, _ in self.coils:
             pgreen[label] = coil.createPsiGreens(R, Z)
         return pgreen
 
@@ -153,7 +153,7 @@ class Circuit:
         Calculate radial magnetic field Br at (R,Z)
         """
         result = 0.0
-        for label, coil, multiplier in self.coils:
+        for _, coil, multiplier in self.coils:
             coil.current = self.current * multiplier
             result += coil.Br(R, Z)
         return result
@@ -163,7 +163,7 @@ class Circuit:
         Calculate vertical magnetic field Bz at (R,Z)
         """
         result = 0.0
-        for label, coil, multiplier in self.coils:
+        for _, coil, multiplier in self.coils:
             coil.current = self.current * multiplier
             result += coil.Bz(R, Z)
         return result
@@ -173,7 +173,7 @@ class Circuit:
         Calculate poloidal flux at (R,Z) due to a unit current
         """
         result = 0.0
-        for label, coil, multiplier in self.coils:
+        for _, coil, multiplier in self.coils:
             result += multiplier * coil.controlPsi(R, Z)
         return result
 
@@ -182,7 +182,7 @@ class Circuit:
         Calculate radial magnetic field Br at (R,Z) due to a unit current
         """
         result = 0.0
-        for label, coil, multiplier in self.coils:
+        for _, coil, multiplier in self.coils:
             result += multiplier * coil.controlBr(R, Z)
         return result
 
@@ -191,7 +191,7 @@ class Circuit:
         Calculate vertical magnetic field Bz at (R,Z) due to a unit current
         """
         result = 0.0
-        for label, coil, multiplier in self.coils:
+        for _, coil, multiplier in self.coils:
             result += multiplier * coil.controlBz(R, Z)
         return result
 
@@ -202,7 +202,7 @@ class Circuit:
         Returns a dictionary of coil label -> force
         """
         forces = {}
-        for label, coil, multiplier in self.coils:
+        for label, coil, _ in self.coils:
             forces[label] = coil.getForces(equilibrium)
         return forces
 
@@ -271,7 +271,7 @@ class Circuit:
         Plot the coils in the circuit
         Returns the axis used
         """
-        for label, coil, multiplier in self.coils:
+        for _, coil, _ in self.coils:
             axis = coil.plot(axis=axis, show=False)
         if show:
             import matplotlib.pyplot as plt
@@ -521,7 +521,7 @@ class RogowskiSensor(Sensor):
         if self.status:
             # coil current
             coil_current = 0
-            for label, coil in tokamak.coils:
+            for _, coil in tokamak.coils:
                 coil_current += coil.inShape(self.polygon) * coil.current
 
             # plasma current
@@ -697,7 +697,7 @@ class Machine:
         Poloidal flux due to coils
         """
         psi_coils = 0.0
-        for label, coil in self.coils:
+        for _, coil in self.coils:
             psi_coils += coil.psi(R, Z)
         return psi_coils
 
@@ -728,7 +728,7 @@ class Machine:
         Radial magnetic field at given points
         """
         Br = 0.0
-        for label, coil in self.coils:
+        for _, coil in self.coils:
             Br += coil.Br(R, Z)
 
         return Br
@@ -738,7 +738,7 @@ class Machine:
         Vertical magnetic field
         """
         Bz = 0.0
-        for label, coil in self.coils:
+        for _, coil in self.coils:
             Bz += coil.Bz(R, Z)
 
         return Bz
@@ -860,7 +860,7 @@ class Machine:
         """
         Plot the machine coils
         """
-        for label, coil in self.coils:
+        for _, coil in self.coils:
             axis = coil.plot(axis=axis, show=False)
         if show:
             import matplotlib.pyplot as plt

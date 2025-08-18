@@ -59,8 +59,7 @@ coilcurrents = [eq.tokamak["P1L"].current]
 l2vals = []
 linfvals = []
 
-for i in range(nrefinements):
-
+for _ in range(nrefinements):
     print("\n========== Refining ===========\n")
 
     psi_old = eq.psi()

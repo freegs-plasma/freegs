@@ -85,7 +85,7 @@ isoflux = [(Rx,-Zx, Rmid, 0.0)   # Outboard midplane, lower X-point
 constrain = freegs.control.constrain(xpoints=xpoints, gamma=1e-12, isoflux=isoflux)
 
 # Turn off feedback control for all coils
-for label, coil in tokamak.coils:
+for _, coil in tokamak.coils:
     coil.control = False
 
 # Centre column coil

@@ -81,9 +81,9 @@ class MGJacobi:
         if niter is None:
             niter = self.niter
 
-        for c in range(ncycle):
+        for _c in range(ncycle):
             # Jacobi smoothing
-            for i in range(niter):
+            for _i in range(niter):
                 x += (b - self.A.dot(x)) / self.diag
 
             if self.subsolver:
@@ -103,7 +103,7 @@ class MGJacobi:
                 x += reshape(self.xupdate, -1)
 
             # Jacobi smoothing
-            for i in range(niter):
+            for _i in range(niter):
                 x += (b - self.A.dot(x)) / self.diag
 
         return x.reshape(xi.shape)
@@ -264,7 +264,7 @@ def smoothVcycle(A, x, b, dx, dy, niter=10, sublevels=0, direct=True):
     """
 
     # Smooth
-    for i in range(niter):
+    for _i in range(niter):
         x = smoothJacobi(A, x, b, dx, dy)
 
     if sublevels > 0:
@@ -284,7 +284,7 @@ def smoothVcycle(A, x, b, dx, dy, niter=10, sublevels=0, direct=True):
         x = x + xupdate
 
     # Smooth
-    for i in range(niter):
+    for _i in range(niter):
         x = smoothJacobi(A, x, b, dx, dy)
 
     return x
