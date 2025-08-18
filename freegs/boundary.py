@@ -193,21 +193,15 @@ def freeBoundaryHagenow(eq, Jtor, psi):
     # where change in R,Z puts the observation point outside the boundary
     # to avoid the singularity in G(R,R') when R'=R
 
-    bndry_indices = concatenate(
-        [
-            [(x, 0, 0.0, -eps) for x in range(nx)],  # Down boundary
-            [(x, ny - 1, 0.0, eps) for x in range(nx)],  # Upper boundary
-            [(0, y, -eps, 0.0) for y in range(ny)],  # Left boundary
-            [(nx - 1, y, eps, 0.0) for y in range(ny)],
-        ]
-    )  # Right boundary
+    bndry_indices = [
+        *[(x, 0, 0.0, -eps) for x in range(nx)],  # Down boundary
+        *[(x, ny - 1, 0.0, eps) for x in range(nx)],  # Upper boundary
+        *[(0, y, -eps, 0.0) for y in range(ny)],  # Left boundary
+        *[(nx - 1, y, eps, 0.0) for y in range(ny)],  # Right boundary
+    ]
 
     # Loop through points on boundary
     for x, y, Reps, Zeps in bndry_indices:
-        # x and y can be floats here (Python 3.6.4)
-        x = int(round(x))
-        y = int(round(y))
-
         Rpos = R[x, y] + Reps
         Zpos = Z[x, y] + Zeps
 
