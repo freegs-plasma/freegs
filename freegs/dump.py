@@ -25,7 +25,6 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 # Py2/3 compatibility: h5py needs unicode for group/dataset names
-from __future__ import unicode_literals
 
 try:
     import h5py
