@@ -194,7 +194,7 @@ class Coil:
         # Force per unit length.
         # In cgs units f = I^2/(c^2 * R) * (ln(8*R/a) - 1 + xi/2)
         # In SI units f = mu0 * I^2 / (4*pi*R) * (ln(8*R/a) - 1 + xi/2)
-        self_fr = (mu0 * total_current ** 2 / (4.0 * np.pi * self.R)) * (
+        self_fr = (mu0 * total_current**2 / (4.0 * np.pi * self.R)) * (
             np.log(8.0 * self.R / minor_radius) - 1 + self_inductance / 2.0
         )
 

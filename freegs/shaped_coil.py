@@ -124,7 +124,7 @@ class ShapedCoil(Coil):
             result += GreensBz(R_fil, Z_fil, R, Z) * weight
         return result * self.turns
 
-    def inShape(self,polygon):
+    def inShape(self, polygon):
         Shaped_Coil = Polygon([shape for shape in self.shape])
         return (polygon.intersection(Shaped_Coil).area) / (self._area)
 

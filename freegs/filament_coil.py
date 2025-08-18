@@ -72,7 +72,6 @@ def populate_with_fils(shape, Nfils):
     nInside = 0
 
     while nInside < Nfils:
-
         nInside = 0
         i = 0  # Row counter used for staggering every other row
         # Create the (non-staggered) grid points for the given d(=dR,dZ)
@@ -83,17 +82,14 @@ def populate_with_fils(shape, Nfils):
         nZ = len(Zgrid)
 
         for i in range(nZ):
-
             zpoint = Zgrid[i]
 
             if i % 2:  # Every other row, stagger R coords by 0.5*dR
                 offset = 0.5 * d
             else:
-
                 offset = 0.0
 
             for j in range(nR):
-
                 rpoint = Rgrid[j] + offset
 
                 point = geometry.Point(rpoint, zpoint)
@@ -131,17 +127,14 @@ def populate_with_fils(shape, Nfils):
     nZ = len(Zgrid)
 
     for i in range(nZ):
-
         zpoint = Zgrid[i]
 
         if i % 2:  # Every other row, stagger R coords by 0.5*dR
             offset = 0.5 * d_opt
         else:
-
             offset = 0.0
 
         for j in range(nR):
-
             rpoint = Rgrid[j] + offset
 
             point = geometry.Point(rpoint, zpoint)
@@ -302,7 +295,7 @@ class FilamentCoil(Coil):
         result = result * self.turns / float(self.npoints)
         return result
 
-    def inShape(self,polygon):
+    def inShape(self, polygon):
         counter = 0
         for r, z in self.points:
             if polygon.contains(geometry.Point(r, z)):

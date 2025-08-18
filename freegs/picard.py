@@ -118,7 +118,6 @@ def solve(
 
     # Start main loop
     while True:
-
         if show:
             # Plot state of plasma equilibrium
             if pause < 0:
@@ -154,7 +153,6 @@ def solve(
             eq.solve(profiles, psi=psi, psi_bndry=eq.psi_bndry)
 
         else:
-
             # Either the user does not wish to check for a limited plasma,
             # or not enough iterations have passed yet.
             eq.check_limited = False

@@ -7,11 +7,10 @@ import numpy as np
 
 
 def test_inoutseparatrix():
-
     eq = equilibrium.Equilibrium(Rmin=0.1, Rmax=2.0, Zmin=-1.0, Zmax=1.0, nx=65, ny=65)
 
     # Two O-points, one X-point half way between them
-    psi = np.exp((-((eq.R - 1.0) ** 2) - eq.Z ** 2) * 3) + np.exp(
+    psi = np.exp((-((eq.R - 1.0) ** 2) - eq.Z**2) * 3) + np.exp(
         (-((eq.R - 1.0) ** 2) - (eq.Z + 1) ** 2) * 3
     )
 
@@ -36,9 +35,8 @@ def test_fixed_boundary_psi():
         boundary=boundary.fixedBoundary,
     )
 
-    profiles = jtor.ConstrainPaxisIp(
-        eq, 1e3, 1e5, 1.0  # Plasma pressure on axis [Pascals]  # Plasma current [Amps]
-    )  # fvac = R*Bt
+    # Plasma pressure on axis [Pascals]  # Plasma current [Amps]
+    profiles = jtor.ConstrainPaxisIp(eq, 1e3, 1e5, 1.0)  # fvac = R*Bt
 
     # Nonlinear solve
     picard.solve(eq, profiles)

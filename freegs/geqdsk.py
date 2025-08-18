@@ -164,17 +164,17 @@ def ceilPow2(val):
 def read(
     fh,
     machine,
-    rtol: float=1e-3,
-    ntheta: int=8,
-    show: bool=False,
-    axis: Optional["plt.Axes"] =None,
-    pause: float=0.0001,
-    cocos: int=1,
-    domain: list | None=None,
-    blend: float=0.0,
-    fit_sol: bool=False,
-    maxits: int=50,
-    current_bounds: list | None=None,
+    rtol: float = 1e-3,
+    ntheta: int = 8,
+    show: bool = False,
+    axis: Optional["plt.Axes"] = None,
+    pause: float = 0.0001,
+    cocos: int = 1,
+    domain: list | None = None,
+    blend: float = 0.0,
+    fit_sol: bool = False,
+    maxits: int = 50,
+    current_bounds: list | None = None,
 ) -> Equilibrium:
     """
     Reads a G-EQDSK format file

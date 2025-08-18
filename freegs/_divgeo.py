@@ -19,6 +19,7 @@ You should have received a copy of the GNU Lesser General Public License
 along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 
 """
+
 import numpy as np
 
 from freeqdsk._fileutils import ChunkOutput, write_1d, write_2d
@@ -66,9 +67,7 @@ def write(data, fh, label=None):
     btf   =   {bcentr:1.14f}       t;
     rtf   =   {rcentr:1.14f}       m;
 
-""".format(
-            **data
-        )
+""".format(**data)
     )
 
     try:

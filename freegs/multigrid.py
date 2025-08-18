@@ -325,14 +325,14 @@ class LaplacianOp:
             for y in range(1, ny - 1):
                 # Loop over points in the domain
 
-                b[x, y] = (f[x - 1, y] - 2 * f[x, y] + f[x + 1, y]) / dx ** 2 + (
+                b[x, y] = (f[x - 1, y] - 2 * f[x, y] + f[x + 1, y]) / dx**2 + (
                     f[x, y - 1] - 2 * f[x, y] + f[x, y + 1]
-                ) / dy ** 2
+                ) / dy**2
 
         return b
 
     def diag(self, dx, dy):
-        return -2.0 / dx ** 2 - 2.0 / dy ** 2
+        return -2.0 / dx**2 - 2.0 / dy**2
 
 
 class LaplaceSparse:
@@ -350,25 +350,24 @@ class LaplaceSparse:
         for x in range(1, nx - 1):
             for y in range(1, ny - 1):
                 row = x * ny + y
-                A[row, row] = -2.0 / dx ** 2 - 2.0 / dy ** 2
+                A[row, row] = -2.0 / dx**2 - 2.0 / dy**2
 
                 # y-1
-                A[row, row - 1] = 1.0 / dy ** 2
+                A[row, row - 1] = 1.0 / dy**2
 
                 # y+1
-                A[row, row + 1] = 1.0 / dy ** 2
+                A[row, row + 1] = 1.0 / dy**2
 
                 # x-1
-                A[row, row - ny] = 1.0 / dx ** 2
+                A[row, row - ny] = 1.0 / dx**2
 
                 # x+1
-                A[row, row + ny] = 1.0 / dx ** 2
+                A[row, row + ny] = 1.0 / dx**2
         # Convert to Compressed Sparse Row (CSR) format
         return A.tocsr()
 
 
 if __name__ == "__main__":
-
     # Test case
 
     from numpy import meshgrid, exp, linspace
@@ -384,7 +383,7 @@ if __name__ == "__main__":
 
     xx, yy = meshgrid(linspace(0, 1, nx), linspace(0, 1, ny))
 
-    rhs = exp(-((xx - 0.5) ** 2 + (yy - 0.5) ** 2) / 0.4 ** 2)
+    rhs = exp(-((xx - 0.5) ** 2 + (yy - 0.5) ** 2) / 0.4**2)
 
     rhs[0, :] = 0.0
     rhs[:, 0] = 0.0
@@ -438,9 +437,7 @@ if __name__ == "__main__":
 
     error = rhs - A(x2, dx, dy)
     print(f"Max error : {max(abs(error))}")
-    print(
-        f"Setup time: {start_solve - start}, run time: {end - start_solve} seconds"
-    )
+    print(f"Setup time: {start_solve - start}, run time: {end - start_solve} seconds")
 
     print(f"Values: {x2[10, 20]}, {x[10, 20]}")
 

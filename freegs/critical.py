@@ -20,7 +20,6 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 
 """
 
-
 from scipy import interpolate
 from numpy import zeros
 from numpy.linalg import inv
@@ -69,13 +68,13 @@ def find_critical(R, Z, psi, discard_xpoints=True):
     f = interpolate.RectBivariateSpline(R[:, 0], Z[0, :], psi)
 
     # Find candidate locations, based on minimising Bp^2
-    Bp2 = (f(R, Z, dx=1, grid=False) ** 2 + f(R, Z, dy=1, grid=False) ** 2) / R ** 2
+    Bp2 = (f(R, Z, dx=1, grid=False) ** 2 + f(R, Z, dy=1, grid=False) ** 2) / R**2
 
     # Get grid resolution, which determines a reasonable tolerance
     # for the Newton iteration search area
     dR = R[1, 0] - R[0, 0]
     dZ = Z[0, 1] - Z[0, 0]
-    radius_sq = 9 * (dR ** 2 + dZ ** 2)
+    radius_sq = 9 * (dR**2 + dZ**2)
 
     # Find local minima
 
@@ -97,7 +96,6 @@ def find_critical(R, Z, psi, discard_xpoints=True):
                 and (Bp2[i, j] < Bp2[i, j + 1])
                 and (Bp2[i, j] < Bp2[i, j - 1])
             ):
-
                 # Found local minimum
 
                 R0 = R[i, j]
@@ -110,11 +108,10 @@ def find_critical(R, Z, psi, discard_xpoints=True):
 
                 count = 0
                 while True:
-
                     Br = -f(R1, Z1, dy=1, grid=False) / R1
                     Bz = f(R1, Z1, dx=1, grid=False) / R1
 
-                    if Br ** 2 + Bz ** 2 < 1e-6:
+                    if Br**2 + Bz**2 < 1e-6:
                         # Found a minimum. Classify as either
                         # O-point or X-point
 
@@ -130,7 +127,7 @@ def find_critical(R, Z, psi, discard_xpoints=True):
                             (psi[i + 2, j + 2] - psi[i + 2, j - 2]) / (4.0 * dZ)
                             - (psi[i - 2, j + 2] - psi[i - 2, j - 2]) / (4.0 * dZ)
                         ) / (4.0 * dR)
-                        D = d2dr2 * d2dz2 - d2drdz ** 2
+                        D = d2dr2 * d2dz2 - d2drdz**2
 
                         if D < 0.0:
                             # Found X-point
@@ -368,12 +365,15 @@ def find_psisurface(eq, psifunc, r0, z0, r1, z1, psival=1.0, n=100, axis=None):
             # Changed 1.0 to psival in f
             # make f gradient to psival surface
             f = (pnorm[ind] - psival) / (pnorm[ind] - pnorm[ind - 1])
-            
+
             # Interpolate between points
             r = (1.0 - f) * r[ind] + f * r[ind - 1]
             z = (1.0 - f) * z[ind] + f * z[ind - 1]
 
-            if f > 1.0: warn("find_psisurface has encountered an extrapolation. This will probably result in a point where you don't expect it.")
+            if f > 1.0:
+                warn(
+                    "find_psisurface has encountered an extrapolation. This will probably result in a point where you don't expect it."
+                )
 
     if axis is not None:
         axis.plot(r, z, "bo")
@@ -527,17 +527,17 @@ def find_safety(
     fpol = eq.fpol(psirange[:]).reshape(npsi, 1)
     Br = eq.Br(r, z)
     Bz = eq.Bz(r, z)
-    Bthe = sqrt(Br ** 2 + Bz ** 2)
+    Bthe = sqrt(Br**2 + Bz**2)
 
     # Differentiate location w.r.t. index
     dr_di = (np.roll(r, 1, axis=1) - np.roll(r, -1, axis=1)) / 2.0
     dz_di = (np.roll(z, 1, axis=1) - np.roll(z, -1, axis=1)) / 2.0
 
     # Distance between points
-    dl = sqrt(dr_di ** 2 + dz_di ** 2)
+    dl = sqrt(dr_di**2 + dz_di**2)
 
     # Integrand - Btor/(R*Bthe) = Fpol/(R**2*Bthe)
-    qint = fpol / (r ** 2 * Bthe)
+    qint = fpol / (r**2 * Bthe)
 
     # Integral
     q = sum(qint * dl, axis=1) / (2 * pi)

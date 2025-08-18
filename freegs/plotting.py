@@ -69,7 +69,10 @@ def plotConstraints(control, axis=None, show=True):
 
     return axis
 
-def plotEquilibrium(eq, axis=None, show=True, oxpoints=True, wall=True, plot_sensors=True):
+
+def plotEquilibrium(
+    eq, axis=None, show=True, oxpoints=True, wall=True, plot_sensors=True
+):
     """
     Plot the equilibrium flux surfaces
 
@@ -124,12 +127,12 @@ def plotEquilibrium(eq, axis=None, show=True, oxpoints=True, wall=True, plot_sen
         )
 
     if plot_sensors:
-        if eq.tokamak.sensors is not None :
+        if eq.tokamak.sensors is not None:
             for sensor in eq.tokamak.sensors:
                 sensor.plot(axis)
-            axis.plot([], [], 'b', label='Rogowski Coil')
-            axis.plot([], [], 'mo', label='Poloidal Field Sensor')
-            axis.plot([], [], 'ro', label='Flux Loop Sensor')
+            axis.plot([], [], "b", label="Rogowski Coil")
+            axis.plot([], [], "mo", label="Poloidal Field Sensor")
+            axis.plot([], [], "ro", label="Flux Loop Sensor")
 
     if show:
         plt.legend()
