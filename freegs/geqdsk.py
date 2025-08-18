@@ -459,14 +459,13 @@ def read(
             )
         else:
             controlsystem = control.ConstrainPsi2D(psi)
+    # Remove SOL from fitting
+    elif current_bounds is not None:
+        controlsystem = control.ConstrainPsi2DAdvanced(
+            psi, weights=mask, current_lims=current_bounds
+        )
     else:
-        # Remove SOL from fitting
-        if current_bounds is not None:
-            controlsystem = control.ConstrainPsi2DAdvanced(
-                psi, weights=mask, current_lims=current_bounds
-            )
-        else:
-            controlsystem = control.ConstrainPsi2D(psi, weights=mask)
+        controlsystem = control.ConstrainPsi2D(psi, weights=mask)
 
     # Run control system to find coil currents
     controlsystem(eq)
