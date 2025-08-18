@@ -413,7 +413,10 @@ class Solenoid:
         return {}
 
     def __repr__(self):
-        return f"Solenoid(Rs={self.Rs}, Zsmin={self.Zsmin}, Zsmax={self.Zsmax}, current={self.current}, Ns={self.Ns}, control={self.control})"
+        return (
+            f"Solenoid(Rs={self.Rs}, Zsmin={self.Zsmin}, Zsmax={self.Zsmax}, "
+            f"current={self.current}, Ns={self.Ns}, control={self.control})"
+        )
 
     def __eq__(self, other):
         return (

@@ -189,7 +189,10 @@ class MultiCoil(Coil):
         return result
 
     def __repr__(self):
-        return f"MultiCoil(R={self.Rfil}, Z={self.Zfil}, current={self.current:.1f}, turns={self.turns}, control={self.control}, mirror={self.mirror}, polarity={self.polarity})"
+        return (
+            f"MultiCoil(R={self.Rfil}, Z={self.Zfil}, current={self.current:.1f}, "
+            f"turns={self.turns}, control={self.control}, mirror={self.mirror}, polarity={self.polarity})"
+        )
 
     def __eq__(self, other):
         return (

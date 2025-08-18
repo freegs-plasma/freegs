@@ -151,7 +151,8 @@ class constrain:
                 current_change_bounds.append((-inf, inf))
         else:
             assert len(self.current_lims) == len(tokamak.coils), (
-                f"Should provide current limits for all coils. Provided {len(self.current_lims)} limits for {len(tokamak.coils)} coils."
+                "Should provide current limits for all coils. "
+                f"Provided {len(self.current_lims)} limits for {len(tokamak.coils)} coils."
             )
             for i, (_, coil) in enumerate(tokamak.coils):
                 if coil.control:
