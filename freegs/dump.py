@@ -236,7 +236,7 @@ class OutputFile:
 
         eq_boundary_func = boundary.__dict__[eq_boundary_name]
 
-        equilibrium = Equilibrium(
+        return Equilibrium(
             tokamak=tokamak,
             Rmin=Rmin,
             Rmax=Rmax,
@@ -249,4 +249,3 @@ class OutputFile:
             boundary=eq_boundary_func,
         )
 
-        return equilibrium

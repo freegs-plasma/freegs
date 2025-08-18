@@ -232,3 +232,4 @@ def solve(
             )
     if convergenceInfo:
         return array(psi_maxchange_iterations), array(psi_relchange_iterations)
+    return None

@@ -273,8 +273,7 @@ class FilamentCoil(Coil):
         result = 0.0
         for R_fil, Z_fil in self.points:
             result += Greens(R_fil, Z_fil, R, Z)
-        result = result * self.turns / float(self.npoints)
-        return result
+        return result * self.turns / float(self.npoints)
 
     def controlBr(self, R, Z):
         """
@@ -283,8 +282,7 @@ class FilamentCoil(Coil):
         result = 0.0
         for R_fil, Z_fil in self.points:
             result += GreensBr(R_fil, Z_fil, R, Z)
-        result = result * self.turns / float(self.npoints)
-        return result
+        return result * self.turns / float(self.npoints)
 
     def controlBz(self, R, Z):
         """
@@ -293,8 +291,7 @@ class FilamentCoil(Coil):
         result = 0.0
         for R_fil, Z_fil in self.points:
             result += GreensBz(R_fil, Z_fil, R, Z)
-        result = result * self.turns / float(self.npoints)
-        return result
+        return result * self.turns / float(self.npoints)
 
     def inShape(self, polygon):
         counter = 0

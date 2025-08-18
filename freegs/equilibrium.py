@@ -351,7 +351,7 @@ class Equilibrium:
             psinorm = linspace(1.0 / (npsi + 1), 1.0, npsi, endpoint=False)
             return psinorm, critical.find_safety(self, psinorm=psinorm)
 
-        elif np.any((psinorm < 0.01) | (psinorm > 0.99)):
+        if np.any((psinorm < 0.01) | (psinorm > 0.99)):
             psinorm_inner = np.linspace(0.01, 0.99, num=npsi)
             q_inner = critical.find_safety(self, psinorm=psinorm_inner)
 
@@ -780,9 +780,8 @@ class Equilibrium:
         R0 = P3[0] + 0.5 * (P1[0] - P3[0])
         z0 = 0.5 * (P1[1] + P3[1])
 
-        C = np.array([R0, z0])
+        return np.array([R0, z0])
 
-        return C
 
     def Rgeometric(self, npoints=360):
         """Locates major radius R of the geometric major radius."""
@@ -1233,9 +1232,8 @@ class Equilibrium:
             dV *= self.mask
 
         pressure_integral = romb(romb(pressure * dV))
-        thermal_energy = (3.0 / 2.0) * pressure_integral
+        return (3.0 / 2.0) * pressure_integral
 
-        return thermal_energy
 
     def qcyl(self):
         """
@@ -1250,9 +1248,8 @@ class Equilibrium:
 
         kappa = self.elongation()
 
-        val = 0.5 * (1 + kappa * kappa) * ((2.0 * np.pi * a * eps * btor) / (mu0 * Ip))
+        return 0.5 * (1 + kappa * kappa) * ((2.0 * np.pi * a * eps * btor) / (mu0 * Ip))
 
-        return val
 
 
 def refine(eq, nx=None, ny=None):

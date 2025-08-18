@@ -829,7 +829,6 @@ class Machine:
                     + str(sensor.measurement)
                 )
         print("==========================")
-        return
 
     def getForces(self, equilibrium=None):
         """

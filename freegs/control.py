@@ -418,9 +418,8 @@ class ConstrainPsi2DAdvanced:
 
         psi_av = np.average(psi, weights=self.weights)
         diff = (psi - psi_av - self.target_psi) * self.weights
-        sum_square_diff = np.sum(diff * diff)
+        return np.sum(diff * diff)
 
-        return sum_square_diff
 
 
 class ConstrainPsiNorm2DAdvanced:
@@ -519,6 +518,5 @@ class ConstrainPsiNorm2DAdvanced:
         # 1 = plasma boundary
         psi_norm = (psi - psi_axis) / (psi_bndry - psi_axis)
         diff = (psi_norm - self.target_psinorm) * self.weights
-        sum_square_diff = np.sum(diff * diff)
+        return np.sum(diff * diff)
 
-        return sum_square_diff

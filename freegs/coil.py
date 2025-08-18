@@ -212,8 +212,7 @@ class Coil:
     def inShape(self, polygon):
         if polygon.contains(Point(self.R, self.Z)):
             return 1
-        else:
-            return 0
+        return 0
 
     def __repr__(self):
         return f"Coil(R={self.R}, Z={self.Z}, current={self.current:.1f}, turns={self.turns}, control={self.control})"

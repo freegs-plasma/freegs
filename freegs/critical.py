@@ -470,8 +470,7 @@ def find_safety(
     if (xpoint is None) or (len(xpoint) == 0):
         # No X-point
         raise ValueError("No X-point so no separatrix")
-    else:
-        psinormal = (psi - opoint[0][2]) / (xpoint[0][2] - opoint[0][2])
+    psinormal = (psi - opoint[0][2]) / (xpoint[0][2] - opoint[0][2])
 
     psifunc = interpolate.RectBivariateSpline(eq.R[:, 0], eq.Z[0, :], psinormal)
 
@@ -541,6 +540,5 @@ def find_safety(
     qint = fpol / (r**2 * Bthe)
 
     # Integral
-    q = sum(qint * dl, axis=1) / (2 * pi)
+    return sum(qint * dl, axis=1) / (2 * pi)
 
-    return q

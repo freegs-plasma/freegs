@@ -158,9 +158,8 @@ def smoothJacobi(A, x, b, dx, dy):
     if b.shape != x.shape:
         raise ValueError("b and x have different shapes")
 
-    smooth = x + (b - A(x, dx, dy)) / A.diag(dx, dy)
+    return x + (b - A(x, dx, dy)) / A.diag(dx, dy)
 
-    return smooth
 
 
 def restrict(orig, out=None, avg=False):
@@ -188,7 +187,7 @@ def restrict(orig, out=None, avg=False):
             return orig
         out.resize(orig.shape)
         out[:, :] = orig
-        return
+        return None
 
     # Dividing x and y in 2
     nx = (nx - 1) // 2 + 1
