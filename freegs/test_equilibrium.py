@@ -15,8 +15,10 @@ def test_inoutseparatrix():
 
     Rin, Rout = eq.innerOuterSeparatrix()
 
-    assert Rin >= eq.Rmin and Rout >= eq.Rmin
-    assert Rin <= eq.Rmax and Rout <= eq.Rmax
+    assert Rin >= eq.Rmin
+    assert Rout >= eq.Rmin
+    assert Rin <= eq.Rmax
+    assert Rout <= eq.Rmax
 
 
 def test_fixed_boundary_psi():

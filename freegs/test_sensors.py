@@ -235,10 +235,8 @@ def test_rog_around_Filamentcoil():
 
     tokamak.takeMeasurements()
 
-    assert (
-        tokamak.sensors[0].measurement == total_current
-        and tokamak.sensors[1].measurement == total_current / 3
-    )
+    assert tokamak.sensors[0].measurement == total_current
+    assert tokamak.sensors[1].measurement == total_current / 3
 
 
 def test_rog_around_circuit():
@@ -277,10 +275,8 @@ def test_rog_around_circuit():
 
     tokamak.takeMeasurements()
 
-    assert (
-        tokamak.sensors[0].measurement == circuit_current * npoints
-        and tokamak.sensors[1].measurement == circuit_current
-    )
+    assert tokamak.sensors[0].measurement == circuit_current * npoints
+    assert tokamak.sensors[1].measurement == circuit_current
 
 
 def test_rog_with_plasma():

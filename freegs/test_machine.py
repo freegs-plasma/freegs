@@ -43,7 +43,8 @@ def test_coil_forces():
 
     forces = tokamak.getForces()
 
-    assert "P1" in forces and "P2" in forces
+    assert "P1" in forces
+    assert "P2" in forces
 
     # Vertical force is equal and opposite
     assert math.isclose(forces["P1"][1], -forces["P2"][1])
@@ -70,7 +71,8 @@ def test_coil_forces_unequal():
 
     forces = tokamak.getForces()
 
-    assert "P1" in forces and "P2" in forces
+    assert "P1" in forces
+    assert "P2" in forces
 
     # Vertical force is equal and opposite
     assert math.isclose(forces["P1"][1], -forces["P2"][1])
