@@ -24,8 +24,7 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 
 import numpy as np
 from scipy.interpolate import RectBivariateSpline
-from .coil import Coil, AreaCurrentLimit
-from .gradshafranov import Greens, GreensBr, GreensBz
+from .coil import Coil
 from . import polygons
 
 

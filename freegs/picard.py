@@ -20,7 +20,6 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 from numpy import amin, amax, array
-from . import critical
 import numpy as np
 
 
