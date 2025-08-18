@@ -3,7 +3,6 @@ Defines class to represent the equilibrium
 state, including plasma and coil currents
 """
 
-from typing import Optional
 
 from numpy import pi, meshgrid, linspace, exp, array
 import numpy as np
@@ -63,7 +62,7 @@ class Equilibrium:
         nx: int = 65,
         ny: int = 65,
         boundary=freeBoundary,
-        psi: Optional[float] = None,
+        psi: float | None = None,
         current: float = 0.0,
         order: int = 4,
         check_limited: bool = False,
