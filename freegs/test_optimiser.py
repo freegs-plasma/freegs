@@ -147,7 +147,7 @@ if __name__ == "__main__":
         best_point = axis.scatter([best[1][0]], [best[1][1]], c="red")
 
         axis.figure.canvas.draw()
-        axis.set_title("Generation: {}, Best score: {}".format(generation, best[0]))
+        axis.set_title(f"Generation: {generation}, Best score: {best[0]}")
         plt.pause(0.5)
 
     result = optimiser.optimise(

@@ -73,11 +73,11 @@ class Coil:
     # A dtype for converting to Numpy array and storing in HDF5 files
     dtype = np.dtype(
         [
-            (str("R"), np.float64),
-            (str("Z"), np.float64),
-            (str("current"), np.float64),
-            (str("turns"), int),
-            (str("control"), bool),
+            ("R", np.float64),
+            ("Z", np.float64),
+            ("current", np.float64),
+            ("turns", int),
+            ("control", bool),
         ]
     )
 
@@ -214,9 +214,7 @@ class Coil:
             return 0
 
     def __repr__(self):
-        return "Coil(R={0}, Z={1}, current={2:.1f}, turns={3}, control={4})".format(
-            self.R, self.Z, self.current, self.turns, self.control
-        )
+        return f"Coil(R={self.R}, Z={self.Z}, current={self.current:.1f}, turns={self.turns}, control={self.control})"
 
     def __eq__(self, other):
         return (
@@ -242,9 +240,7 @@ class Coil:
     def from_numpy_array(cls, value):
         if value.dtype != cls.dtype:
             raise ValueError(
-                "Can't create {this} from dtype: {got} (expected: {dtype})".format(
-                    this=type(cls), got=value.dtype, dtype=cls.dtype
-                )
+                f"Can't create {type(cls)} from dtype: {value.dtype} (expected: {cls.dtype})"
             )
         return Coil(*value[()])
 

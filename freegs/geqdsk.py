@@ -380,7 +380,7 @@ def read(
             newny = int(ceilPow2(fnewny - 1)) + 1
 
         if (newnx != nx) or (newny != ny):
-            print("Changing resolution: {} x {}".format(newnx, newny))
+            print(f"Changing resolution: {newnx} x {newny}")
 
         # Create an interpolation function for Jtor and the input psi
         Jtor_func = interpolate.RectBivariateSpline(eq.R[:, 0], eq.Z[0, :], Jtor)
@@ -424,7 +424,7 @@ def read(
     eq.solve(profiles, Jtor=Jtor)
 
     print(
-        "Plasma current: {0} Amps, input: {1} Amps".format(
+        "Plasma current: {} Amps, input: {} Amps".format(
             eq.plasmaCurrent(), data["cpasma"]
         )
     )
@@ -508,11 +508,11 @@ def read(
     )
 
     print(
-        "Plasma current: {0} Amps, input: {1} Amps".format(
+        "Plasma current: {} Amps, input: {} Amps".format(
             eq.plasmaCurrent(), data["cpasma"]
         )
     )
-    print("Plasma pressure on axis: {0} Pascals".format(eq.pressure(0.0)))
+    print(f"Plasma pressure on axis: {eq.pressure(0.0)} Pascals")
     machine.printCurrents()
 
     # Attempt to find O- and X-points

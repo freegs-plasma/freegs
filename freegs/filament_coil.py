@@ -181,13 +181,13 @@ class FilamentCoil(Coil):
     # A dtype for converting to Numpy array and storing in HDF5 files
     dtype = np.dtype(
         [
-            (str("RZlen"), int),  # Length of R and Z arrays
-            (str("R"), "500f8"),  # Up to 100 points
-            (str("Z"), "500f8"),
-            (str("current"), np.float64),
-            (str("turns"), int),
-            (str("control"), bool),
-            (str("npoints"), int),
+            ("RZlen", int),  # Length of R and Z arrays
+            ("R", "500f8"),  # Up to 100 points
+            ("Z", "500f8"),
+            ("current", np.float64),
+            ("turns", int),
+            ("control", bool),
+            ("npoints", int),
         ]
     )
 
@@ -310,9 +310,7 @@ class FilamentCoil(Coil):
         return counter
 
     def __repr__(self):
-        return "FilamentCoil({0}, current={1:.1f}, turns={2}, control={3})".format(
-            self.points, self.current, self.turns, self.control
-        )
+        return f"FilamentCoil({self.points}, current={self.current:.1f}, turns={self.turns}, control={self.control})"
 
     @property
     def R(self):

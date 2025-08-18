@@ -144,7 +144,7 @@ class Equilibrium:
             generator = GSsparse4thOrder(Rmin, Rmax, Zmin, Zmax)
         else:
             raise ValueError(
-                "Invalid choice of order ({}). Valid values are 2 or 4.".format(order)
+                f"Invalid choice of order ({order}). Valid values are 2 or 4."
             )
         self.order = order
 
@@ -688,9 +688,7 @@ class Equilibrium:
                     print(
                         prefix
                         + label
-                        + " : R = {0:.2f} kN , Z = {1:.2f} kN".format(
-                            force[0] * 1e-3, force[1] * 1e-3
-                        )
+                        + f" : R = {force[0] * 1e-3:.2f} kN , Z = {force[1] * 1e-3:.2f} kN"
                     )
 
         print_forces(self.getForces())

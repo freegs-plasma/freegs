@@ -73,7 +73,7 @@ def triangle_quad(triangle, n=6):
             ((d * r1 + d * r2 + c * r3), (d * z1 + d * z2 + c * z3), 0.223381589678011),
         ]
     else:
-        raise ValueError("Quadrature not available for n={}".format(n))
+        raise ValueError(f"Quadrature not available for n={n}")
 
 
 def polygon_quad(polygon, n=6):

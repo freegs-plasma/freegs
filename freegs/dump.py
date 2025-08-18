@@ -51,7 +51,7 @@ class OutputFormatNotAvailableError(Exception):
     """
 
     def __init__(self, file_format="HDF5"):
-        self.message = "Sorry, {} is not available!".format(file_format)
+        self.message = f"Sorry, {file_format} is not available!"
 
 
 class OutputFile(object):

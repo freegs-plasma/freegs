@@ -293,7 +293,7 @@ def smoothVcycle(A, x, b, dx, dy, niter=10, sublevels=0, direct=True):
 
 def smoothMG(A, x, b, dx, dy, niter=10, sublevels=1, ncycle=2):
     error = b - A(x, dx, dy)
-    print("Starting max residual: %e" % (max(abs(error)),))
+    print(f"Starting max residual: {max(abs(error)):e}")
 
     for c in range(ncycle):
         x = smoothVcycle(A, x, b, dx, dy, niter, sublevels)
@@ -417,8 +417,8 @@ if __name__ == "__main__":
     end = timer()
 
     error = rhs - A(x, dx, dy)
-    print("Max error : {0}".format(max(abs(error))))
-    print("Run time  : {0} seconds".format(end - start))
+    print(f"Max error : {max(abs(error))}")
+    print(f"Run time  : {end - start} seconds")
 
     ################ SPARSE MATRIX ##########################
 
@@ -437,14 +437,12 @@ if __name__ == "__main__":
     end = timer()
 
     error = rhs - A(x2, dx, dy)
-    print("Max error : {0}".format(max(abs(error))))
+    print(f"Max error : {max(abs(error))}")
     print(
-        "Setup time: {0}, run time: {1} seconds".format(
-            start_solve - start, end - start_solve
-        )
+        f"Setup time: {start_solve - start}, run time: {end - start_solve} seconds"
     )
 
-    print("Values: {0}, {1}".format(x2[10, 20], x[10, 20]))
+    print(f"Values: {x2[10, 20]}, {x[10, 20]}")
 
     f = plt.figure()
     # plt.contourf(x)

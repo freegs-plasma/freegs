@@ -149,8 +149,8 @@ class PlotMonitor:
         # Update the canvas and pause
         # Note, a short pause is needed to force drawing update
         self.fig.canvas.draw()
-        self.axis.set_title("Generation: {} Score: {}".format(generation, best[0]))
-        self.fig.savefig("generation_{}.pdf".format(generation))
+        self.axis.set_title(f"Generation: {generation} Score: {best[0]}")
+        self.fig.savefig(f"generation_{generation}.pdf")
         plt.pause(0.5)
 
 

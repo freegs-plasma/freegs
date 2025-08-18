@@ -52,13 +52,13 @@ class ShapedCoil(Coil):
     # A dtype for converting to Numpy array and storing in HDF5 files
     dtype = np.dtype(
         [
-            (str("RZlen"), int),  # Length of the R and Z arrays
-            (str("R"), "10f8"),  # Note: Up to 10 points
-            (str("Z"), "10f8"),  # Note: Up to 10 points
-            (str("current"), np.float64),
-            (str("turns"), int),
-            (str("control"), bool),
-            (str("npoints"), int),
+            ("RZlen", int),  # Length of the R and Z arrays
+            ("R", "10f8"),  # Note: Up to 10 points
+            ("Z", "10f8"),  # Note: Up to 10 points
+            ("current", np.float64),
+            ("turns", int),
+            ("control", bool),
+            ("npoints", int),
         ]
     )
 
@@ -129,9 +129,7 @@ class ShapedCoil(Coil):
         return (polygon.intersection(Shaped_Coil).area) / (self._area)
 
     def __repr__(self):
-        return "ShapedCoil({0}, current={1:.1f}, turns={2}, control={3})".format(
-            self.shape, self.current, self.turns, self.control
-        )
+        return f"ShapedCoil({self.shape}, current={self.current:.1f}, turns={self.turns}, control={self.control})"
 
     @property
     def R(self):
@@ -218,9 +216,7 @@ class ShapedCoil(Coil):
     def from_numpy_array(cls, value):
         if value.dtype != cls.dtype:
             raise ValueError(
-                "Can't create {this} from dtype: {got} (expected: {dtype})".format(
-                    this=type(cls), got=value.dtype, dtype=cls.dtype
-                )
+                f"Can't create {type(cls)} from dtype: {value.dtype} (expected: {cls.dtype})"
             )
         RZlen = value["RZlen"]
         R = value["R"][:RZlen]

@@ -65,14 +65,14 @@ class Circuit:
         except NameError:
             string_dtype = h5py.special_dtype(vlen=str)
     else:
-        string_dtype = np.dtype(str("S"))
+        string_dtype = np.dtype("S")
 
     # A dtype for converting to Numpy array and storing in HDF5 files
     dtype = np.dtype(
         [
-            (str("label"), string_dtype),
-            (str("coil"), Coil.dtype),
-            (str("multiplier"), np.float64),
+            ("label", string_dtype),
+            ("coil", Coil.dtype),
+            ("multiplier", np.float64),
         ]
     )
 
@@ -91,7 +91,7 @@ class Circuit:
         for label, coil, _ in self.coils:
             if label == name:
                 return coil
-        raise KeyError("Circuit does not contain coil with label '{0}'".format(name))
+        raise KeyError(f"Circuit does not contain coil with label '{name}'")
     
     @property
     def current(self) -> float:
@@ -211,15 +211,12 @@ class Circuit:
         return sum(coil.inShape(polygon)*multiplier for label, coil, multiplier in self.coils)
 
     def __repr__(self):
-        result = "Circuit(["
         coils = [
-            '("{0}", {1}, {2})'.format(label, coil, multiplier)
+            f'("{label}", {coil}, {multiplier})'
             for label, coil, multiplier in self.coils
         ]
-        result += ", ".join(coils)
-        return result + "], current={0}, control={1})".format(
-            self.current, self.control
-        )
+        result = ", ".join(coils)
+        return f"Circuit([{result}], current={self.current}, control={self.control})"
 
     def __eq__(self, other):
         return (
@@ -247,9 +244,7 @@ class Circuit:
     def from_numpy_array(cls, value):
         if value.dtype != cls.dtype:
             raise ValueError(
-                "Can't create {this} from dtype: {got} (expected: {dtype})".format(
-                    this=type(cls), got=value.dtype, dtype=cls.dtype
-                )
+                f"Can't create {type(cls)} from dtype: {value.dtype} (expected: {cls.dtype})"
             )
 
         # HDF5 reads strings as bytes by default, so convert to string
@@ -323,12 +318,12 @@ class Solenoid:
     # A dtype for converting to Numpy array and storing in HDF5 files
     dtype = np.dtype(
         [
-            (str("Rs"), np.float64),
-            (str("Zsmin"), np.float64),
-            (str("Zsmax"), np.float64),
-            (str("Ns"), np.float64),
-            (str("current"), np.float64),
-            (str("control"), bool),
+            ("Rs", np.float64),
+            ("Zsmin", np.float64),
+            ("Zsmax", np.float64),
+            ("Ns", np.float64),
+            ("current", np.float64),
+            ("control", bool),
         ]
     )
 
@@ -417,9 +412,7 @@ class Solenoid:
         return {}
 
     def __repr__(self):
-        return "Solenoid(Rs={0}, Zsmin={1}, Zsmax={2}, current={3}, Ns={4}, control={5})".format(
-            self.Rs, self.Zsmin, self.Zsmax, self.current, self.Ns, self.control
-        )
+        return f"Solenoid(Rs={self.Rs}, Zsmin={self.Zsmin}, Zsmax={self.Zsmax}, current={self.current}, Ns={self.Ns}, control={self.control})"
 
     def __eq__(self, other):
         return (
@@ -447,9 +440,7 @@ class Solenoid:
     def from_numpy_array(cls, value):
         if value.dtype != cls.dtype:
             raise ValueError(
-                "Can't create {this} from dtype: {got} (expected: {dtype})".format(
-                    this=type(cls), got=value.dtype, dtype=cls.dtype
-                )
+                f"Can't create {type(cls)} from dtype: {value.dtype} (expected: {cls.dtype})"
             )
         return Solenoid(*value[()])
 
@@ -469,7 +460,7 @@ class Wall:
         self.Z = Z
 
     def __repr__(self):
-        return "Wall(R={R}, Z={Z})".format(R=self.R, Z=self.Z)
+        return f"Wall(R={self.R}, Z={self.Z})"
 
     def __eq__(self, other):
         return np.allclose(self.R, other.R) and np.allclose(self.Z, other.Z)
@@ -496,7 +487,7 @@ class Sensor:
 
 
     def __repr__(self):
-        return "R={R}, Z={Z}".format(R=self.R, Z=self.Z)
+        return f"R={self.R}, Z={self.Z}"
 
     def __eq__(self, other):
         return np.allclose(self.R, other.R) and np.allclose(self.Z, other.Z)
@@ -568,7 +559,7 @@ class PoloidalFieldSensor(Sensor):
         self.theta = theta
 
     def __repr__(self):
-        return "R={R}, Z={Z}, Theta={Theta}".format(R=self.R, Z=self.Z, Theta=self.theta)
+        return f"R={self.R}, Z={self.Z}, Theta={self.theta}"
 
     def get_measure(self, tokamak, eq):
         """
@@ -653,9 +644,7 @@ class Machine:
             )
 
     def __repr__(self):
-        return "Machine(coils={coils}, wall={wall})".format(
-            coils=self.coils, wall=self.wall
-        )
+        return f"Machine(coils={self.coils}, wall={self.wall})"
 
     def __eq__(self, other):
         # Other Machine might be equivalent except for order of
@@ -669,7 +658,7 @@ class Machine:
         for label, coil in self.coils:
             if label == name:
                 return coil
-        raise KeyError("Machine does not contain coil with label '{0}'".format(name))
+        raise KeyError(f"Machine does not contain coil with label '{name}'")
 
     def generate_limit_points(self, nlimit):
         """
