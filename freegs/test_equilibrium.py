@@ -2,6 +2,7 @@ from . import equilibrium
 from . import boundary
 from . import jtor
 from . import picard
+from .machine import TestTokamak
 
 import numpy as np
 
@@ -34,6 +35,38 @@ def test_fixed_boundary_psi():
         nx=65,
         ny=65,
         boundary=boundary.fixedBoundary,
+    )
+
+    profiles = jtor.ConstrainPaxisIp(
+        eq, 1e3, 1e5, 1.0  # Plasma pressure on axis [Pascals]  # Plasma current [Amps]
+    )  # fvac = R*Bt
+
+    # Nonlinear solve
+    picard.solve(eq, profiles)
+
+    psi = eq.psi()
+    assert psi[0, 0] == 0.0  # Boundary is fixed
+    assert psi[32, 32] != 0.0  # Solution is not all zero
+
+    assert eq.psi_bndry == 0.0
+    assert eq.poloidalBeta() > 0.0
+
+
+def test_fixed_boundary_psi_check_limited():
+    # This is adapted from example 5
+
+    tokamak = TestTokamak()
+
+    eq = equilibrium.Equilibrium(
+        tokamak=tokamak,
+        Rmin=0.1,
+        Rmax=2.0,
+        Zmin=-1.0,
+        Zmax=1.0,
+        nx=65,
+        ny=65,
+        boundary=boundary.fixedBoundary,
+        check_limited=True,
     )
 
     profiles = jtor.ConstrainPaxisIp(
