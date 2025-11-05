@@ -32,6 +32,7 @@ def solve(
     atol=1e-10,
     blend=0.0,
     show=False,
+    verbose=False,
     axis=None,
     pause=0.0001,
     psi_bndry=None,
@@ -40,6 +41,7 @@ def solve(
     check_limited=False,
     wait_for_limited=False,
     limit_it=0,
+    mask=None,
 ):
     """
     Perform Picard iteration to find solution to the Grad-Shafranov equation
@@ -59,9 +61,10 @@ def solve(
         Blending of previous and next psi solution
 
             psi{n+1} <- psi{n+1} * (1-blend) + blend * psi{n}
-
     show:
         If true, plot the plasma equilibrium at each nonlinear step
+    verbose:
+        If true, print the relative changes in psi/bndry at each nonlinear step
     axis:
         Specify a figure to plot onto. Default (None) creates a new figure
     pause:
@@ -159,7 +162,7 @@ def solve(
             # Either the user does not wish to check for a limited plasma,
             # or not enough iterations have passed yet.
             eq.check_limited = False
-            eq.solve(profiles, psi=psi, psi_bndry=psi_bndry)
+            eq.solve(profiles, psi=psi, psi_bndry=psi_bndry, mask=mask)
 
         # Keep track of whether or not the plasma has at all been limited.
         if eq.is_limited:
@@ -187,6 +190,9 @@ def solve(
 
         # Compare against last solution
         psi_change = psi_last - psi
+
+        if mask is not None:
+            psi_change = psi_change * mask
         psi_maxchange = amax(abs(psi_change))
         psi_relchange = psi_maxchange / (amax(psi) - amin(psi))
 
@@ -206,7 +212,7 @@ def solve(
             # The user wants to wait for a limited plasma. The plasma is not limited.
             ok_to_break = False
 
-        if show:
+        if show or verbose:
             print("psi_relchange: " + str(psi_relchange))
             print("bndry_relchange: " + str(bndry_relchange))
             print("bndry_change: " + str(bndry_change))
