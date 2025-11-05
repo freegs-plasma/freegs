@@ -164,17 +164,18 @@ def ceilPow2(val):
 def read(
     fh,
     machine,
-    rtol: float=1e-3,
-    ntheta: int=8,
-    show: bool=False,
-    axis: Optional["plt.Axes"] =None,
-    pause: float=0.0001,
-    cocos: int=1,
-    domain: Optional[list]=None,
-    blend: float=0.0,
-    fit_sol: bool=False,
-    maxits: int=50,
-    current_bounds: Optional[list]=None,
+    rtol: float = 1e-3,
+    ntheta: int = 8,
+    show: bool = False,
+    axis: Optional["plt.Axes"] = None,
+    pause: float = 0.0001,
+    cocos: int = 1,
+    domain: Optional[list] = None,
+    blend: float = 0.0,
+    fit_sol: bool = False,
+    maxits: int = 50,
+    current_bounds: Optional[list] = None,
+    internal_psi: bool = False,
 ) -> Equilibrium:
     """
     Reads a G-EQDSK format file
@@ -247,7 +248,8 @@ def read(
     data = geqdsk.read(fh, cocos=cocos)
 
     # If data contains a limiter, set the machine wall
-    if "rlim" in data:
+
+    if data["rlim"] is not None:
         if len(data["rlim"]) > 3:
             machine.wall = Wall(data["rlim"], data["zlim"])
         else:
@@ -360,6 +362,9 @@ def read(
     psi_axis = eq.psi_axis
     mask = eq.mask
 
+    if internal_psi:
+        mask = np.where(psi_norm <= 1.0, 1.0, 0.0)
+
     # Toroidal current
     Jtor = eq.R * pprime_func(psi_norm) + ffprime_func(psi_norm) / (eq.R * mu0)
     Jtor *= mask
@@ -409,7 +414,10 @@ def read(
 
         # Update the mask function by calculating normalised psi
         # on the new grid
-        psi_norm = clip((psi - psi_axis) / (psi_bndry - psi_axis), 0.0, 1.0)
+        psi_norm = clip((psi - psi_axis) / (psi_bndry - psi_axis), 0.0, 1.1)
+
+        if internal_psi:
+            mask = np.where(psi_norm <= 1.0, 1.0, 0.0)
 
     # Note: Here we have
     #   eq : Equilibrium object
@@ -420,8 +428,9 @@ def read(
 
     # Perform a linear solve to calculate psi
     # using known Jtor
+
     eq.check_limited = True
-    eq.solve(profiles, Jtor=Jtor)
+    eq.solve(profiles, Jtor=Jtor, mask=mask)
 
     print(
         "Plasma current: {0} Amps, input: {1} Amps".format(

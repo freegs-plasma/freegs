@@ -442,7 +442,7 @@ class Equilibrium:
             :, 0:2
         ]
 
-    def solve(self, profiles, Jtor=None, psi=None, psi_bndry=None):
+    def solve(self, profiles, Jtor=None, psi=None, psi_bndry=None, mask=None):
         """
         Calculate the plasma equilibrium given new profiles
         replacing the current equilibrium.
@@ -482,20 +482,24 @@ class Equilibrium:
         # Set plasma boundary
         # Note that the Equilibrium is passed to the boundary function
         # since the boundary may need to run the G-S solver (von Hagenow's method)
-        self._applyBoundary(self, Jtor, self.plasma_psi)
+
+        if mask is None:
+            self._applyBoundary(self, Jtor, self.plasma_psi)
 
         # Right hand side of G-S equation
         rhs = -mu0 * self.R * Jtor
 
-        # Copy boundary conditions
-        rhs[0, :] = self.plasma_psi[0, :]
-        rhs[:, 0] = self.plasma_psi[:, 0]
-        rhs[-1, :] = self.plasma_psi[-1, :]
-        rhs[:, -1] = self.plasma_psi[:, -1]
+        if mask is not None:
+            rhs = np.where(mask == 0, self.plasma_psi, rhs)
+        else:
+            # Copy boundary conditions
+            rhs[0, :] = self.plasma_psi[0, :]
+            rhs[:, 0] = self.plasma_psi[:, 0]
+            rhs[-1, :] = self.plasma_psi[-1, :]
+            rhs[:, -1] = self.plasma_psi[:, -1]
 
         # Call elliptic solver
         plasma_psi = self._solver(self.plasma_psi, rhs)
-
         self._updatePlasmaPsi(plasma_psi)
 
         # Update plasma current
