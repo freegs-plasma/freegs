@@ -430,7 +430,10 @@ def read(
     # using known Jtor
 
     eq.check_limited = True
-    eq.solve(profiles, Jtor=Jtor, mask=mask)
+    if internal_psi:
+        eq.solve(profiles, Jtor=Jtor, mask=mask)
+    else:
+        eq.solve(profiles, Jtor=Jtor)
 
     print(
         "Plasma current: {0} Amps, input: {1} Amps".format(
