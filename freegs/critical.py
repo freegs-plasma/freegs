@@ -146,7 +146,7 @@ def find_critical(R, Z, psi, discard_xpoints=True):
 
                     J[0, 0] = -Br / R1 - f(R1, Z1, dy=1, dx=1)[0][0] / R1
                     J[0, 1] = -f(R1, Z1, dy=2)[0][0] / R1
-                    J[1, 0] = -Bz / R1 + f(R1, Z1, dx=2) / R1
+                    J[1, 0] = -Bz / R1 + f(R1, Z1, dx=2)[0][0] / R1
                     J[1, 1] = f(R1, Z1, dx=1, dy=1)[0][0] / R1
 
                     d = dot(inv(J), [Br, Bz])
