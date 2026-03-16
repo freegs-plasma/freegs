@@ -490,7 +490,7 @@ class Equilibrium:
         rhs = -mu0 * self.R * Jtor
 
         if mask is not None:
-            rhs = np.where(mask == 0, self.plasma_psi, rhs)
+            rhs = np.where(mask == 0, 0.0, rhs)
         else:
             # Copy boundary conditions
             rhs[0, :] = self.plasma_psi[0, :]
