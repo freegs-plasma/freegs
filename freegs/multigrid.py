@@ -201,19 +201,23 @@ def restrict(orig, out=None, avg=False):
         for y in range(1, ny - 1):
             x0 = 2 * x
             y0 = 2 * y
-            out[x, y] = orig[x0, y0] / 4.0
-            +(
-                orig[x0 + 1, y0]
-                + orig[x0 - 1, y0]
-                + orig[x0, y0 + 1]
-                + orig[x0, y0 - 1]
-            ) / 8.0
-            +(
-                orig[x0 - 1, y0 - 1]
-                + orig[x0 - 1, y0 + 1]
-                + orig[x0 + 1, y0 - 1]
-                + orig[x0 + 1, y0 + 1]
-            ) / 16.0
+            out[x, y] = (
+                orig[x0, y0] / 4.0
+                + (
+                    orig[x0 + 1, y0]
+                    + orig[x0 - 1, y0]
+                    + orig[x0, y0 + 1]
+                    + orig[x0, y0 - 1]
+                )
+                / 8.0
+                + (
+                    orig[x0 - 1, y0 - 1]
+                    + orig[x0 - 1, y0 + 1]
+                    + orig[x0 + 1, y0 - 1]
+                    + orig[x0 + 1, y0 + 1]
+                )
+                / 16.0
+            )
     if not avg:
         out *= 4.0
 
