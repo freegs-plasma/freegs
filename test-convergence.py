@@ -27,6 +27,7 @@ eq = freegs.Equilibrium(
 )
 
 profiles = freegs.jtor.ConstrainPaxisIp(
+    eq,   # Equilibrium object (required as first argument)
     1e3,  # Plasma pressure on axis [Pascals]
     2e5,  # Plasma current [Amps]
     2.0,  # Vacuum f=R*Bt
