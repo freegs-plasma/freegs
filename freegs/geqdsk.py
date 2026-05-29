@@ -81,7 +81,12 @@ def write(eq, fh, label=None, oxpoints=None, fileformat=geqdsk.write):
     zmax = eq.Zmax
 
     fvac = eq.fvac()  # Vacuum f = R*Bt
-    R0 = eq.tokamak.R0  # Reference location
+    # R0: use magnetic axis R (opoint[0][0]) as reference radius
+    # Falls back to domain midpoint if no O-point available
+    if opoint:
+        R0 = opoint[0][0]
+    else:
+        R0 = 0.5 * (rmin + rmax)
 
     data = {
         "nx": nx,
@@ -243,7 +248,7 @@ def read(
     data = geqdsk.read(fh, cocos=cocos)
 
     # If data contains a limiter, set the machine wall
-    if "rlim" in data:
+    if hasattr(data, "rlim") and data.rlim is not None:
         if len(data["rlim"]) > 3:
             machine.wall = Wall(data["rlim"], data["zlim"])
         else:
