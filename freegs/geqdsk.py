@@ -243,9 +243,9 @@ def read(
     data = geqdsk.read(fh, cocos=cocos)
 
     # If data contains a limiter, set the machine wall
-    if "rlim" in data:
-        if len(data["rlim"]) > 3:
-            machine.wall = Wall(data["rlim"], data["zlim"])
+    if data.rlim is not None:
+        if len(data.rlim) > 3:
+            machine.wall = Wall(data.rlim, data.zlim)
         else:
             print("Fewer than 3 points given for limiter/wall. Ignoring.")
 
