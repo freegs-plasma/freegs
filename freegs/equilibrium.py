@@ -549,8 +549,9 @@ class Equilibrium:
                 R = np.asarray(self.R[:, 0])
                 Z = np.asarray(self.Z[0, :])
 
-                # psi is transposed due to how FreeGS meshgrids R,Z
-                psi_2d = interpolate.RectBivariateSpline(x=R, y=Z, z=psi.T)
+                # psi is indexed psi[R, Z] (meshgrid indexing="ij"), the same
+                # layout RectBivariateSpline expects, so no transpose here
+                psi_2d = interpolate.RectBivariateSpline(x=R, y=Z, z=psi)
 
                 # Get psi at the limit points
                 psi_limit_points = np.zeros(len(Rlimit))
