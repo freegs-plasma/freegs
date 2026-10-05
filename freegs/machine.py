@@ -297,7 +297,7 @@ def MirroredCoil(
             ),
             (
                 "L",
-                Coil(R, Z, current=current, turns=turns, control=control, area=area),
+                Coil(R, -Z, current=current, turns=turns, control=control, area=area),
                 1.0 if symmetric else -1.0,
             ),
         ]

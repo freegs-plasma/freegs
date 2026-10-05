@@ -24,6 +24,17 @@ from numpy import amax, amin, linspace
 
 from . import critical
 
+import matplotlib as _mpl
+
+
+def _get_cmap(name):
+    """Compatibility shim for matplotlib >= 3.9 where get_cmap was removed."""
+    try:
+        return _mpl.colormaps[name]
+    except (AttributeError, KeyError):
+        import matplotlib.pyplot as plt
+        return plt.cm.get_cmap(name)
+
 
 def plotCoils(coils, axis=None):
     import matplotlib.pyplot as plt
@@ -102,7 +113,6 @@ def plotEquilibrium(
     axis.set_ylabel("Height [m]")
 
     if oxpoints:
-        # Add O- and X-points
         opt, xpt = critical.find_critical(eq.R, eq.Z, psi)
 
         for r, z, _ in xpt:
@@ -111,10 +121,8 @@ def plotEquilibrium(
             axis.plot(r, z, "go")
 
         if xpt:
-            psi_bndry = eq.psi_bndry  # xpt[0][2]
+            psi_bndry = eq.psi_bndry
             axis.contour(eq.R, eq.Z, psi, levels=[psi_bndry], colors="r")
-
-            # Add legend
             axis.plot([], [], "rx", label="X-points")
             axis.plot([], [], "r", label="Separatrix")
         if opt:

@@ -363,7 +363,7 @@ class Equilibrium:
 
         # Convert to a scalar if only one result
         if np.size(result) == 1:
-            return float(result)
+            return float(np.atleast_1d(result).ravel()[0])
         return result
 
     def tor_flux(self, psi=None):
@@ -542,8 +542,10 @@ class Equilibrium:
                     limit_args = np.ravel(
                         np.argwhere(abs(Zlimit) < abs(0.75 * xpt[0][1]))
                     )
-                    Rlimit = Rlimit[limit_args]
-                    Zlimit = Zlimit[limit_args]
+                    # Guard: if all limit points filtered out, use unfiltered
+                    if len(limit_args) > 0:
+                        Rlimit = Rlimit[limit_args]
+                        Zlimit = Zlimit[limit_args]
 
                 # Obtain the flux psi at these limiter points
                 R = np.asarray(self.R[:, 0])
