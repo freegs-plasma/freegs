@@ -484,7 +484,10 @@ def find_safety(
     if (xpoint is None) or (len(xpoint) == 0):
         # No X-point
         raise ValueError("No X-point so no separatrix")
-    psinormal = (psi - opoint[0][2]) / (xpoint[0][2] - opoint[0][2])
+    flux_span = xpoint[0][2] - opoint[0][2]
+    if not np.isfinite(flux_span) or flux_span == 0:
+        raise ValueError("Safety-factor contour needs a finite nonzero flux span")
+    psinormal = (psi - opoint[0][2]) / flux_span
 
     psifunc = interpolate.RectBivariateSpline(eq.R[:, 0], eq.Z[0, :], psinormal)
 
@@ -554,4 +557,6 @@ def find_safety(
     qint = fpol / (r**2 * Bthe)
 
     # Integral
-    return sum(qint * dl, axis=1) / (2 * pi)
+    # Native Br=-psi_Z/R and Bz=psi_R/R: preserve poloidal circulation.
+    # A single field-component reversal flips q; full reversal preserves q.
+    return np.sign(flux_span) * sum(qint * dl, axis=1) / (2 * pi)
