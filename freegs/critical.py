@@ -41,6 +41,7 @@ from numpy import (
 )
 from numpy.linalg import inv
 from scipy import interpolate
+from scipy.optimize import brentq
 
 
 def find_critical(R, Z, psi, discard_xpoints=True):
@@ -333,13 +334,16 @@ def core_mask(R, Z, psi, opoint, xpoint=None, psi_bndry=None):
     return mask
 
 
-def find_psisurface(eq, psifunc, r0, z0, r1, z1, psival=1.0, n=100, axis=None):
+def find_psisurface(eq, psifunc, r0, z0, r1, z1, psival=1.0, n=100, axis=None,
+                    refine=False):
     """
     eq      - Equilibrium object
     (r0,z0) - Start location inside separatrix
     (r1,z1) - Location outside separatrix
 
     n - Number of starting points to use
+    refine - Refine the first bracketed crossing with the same flux interpolant.
+             The default keeps the historical linear intersection behavior.
     """
     # Clip (r1,z1) to be inside domain
     # Shorten the line so that the direction is unchanged
@@ -369,6 +373,8 @@ def find_psisurface(eq, psifunc, r0, z0, r1, z1, psival=1.0, n=100, axis=None):
         ind = argmax(pnorm > psival)
 
         if ind == 0:
+            if refine:
+                raise ValueError("Flux surface not bracketed between axis and domain edge")
             # If the point is very close to the magnetic axis, don't
             # try to do extrapolation.
             r = r[ind]
@@ -378,6 +384,14 @@ def find_psisurface(eq, psifunc, r0, z0, r1, z1, psival=1.0, n=100, axis=None):
             # Changed 1.0 to psival in f
             # make f gradient to psival surface
             f = (pnorm[ind] - psival) / (pnorm[ind] - pnorm[ind - 1])
+
+            if refine:
+                # Fraction runs from the outside sample back to the inside one.
+                # Refining this bracket retains the existing first-crossing ray.
+                f = brentq(lambda fraction: float(psifunc(
+                    (1.0-fraction)*r[ind]+fraction*r[ind-1],
+                    (1.0-fraction)*z[ind]+fraction*z[ind-1], grid=False))-psival,
+                    0.0, 1.0, xtol=1e-13, rtol=4*np.finfo(float).eps)
 
             # Interpolate between points
             r = (1.0 - f) * r[ind] + f * r[ind - 1]
@@ -464,6 +478,10 @@ def find_safety(
     Calculates equally spaced flux surfaces. Points on
     each flux surface are equally paced in poloidal angle
     Performs line integral around flux surface to get q
+    Uses the implicit flux-contour tangent, not a finite-angle chord length.
+    Surfaces must be smooth and star-shaped about the selected magnetic axis;
+    the first outward crossing on each ray is used. Axis/separatrix singular
+    surfaces are not qualified by this quadrature.
 
     eq - The equilbrium object
     psinorm flux surface to calculate it for
@@ -532,6 +550,7 @@ def find_safety(
                 z0 + np.ptp(eq.Z) * cos(theta),
                 psival=psin,
                 axis=axis,
+                refine=True,
             )
             psisurf[i, j, :] = [r, z]
 
@@ -543,12 +562,22 @@ def find_safety(
     Bz = eq.Bz(r, z)
     Bthe = sqrt(Br**2 + Bz**2)
 
-    # Differentiate location w.r.t. index
-    dr_di = (np.roll(r, 1, axis=1) - np.roll(r, -1, axis=1)) / 2.0
-    dz_di = (np.roll(z, 1, axis=1) - np.roll(z, -1, axis=1)) / 2.0
-
-    # Distance between points
-    dl = sqrt(dr_di**2 + dz_di**2)
+    # Native rays use v=(Rspan*sin(theta), Zspan*cos(theta)). Their angle
+    # is not a physical geometric angle when the spans differ. For x=axis+
+    # scale*v, differentiating the same flux level gives scale_theta =
+    # -scale*(grad(psi).v_theta)/(grad(psi).v). Its exact contour speed
+    # avoids the central-index chord bias without changing the ray nodes.
+    psi_R = psifunc.ev(r, z, dx=1)
+    psi_Z = psifunc.ev(r, z, dy=1)
+    v_R, v_Z = np.ptp(eq.R)*sin(theta_grid), np.ptp(eq.Z)*cos(theta_grid)
+    v_R_theta, v_Z_theta = np.ptp(eq.R)*cos(theta_grid), -np.ptp(eq.Z)*sin(theta_grid)
+    radial_gradient = psi_R*v_R+psi_Z*v_Z
+    if not np.all(np.isfinite(radial_gradient)) or np.any(radial_gradient <= 0):
+        raise ValueError("Safety-factor contour is not a regular outward star-shaped surface")
+    scale = ((r-r0)*v_R+(z-z0)*v_Z)/(v_R**2+v_Z**2)
+    scale_theta = -scale*(psi_R*v_R_theta+psi_Z*v_Z_theta)/radial_gradient
+    dl = sqrt((scale_theta*v_R+scale*v_R_theta)**2
+              +(scale_theta*v_Z+scale*v_Z_theta)**2)*dtheta
 
     # Integrand - Btor/(R*Bthe) = Fpol/(R**2*Bthe)
     qint = fpol / (r**2 * Bthe)
