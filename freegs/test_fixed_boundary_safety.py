@@ -6,12 +6,12 @@ from .equilibrium import Equilibrium
 from .boundary import fixedBoundary
 
 
-def circular_equilibrium():
+def circular_equilibrium(kappa=1.0):
     R0, a, C, F = 6.2, .62, 1.7, 32.86
     r = np.linspace(R0-1.25*a,R0+1.25*a,65)
-    z = np.linspace(-1.25*a,1.25*a,65)
+    z = np.linspace(-1.25*kappa*a,1.25*kappa*a,65)
     R,Z = np.meshgrid(r,z,indexing="ij")
-    psi = C*((R-R0)**2+Z**2)
+    psi = C*((R-R0)**2+Z**2/kappa**2)
     eq = Equilibrium(Rmin=r[0],Rmax=r[-1],Zmin=z[0],Zmax=z[-1],
                      nx=65,ny=65,psi=psi,boundary=fixedBoundary)
     eq.psi_bndry = C*a*a
@@ -32,3 +32,11 @@ def test_q_without_xpoint_requires_known_boundary_flux():
     eq.psi_bndry = None
     with pytest.raises(ValueError,match="boundary"):
         eq.q(np.array([.5]))
+
+
+def test_q_without_xpoint_on_elongated_surfaces():
+    # A shaped nested-flux diagnostic fixture; no physical GS claim.
+    eq,R0,a,C,F = circular_equilibrium(kappa=1.4)
+    s = np.array([.2,.5,.8])
+    expected = F*1.4/(2*C*np.sqrt(R0*R0-s*a*a))
+    np.testing.assert_allclose(eq.q(s),expected,rtol=2e-3)
