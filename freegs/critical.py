@@ -481,10 +481,14 @@ def find_safety(
     if (opoint is None) or (xpoint is None):
         opoint, xpoint = find_critical(eq.R, eq.Z, psi)
 
-    if (xpoint is None) or (len(xpoint) == 0):
-        # No X-point
-        raise ValueError("No X-point so no separatrix")
-    psinormal = (psi - opoint[0][2]) / (xpoint[0][2] - opoint[0][2])
+    if xpoint:
+        boundary_flux = xpoint[0][2]
+    else:
+        # Nested fixed-boundary or limited surfaces need not have an X-point.
+        boundary_flux = eq.psi_bndry
+        if boundary_flux is None:
+            raise ValueError("No X-point and no known boundary flux")
+    psinormal = (psi - opoint[0][2]) / (boundary_flux - opoint[0][2])
 
     psifunc = interpolate.RectBivariateSpline(eq.R[:, 0], eq.Z[0, :], psinormal)
 
@@ -493,17 +497,16 @@ def find_safety(
     theta_grid = linspace(0, 2 * pi, ntheta, endpoint=False)
     dtheta = theta_grid[1] - theta_grid[0]
 
-    # Avoid putting theta grid points exactly on the X-points
-    xpoint_theta = arctan2(xpoint[0][0] - r0, xpoint[0][1] - z0)
-    xpoint_theta = xpoint_theta * (xpoint_theta >= 0) + (xpoint_theta + 2 * pi) * (
-        xpoint_theta < 0
-    )  # let's make it between 0 and 2*pi
-    # How close in theta to allow theta grid points to the X-point
-    TOLERANCE = 1.0e-3
-
-    if any(abs(theta_grid - xpoint_theta) < TOLERANCE):
-        warn("Theta grid too close to X-point, shifting by half-step", stacklevel=2)
-        theta_grid += dtheta / 2
+    # Avoid the X-point angle only when an X-point exists.
+    if xpoint:
+        xpoint_theta = arctan2(xpoint[0][0] - r0, xpoint[0][1] - z0)
+        xpoint_theta = xpoint_theta * (xpoint_theta >= 0) + (xpoint_theta + 2 * pi) * (
+            xpoint_theta < 0
+        )
+        TOLERANCE = 1.0e-3
+        if any(abs(theta_grid - xpoint_theta) < TOLERANCE):
+            warn("Theta grid too close to X-point, shifting by half-step", stacklevel=2)
+            theta_grid += dtheta / 2
 
     if psinorm is None:
         npsi = 100
