@@ -20,10 +20,25 @@ along with FreeGS.  If not, see <http://www.gnu.org/licenses/>.
 
 """
 
-from numpy import concatenate, sqrt
+from numpy import (
+    arange,
+    concatenate,
+    full,
+    log,
+    ones_like,
+    pi,
+    prod,
+    sqrt,
+    stack,
+    where,
+    zeros,
+)
+from numpy.polynomial.legendre import leggauss
+from numpy.polynomial.polynomial import polyfromroots
 from scipy.integrate import romb  # Romberg integration
+from scipy.special import ellipe, ellipk, ellipkm1
 
-from .gradshafranov import Greens
+from .gradshafranov import Greens, mu0
 
 
 def fixedBoundary(eq, Jtor, psi):
@@ -185,41 +200,185 @@ def freeBoundaryHagenow(eq, Jtor, psi):
     )
 
     # Now for each point on the boundary perform a loop integral
+    #
+    # The observation points are the boundary grid points themselves. The
+    # kernel has a logarithmic singularity where the source coincides with
+    # the observation point; this is integrated by _edge_matrix.
 
-    eps = 1e-2
+    # Boundary grid points, as (x index, y index)
+    xs = concatenate(
+        [arange(nx), arange(nx), zeros(ny - 2, dtype=int), full(ny - 2, nx - 1)]
+    )
+    ys = concatenate(
+        [zeros(nx, dtype=int), full(nx, ny - 1), arange(1, ny - 1), arange(1, ny - 1)]
+    )
 
-    # List of indices on the boundary
-    # (x index, y index, R change, Z change)
-    # where change in R,Z puts the observation point outside the boundary
-    # to avoid the singularity in G(R,R') when R'=R
+    # The weights depend only on the grid, so are kept for later calls
+    key = (R[0, 0], R[-1, 0], Z[0, 0], Z[0, -1], nx, ny)
+    cache = getattr(eq, "_hagenow_weights", None)
+    if cache is None or cache[0] != key:
+        Robs = R[xs, ys]
+        Zobs = Z[xs, ys]
 
-    bndry_indices = [
-        *[(x, 0, 0.0, -eps) for x in range(nx)],  # Down boundary
-        *[(x, ny - 1, 0.0, eps) for x in range(nx)],  # Upper boundary
-        *[(0, y, -eps, 0.0) for y in range(ny)],  # Left boundary
-        *[(nx - 1, y, eps, 0.0) for y in range(ny)],  # Right boundary
-    ]
+        # Each edge: R, Z of the nodes, node spacing, and the index of
+        # each observation point along the edge (or -1 if it is not on it)
+        edges = [
+            (R[0, :], Z[0, :], dZ, where(xs == 0, ys, -1)),  # Left
+            (R[-1, :], Z[-1, :], dZ, where(xs == nx - 1, ys, -1)),  # Right
+            (R[:, 0], Z[:, 0], dR, where(ys == 0, xs, -1)),  # Down
+            (R[:, -1], Z[:, -1], dR, where(ys == ny - 1, xs, -1)),  # Upper
+        ]
+        # The integrand is G * (dU/dn) / R
+        weights = [
+            _edge_matrix(Redge, Zedge, step, Robs, Zobs, index) / Redge
+            for Redge, Zedge, step, index in edges
+        ]
+        eq._hagenow_weights = cache = (key, weights)
 
-    # Loop through points on boundary
-    for x, y, Reps, Zeps in bndry_indices:
-        Rpos = R[x, y] + Reps
-        Zpos = Z[x, y] + Zeps
+    psi[xs, ys] = sum(
+        matrix @ dUdn
+        for matrix, dUdn in zip(cache[1], [dUdn_L, dUdn_R, dUdn_D, dUdn_U])
+    )
 
-        # Integrate over left boundary
 
-        greenfunc = Greens(R[0, :], Z[0, :], Rpos, Zpos)
-        result = romb(greenfunc * dUdn_L / R[0, :]) * dZ
+def _greens_split(Rs, Zs, Ro, Zo, singular=False):
+    """
+    Green's function G(Rs, Zs -> Ro, Zo), as in gradshafranov.Greens but
+    accurate close to the source, and the coefficient B of ln(1/m1) in it,
+    where m1 = 1 - k^2 = ((Rs-Ro)^2 + (Zs-Zo)^2) / ((Rs+Ro)^2 + (Zs-Zo)^2)
 
-        # Integrate over right boundary
-        greenfunc = Greens(R[-1, :], Z[-1, :], Rpos, Zpos)
-        result += romb(greenfunc * dUdn_R / R[-1, :]) * dZ
+    The expansion of the complete elliptic integrals about k = 1 is
+    K(k^2) = K(m1)/pi ln(1/m1) + ..., E(k^2) = (K(m1)-E(m1))/pi ln(1/m1) + ...
 
-        # Integrate over down boundary
-        greenfunc = Greens(R[:, 0], Z[:, 0], Rpos, Zpos)
-        result += romb(greenfunc * dUdn_D / R[:, 0]) * dR
+    Returns (G, B, d2); G is not evaluated (None) if singular is True
+    since it is infinite at the source.
+    """
+    d2 = (Rs - Ro) ** 2 + (Zs - Zo) ** 2
+    m1 = d2 / ((Rs + Ro) ** 2 + (Zs - Zo) ** 2)
+    k2 = 1.0 - m1
+    pref = (mu0 / (2.0 * pi)) * sqrt(Rs * Ro / k2)
 
-        # Integrate over upper boundary
-        greenfunc = Greens(R[:, -1], Z[:, -1], Rpos, Zpos)
-        result += romb(greenfunc * dUdn_U / R[:, -1]) * dR
+    K1 = ellipk(m1)
+    E1 = ellipe(m1)
+    B = pref * ((2.0 - k2) * K1 - 2.0 * (K1 - E1)) / pi
 
-        psi[x, y] = result
+    G = None
+    if not singular:
+        G = pref * ((2.0 - k2) * ellipkm1(m1) - 2.0 * ellipe(k2))
+    return G, B, d2
+
+
+def _lagrange(nodes, x):
+    """
+    Lagrange basis polynomials through the nodes, evaluated at the array x.
+    Returns an array of shape x.shape + (len(nodes),)
+    """
+    basis = []
+    for a in nodes:
+        value = ones_like(x)
+        for b in nodes:
+            if b != a:
+                value = value * (x - b) / (a - b)
+        basis.append(value)
+    return stack(basis, axis=-1)
+
+
+def _log_panel_weights(taus, offset, step):
+    """
+    Weights w[a] = integral over a panel of ln(step*|t - tau|) l_a(t) dt,
+    where t in [0,1] is the position in the panel, tau an integer position
+    of the singularity relative to the panel start (an array), and l_a
+    the cubic Lagrange polynomial on the nodes 0..3 of the stencil, for a panel
+    starting at node `offset` of the stencil. Returns an array (len(taus), 4).
+    """
+    x, w = leggauss(10)
+    x = 0.5 * (x + 1.0)
+    w = 0.5 * w
+    basis = _lagrange(range(4), offset + x)  # (q, 4)
+
+    # Smooth case: Gauss-Legendre
+    distance = abs(x[None, :] - taus[:, None])
+    result = (w * log(step * distance)) @ basis
+
+    # Singularity at the start (tau = 0) or end (tau = 1) of the panel:
+    # integrals of t^k ln t and t^k ln(1-t), exact
+    for a in range(4):
+        roots = [n for n in range(4) if n != a]
+        norm = prod([a - n for n in roots])
+        # Polynomial in t of l_a(offset + t)
+        poly = polyfromroots([n - offset for n in roots]) / norm
+        weights = poly * log(step) / (arange(len(poly)) + 1.0)
+        smooth = sum(weights)  # integral of ln(step) * l_a
+        for tau, moment in (
+            (0, lambda k: -1.0 / (k + 1) ** 2),
+            (1, lambda k: -sum(1.0 / j for j in range(1, k + 2)) / (k + 1)),
+        ):
+            value = smooth + sum(poly[k] * moment(k) for k in range(len(poly)))
+            result[taus == tau, a] = value
+    return result
+
+
+def _edge_matrix(Redge, Zedge, step, Robs, Zobs, index):
+    """
+    Quadrature weights for the integral over a straight, uniformly spaced
+    boundary edge of the Green's function G(R, Z; Robs, Zobs) times a smooth
+    function f given at the nodes of the edge.
+
+    f is interpolated by piecewise cubic polynomials, and the product with
+    the kernel is integrated over each panel, so the result is fourth order
+    accurate. Where an observation point lies on the edge the kernel has a
+    logarithmic singularity, G = H - 2 B ln|s - s0| with H and B smooth.
+    B comes from the logarithmic terms of the complete elliptic integrals;
+    the term with B is integrated analytically against the interpolating
+    polynomials, and the smooth remainder H by Gauss-Legendre quadrature.
+
+    Redge, Zedge   Coordinates of the edge nodes (n,)
+    step           Node spacing
+    Robs, Zobs     Observation points (m,)
+    index          Index of each observation point along this edge, or -1
+                   if it is not on the edge (m,)
+
+    Returns an array of shape (m, n) of weights.
+    """
+    n = len(Redge)
+    A = zeros((len(Robs), n))
+
+    x, w = leggauss(8)
+    x = 0.5 * (x + 1.0)
+    w = 0.5 * w
+
+    on = index >= 0
+    sel = where(on)[0]
+
+    for p in range(n - 1):
+        start = min(max(p - 1, 0), n - 4)
+        basis = _lagrange(range(4), p - start + x)  # (q, 4)
+
+        Rq = Redge[p] + x * (Redge[p + 1] - Redge[p])
+        Zq = Zedge[p] + x * (Zedge[p + 1] - Zedge[p])
+
+        G, B, d2 = _greens_split(Rq, Zq, Robs[:, None], Zobs[:, None])
+        # For points on the edge, remove the logarithmic part
+        # B ln(1/d2) is integrated separately below
+        G[sel] += B[sel] * log(d2[sel])
+        A[:, start : start + 4] += step * (G * w) @ basis
+
+    if len(sel) > 0:
+        # Logarithmic part: -2 B(s) ln|s - s0| f(s), interpolating B f
+        _, B, _ = _greens_split(
+            Redge[None, :],
+            Zedge[None, :],
+            Robs[sel, None],
+            Zobs[sel, None],
+            singular=True,
+        )
+        # W[i, j]: integral of ln|s - s_i| l_j(s) ds
+        W = zeros((n, n))
+        nodes = arange(n)
+        for p in range(n - 1):
+            start = min(max(p - 1, 0), n - 4)
+            W[:, start : start + 4] += step * _log_panel_weights(
+                (nodes - p).astype(float), p - start, step
+            )
+        A[sel] += -2.0 * B * W[index[sel]]
+    return A
