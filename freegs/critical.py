@@ -195,42 +195,77 @@ def find_critical(R, Z, psi, discard_xpoints=True):
     Zmid = 0.5 * (Z[0, -1] + Z[0, 0])
     opoint.sort(key=lambda x: (x[0] - Rmid) ** 2 + (x[1] - Zmid) ** 2)
 
+    def connected(opt, xpt):
+        """True if psi is monotonic on a straight line from opt to xpt,
+        ending at the X-point
+        """
+        Ro, Zo, Po = opt
+        Rx, Zx, Px = xpt
+
+        rline = linspace(Ro, Rx, num=50)
+        zline = linspace(Zo, Zx, num=50)
+
+        pline = f(rline, zline, grid=False)
+
+        if Px < Po:
+            pline *= -1.0  # Reverse, so pline is maximum at X-point
+
+        # Now check that pline is monotonic
+        # Tried finding maximum (argmax) and testing
+        # how far that is from the X-point. This can go
+        # wrong because psi can be quite flat near the X-point
+        # Instead here look for the difference in psi
+        # rather than the distance in space
+
+        maxp = amax(pline)
+        if (maxp - pline[-1]) / (maxp - pline[0]) > 0.001:
+            # More than 0.1% drop in psi from maximum to X-point
+            return False
+
+        ind = argmin(pline)  # Should be at O-point
+        if (rline[ind] - Ro) ** 2 + (zline[ind] - Zo) ** 2 > 1e-4:
+            # Too far
+            return False
+        return True
+
+    def unresolved(opt):
+        """True if the extremum is a grid-scale spike, not a resolved O-point.
+
+        A coil filament inside the grid gives a logarithmic peak of psi, which
+        a fine grid resolves as local extrema with many straight-line
+        connections to X-points. Over one cell, the psi of a magnetic axis
+        changes by a negligible fraction of its depth below the X-points
+        connected to it (~1e-4 or less), that of a spike by a large
+        fraction (~1e-1).
+        """
+        cx = [x for x in xpoint if connected(opt, x)]
+        if not cx:
+            return False
+        depth = max(abs(x[2] - opt[2]) for x in cx)
+        hrr = f(opt[0], opt[1], dx=2, grid=False).item()
+        hzz = f(opt[0], opt[1], dy=2, grid=False).item()
+        hrz = f(opt[0], opt[1], dx=1, dy=1, grid=False).item()
+        curvature = np.linalg.eigvalsh([[hrr, hrz], [hrz, hzz]])
+        return bool(np.abs(curvature).max() * min(dR, dZ) ** 2 > 0.02 * depth)
+
+    if len(opoint) > 1 and xpoint:
+        # Nearness to the centre of the domain can pick a vacuum O-point
+        # (e.g. between coils) when the plasma is off-centre. Prefer the
+        # O-point to which most X-points are connected by monotonic psi,
+        # ignoring grid-scale spikes such as coil filaments inside the grid.
+        # The sort is stable, so ties keep the distance ordering.
+        opoint.sort(
+            key=lambda o: (
+                unresolved(o),
+                -len([x for x in xpoint if connected(o, x)]),
+            )
+        )
+
     # Draw a line from the O-point to each X-point. Psi should be
     # monotonic; discard those which are not
 
     if discard_xpoints:
-        Ro, Zo, Po = opoint[0]  # The primary O-point
-        xpt_keep = []
-        for xpt in xpoint:
-            Rx, Zx, Px = xpt
-
-            rline = linspace(Ro, Rx, num=50)
-            zline = linspace(Zo, Zx, num=50)
-
-            pline = f(rline, zline, grid=False)
-
-            if Px < Po:
-                pline *= -1.0  # Reverse, so pline is maximum at X-point
-
-            # Now check that pline is monotonic
-            # Tried finding maximum (argmax) and testing
-            # how far that is from the X-point. This can go
-            # wrong because psi can be quite flat near the X-point
-            # Instead here look for the difference in psi
-            # rather than the distance in space
-
-            maxp = amax(pline)
-            if (maxp - pline[-1]) / (maxp - pline[0]) > 0.001:
-                # More than 0.1% drop in psi from maximum to X-point
-                # -> Discard
-                continue
-
-            ind = argmin(pline)  # Should be at O-point
-            if (rline[ind] - Ro) ** 2 + (zline[ind] - Zo) ** 2 > 1e-4:
-                # Too far, discard
-                continue
-            xpt_keep.append(xpt)
-        xpoint = xpt_keep
+        xpoint = [xpt for xpt in xpoint if connected(opoint[0], xpt)]
 
     # Sort X-points by distance to primary O-point in psi space
     psi_axis = opoint[0][2]
