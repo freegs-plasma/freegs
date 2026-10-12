@@ -130,7 +130,7 @@ class constrain:
         # Number of controls (length of x)
         ncontrols = A.shape[1]
 
-        # First solve analytically by Tikhonov regularisation
+        # Solve analytically by Tikhonov regularisation
         # minimise || Ax - b ||^2 + ||gamma x ||^2
 
         # Calculate the change in coil current
@@ -171,31 +171,49 @@ class constrain:
         def objective(x):
             return (norm((A2 @ x) - b2)) ** 2
 
-        # Additional constraints on the optimisation
-        cons = []
-
         def max_total_currents(x):
             sum = 0.0
             for delta, i in zip(x, tokamak.controlCurrents()):
                 sum += abs(delta + i)
             return -(sum - self.max_total_current)
 
-        if self.max_total_current is not None:
-            con1 = {"type": "ineq", "fun": max_total_currents}
-            cons.append(con1)
+        # Column scaling, so that the bounded solve is well conditioned
+        # whatever the units of each control. This does not change the problem:
+        # minimise || A2 x - b2 || with x = scale * z.
+        colnorm = norm(A2, axis=0)
+        scale = np.where(
+            colnorm > 0.0, 1.0 / np.where(colnorm > 0.0, colnorm, 1.0), 1.0
+        )
 
-        # Use the analytical current change as the initial guess
         if self.current_change.shape[0] > 0:
-            x0 = self.current_change
-            sol = optimize.minimize(
-                objective,
-                x0,
-                method="SLSQP",
-                bounds=current_change_bnds,
-                constraints=cons,
+            # Bounded linear least squares. SLSQP is not used here: its
+            # absolute tolerance on the (tiny) objective stops it at once, and
+            # it can return a worse point than the analytical solution.
+            lsq = optimize.lsq_linear(
+                A2 * scale,
+                b2,
+                bounds=(
+                    current_change_bnds[:, 0] / scale,
+                    current_change_bnds[:, 1] / scale,
+                ),
+                tol=1e-14,
             )
+            self.current_change = lsq.x * scale
 
-            self.current_change = sol.x
+            # The limit on the total current is nonlinear: only refine the
+            # solution if it is violated.
+            if self.max_total_current is not None and (
+                max_total_currents(self.current_change) < 0.0
+            ):
+                sol = optimize.minimize(
+                    objective,
+                    self.current_change,
+                    method="SLSQP",
+                    bounds=current_change_bnds,
+                    constraints=[{"type": "ineq", "fun": max_total_currents}],
+                )
+                self.current_change = sol.x
+
             tokamak.controlAdjust(self.current_change)
 
         # Store info for user
