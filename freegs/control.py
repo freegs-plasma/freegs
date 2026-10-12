@@ -363,7 +363,8 @@ class ConstrainPsi2DAdvanced:
 
         self.current_lims = current_lims
         self.target_psi = target_psi
-        self.weights = weights
+        # np.average requires weights with the shape of the data
+        self.weights = np.broadcast_to(weights, np.shape(target_psi))
 
     def __call__(self, eq):
         """
@@ -376,7 +377,7 @@ class ConstrainPsi2DAdvanced:
 
         # In order for the optimisation to work, the initial guess must be within the
         # bounds supplied. Hence, check start_currents and adjust accordingly to be within bounds
-        for i in range(ncontrols):
+        for i in range(ncontrols if self.current_lims is not None else 0):
             bnd_upper = max(self.current_lims[i])
             bnd_lower = min(self.current_lims[i])
             sc = start_currents[i]
@@ -469,7 +470,7 @@ class ConstrainPsiNorm2DAdvanced:
 
         # In order for the optimisation to work, the initial guess must be within the
         # bounds supplied. Hence, check start_currents and adjust accordingly to be within bounds
-        for i in range(ncontrols):
+        for i in range(ncontrols if self.current_lims is not None else 0):
             bnd_upper = max(self.current_lims[i])
             bnd_lower = min(self.current_lims[i])
             sc = start_currents[i]
