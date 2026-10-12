@@ -3,6 +3,7 @@ Tests of the linear solver
 """
 
 import numpy as np
+import numpy.testing as npt
 
 from . import multigrid
 
@@ -35,7 +36,7 @@ def test_direct_laplacian():
     solve = multigrid.MGDirect(multigrid.LaplaceSparse(Lx, Ly)(nx, ny))
     x = solve(None, rhs)
 
-    assert np.allclose(x, solution)
+    npt.assert_allclose(x, solution, atol=1e-6)
 
 
 def test_multigrid_laplacian():
@@ -78,4 +79,4 @@ def test_multigrid_laplacian():
     xinput[-1, :] = solution[-1, :]
     x = solve(xinput, rhs)
 
-    assert np.allclose(x, solution, atol=1e-6)
+    npt.assert_allclose(x, solution, atol=1e-6)
