@@ -366,6 +366,7 @@ def read(
         # to keep the resolution as good or better than the input
         Rmin, Rmax, Zmin, Zmax = domain
         # Calculate approximate grid size needed to keep current resolution
+        newnx, newny = nx, ny
         fnewnx = (Rmax - Rmin) / dR + 1.0
         if fnewnx > nx:
             newnx = int(ceilPow2(fnewnx - 1)) + 1
@@ -376,34 +377,37 @@ def read(
         if (newnx != nx) or (newny != ny):
             print(f"Changing resolution: {newnx} x {newny}")
 
-        # Create an interpolation function for Jtor and the input psi
-        Jtor_func = interpolate.RectBivariateSpline(eq.R[:, 0], eq.Z[0, :], Jtor)
+        # Create an interpolation function for the input psi
         psi_func = interpolate.RectBivariateSpline(eq.R[:, 0], eq.Z[0, :], psi)
 
+        # Interpolate psi onto the new grid. psi_axis and psi_bndry are kept
+        # from the input grid, so that psi_norm is unchanged where the
+        # domains overlap.
+        Rnew, Znew = np.meshgrid(
+            linspace(Rmin, Rmax, newnx), linspace(Zmin, Zmax, newny), indexing="ij"
+        )
+        psi = psi_func(Rnew, Znew, grid=False)
+
         # Create a new Equilibrium object
-        # (replacing previous 'eq')
+        # (replacing previous 'eq'). The input psi gives the new core mask.
         eq = Equilibrium(
             tokamak=machine,
             Rmin=Rmin,
             Rmax=Rmax,
             Zmin=Zmin,
             Zmax=Zmax,
-            nx=nx,
-            ny=ny,
+            nx=newnx,
+            ny=newny,
             check_limited=True,
+            psi=psi,
         )
-
-        # Interpolate Jtor and psi onto new grid
-        Jtor = Jtor_func(eq.R, eq.Z, grid=False)
-        psi = psi_func(eq.R, eq.Z, grid=False)
-
-        psi_bndry = eq.psi_bndry
-        psi_axis = eq.psi_axis
         mask = eq.mask
 
-        # Update the mask function by calculating normalised psi
-        # on the new grid
+        # Normalised psi and the toroidal current on the new grid
         psi_norm = clip((psi - psi_axis) / (psi_bndry - psi_axis), 0.0, 1.0)
+        Jtor = eq.R * pprime_func(psi_norm) + ffprime_func(psi_norm) / (eq.R * mu0)
+        if mask is not None:
+            Jtor *= mask
 
     # Note: Here we have
     #   eq : Equilibrium object
