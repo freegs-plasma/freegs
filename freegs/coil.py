@@ -179,12 +179,12 @@ class Coil:
         current = self.current  # current per turn
         total_current = current * self.turns  # Total toroidal current
 
-        # Calculate field at this coil due to all other coils
-        # and plasma. Need to zero this coil's current
-        self.current = 0.0
-        Br = equilibrium.Br(self.R, self.Z)
-        Bz = equilibrium.Bz(self.R, self.Z)
-        self.current = current
+        # Calculate field at this coil due to all other coils and plasma:
+        # subtract this coil's own field. Zeroing self.current is not enough
+        # because Circuit field methods reset the coil current from the
+        # circuit current, which would restore the self-field.
+        Br = equilibrium.Br(self.R, self.Z) - self.Br(self.R, self.Z)
+        Bz = equilibrium.Bz(self.R, self.Z) - self.Bz(self.R, self.Z)
 
         # Assume circular cross-section for hoop (self) force
         minor_radius = np.sqrt(self.area / np.pi)
