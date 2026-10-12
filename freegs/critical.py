@@ -77,6 +77,9 @@ def find_critical(R, Z, psi, discard_xpoints=True):
     dZ = Z[0, 1] - Z[0, 0]
     radius_sq = 9 * (dR**2 + dZ**2)
 
+    # Newton iteration converged if the step is smaller than this fraction of a cell
+    step_tol_sq = (1e-6) ** 2 * min(dR, dZ) ** 2
+
     # Find local minima
 
     J = zeros([2, 2])
@@ -122,9 +125,32 @@ def find_critical(R, Z, psi, discard_xpoints=True):
                     Br = -f_scalar(R1, Z1, dy=1) / R1
                     Bz = f_scalar(R1, Z1, dx=1) / R1
 
-                    if Br**2 + Bz**2 < 1e-6:
-                        # Found a minimum. Classify as either
-                        # O-point or X-point
+                    # Jacobian matrix
+                    # J = ( dBr/dR, dBr/dZ )
+                    #     ( dBz/dR, dBz/dZ )
+
+                    J[0, 0] = -Br / R1 - f_scalar(R1, Z1, dy=1, dx=1) / R1
+                    J[0, 1] = -f_scalar(R1, Z1, dy=2) / R1
+                    J[1, 0] = -Bz / R1 + f_scalar(R1, Z1, dx=2) / R1
+                    J[1, 1] = f_scalar(R1, Z1, dx=1, dy=1) / R1
+
+                    d = dot(inv(J), [Br, Bz])
+
+                    R1 = R1 - d[0]
+                    Z1 = Z1 - d[1]
+
+                    count += 1
+                    # If (R1,Z1) is too far from (R0,Z0) then discard
+                    # or if we've taken too many iterations
+                    if (radius_sq < (R1 - R0) ** 2 + (Z1 - Z0) ** 2) or (count > 100):
+                        # Discard this point
+                        break
+
+                    if d[0] ** 2 + d[1] ** 2 < step_tol_sq:
+                        # Converged: the Newton step is a tiny fraction of a
+                        # cell. This does not depend on the scale of psi,
+                        # unlike a fixed tolerance on |B|.
+                        # Classify as either O-point or X-point
 
                         dR = R[1, 0] - R[0, 0]
                         dZ = Z[0, 1] - Z[0, 0]
@@ -146,27 +172,6 @@ def find_critical(R, Z, psi, discard_xpoints=True):
                         else:
                             # Found O-point
                             opoint.append((R1, Z1, f_scalar(R1, Z1)))
-                        break
-
-                    # Jacobian matrix
-                    # J = ( dBr/dR, dBr/dZ )
-                    #     ( dBz/dR, dBz/dZ )
-
-                    J[0, 0] = -Br / R1 - f_scalar(R1, Z1, dy=1, dx=1) / R1
-                    J[0, 1] = -f_scalar(R1, Z1, dy=2) / R1
-                    J[1, 0] = -Bz / R1 + f_scalar(R1, Z1, dx=2) / R1
-                    J[1, 1] = f_scalar(R1, Z1, dx=1, dy=1) / R1
-
-                    d = dot(inv(J), [Br, Bz])
-
-                    R1 = R1 - d[0]
-                    Z1 = Z1 - d[1]
-
-                    count += 1
-                    # If (R1,Z1) is too far from (R0,Z0) then discard
-                    # or if we've taken too many iterations
-                    if (radius_sq < (R1 - R0) ** 2 + (Z1 - Z0) ** 2) or (count > 100):
-                        # Discard this point
                         break
 
     # Remove duplicates
