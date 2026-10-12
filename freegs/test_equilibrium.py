@@ -3,7 +3,7 @@ from . import boundary
 from . import jtor
 from . import picard
 from . import control
-from .machine import TestTokamak
+from .machine import TestTokamak, TestTokamakLimited
 
 import numpy as np
 
@@ -92,14 +92,14 @@ def test_setSolverVcycle():
     assert eq._solver != oldsolver
 
 
-def _solve_diverted(nx, ny):
+def _solve_diverted(nx, ny, Ip=2e5):
     # Adapted from example 1: free boundary, lower single null, diverted
     # (the separatrix does not touch the TestTokamak wall)
     tokamak = TestTokamak()
     eq = equilibrium.Equilibrium(
         tokamak=tokamak, Rmin=0.1, Rmax=2.0, Zmin=-1.0, Zmax=1.0, nx=nx, ny=ny
     )
-    profiles = jtor.ConstrainPaxisIp(eq, 1e3, 2e5, 2.0)
+    profiles = jtor.ConstrainPaxisIp(eq, 1e3, Ip, 2.0)
     constrain = control.constrain(
         xpoints=[(1.1, -0.6), (1.1, 0.8)], isoflux=[(1.1, -0.6, 1.1, 0.6)]
     )
@@ -125,3 +125,53 @@ def test_check_limited_non_square_grid():
     # with nx != ny a transposed array raises in RectBivariateSpline
     eq = _solve_diverted(65, 33)
     assert not eq.is_limited
+
+
+def test_check_limited_diverted_negative_ip():
+    # With Ip < 0 psi increases outward, so the separatrix flux is the
+    # minimum, not the maximum, of the X-point and limiter fluxes
+    eq = _solve_diverted(65, 65, Ip=-2e5)
+    assert not eq.is_limited
+    assert eq.psi_bndry == eq.psi_xpt
+
+
+def _solve_limited(Ip):
+    # Limited plasma: the separatrix touches the TestTokamakLimited wall
+    tokamak = TestTokamakLimited()
+    eq = equilibrium.Equilibrium(
+        tokamak=tokamak,
+        Rmin=0.1,
+        Rmax=2.0,
+        Zmin=-1.0,
+        Zmax=1.0,
+        nx=65,
+        ny=65,
+        boundary=boundary.freeBoundaryHagenow,
+    )
+    profiles = jtor.ConstrainPaxisIp(eq, 1e3, Ip, 2.0)
+    constrain = control.constrain(
+        xpoints=[(1.1, -0.6), (1.1, 0.8)], isoflux=[(1.1, -0.6, 1.1, 0.6)]
+    )
+    picard.solve(eq, profiles, constrain, check_limited=True)
+    return eq
+
+
+def test_check_limited_sign_of_ip():
+    # The limiter contact point must be the separatrix for either sign of Ip:
+    # every wall point lies outside it (psiN >= 1) and the +/-Ip solutions
+    # are mirror images (psi flips sign with the current)
+    eq_pos = _solve_limited(2e5)
+    eq_neg = _solve_limited(-2e5)
+
+    for eq in (eq_pos, eq_neg):
+        assert eq.is_limited
+        wall = eq.tokamak.wall
+        psi_wall = np.array([eq.psiRZ(r, z) for r, z in zip(wall.R, wall.Z)])
+        psi_n = (psi_wall - eq.psi_axis) / (eq.psi_bndry - eq.psi_axis)
+        assert np.min(psi_n) >= 1.0
+
+    assert (eq_pos.Rlim, eq_pos.Zlim) == (eq_neg.Rlim, eq_neg.Zlim)
+    assert np.isclose(eq_pos.psi_bndry, -eq_neg.psi_bndry, rtol=1e-4)
+    assert np.isclose(eq_pos.psi_axis, -eq_neg.psi_axis, rtol=1e-4)
+    scale = np.max(np.abs(eq_pos.psi()))
+    assert np.max(np.abs(np.abs(eq_pos.psi()) - np.abs(eq_neg.psi()))) < 1e-4 * scale

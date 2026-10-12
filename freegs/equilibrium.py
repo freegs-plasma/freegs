@@ -558,23 +558,29 @@ class Equilibrium:
                 for i in range(len(Rlimit)):
                     psi_limit_points[i] = psi_2d(Rlimit[i], Zlimit[i]).item()
 
-                # Get index of maximum psi value
-                indMax = np.argmax(psi_limit_points)
+                # The contact point is the limiter point whose flux is closest
+                # to the axis flux. Psi may increase or decrease outward
+                # depending on the sign of Ip, so argmax/argmin is not used.
+                indLim = np.argmin(abs(psi_limit_points - self.psi_axis))
 
                 # Extract R,Z of the contact point
-                self.Rlim = Rlimit[indMax]
-                self.Zlim = Zlimit[indMax]
+                self.Rlim = Rlimit[indLim]
+                self.Zlim = Zlimit[indLim]
 
-                # Obtain maximum psi
-                self.psi_limit = psi_limit_points[indMax]
+                # Obtain flux at the contact point
+                self.psi_limit = psi_limit_points[indLim]
 
                 # Check if any xpoints are present
                 if xpt:
                     # Get flux from the primary xpoint
                     self.psi_xpt = xpt[0][2]
 
-                    # Choose between diverted or limited flux
-                    self.psi_bndry = max(self.psi_xpt, self.psi_limit)
+                    # Choose between diverted or limited flux: the one closest
+                    # to the axis flux (sign of Ip independent)
+                    self.psi_bndry = min(
+                        (self.psi_xpt, self.psi_limit),
+                        key=lambda psi_c: abs(psi_c - self.psi_axis),
+                    )
 
                     if self.psi_bndry == self.psi_limit:
                         self.is_limited = True
