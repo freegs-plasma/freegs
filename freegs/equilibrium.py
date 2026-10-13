@@ -350,6 +350,8 @@ class Equilibrium:
             psinorm = linspace(1.0 / (npsi + 1), 1.0, npsi, endpoint=False)
             return psinorm, critical.find_safety(self, psinorm=psinorm)
 
+        psinorm = np.asarray(psinorm, dtype=float)
+
         if np.any((psinorm < 0.01) | (psinorm > 0.99)):
             psinorm_inner = np.linspace(0.01, 0.99, num=npsi)
             q_inner = critical.find_safety(self, psinorm=psinorm_inner)

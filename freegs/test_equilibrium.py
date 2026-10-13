@@ -125,3 +125,29 @@ def test_check_limited_non_square_grid():
     # with nx != ny a transposed array raises in RectBivariateSpline
     eq = _solve_diverted(65, 33)
     assert not eq.is_limited
+
+
+def test_q_accepts_list():
+    """Equilibrium.q documents a scalar, list or array of normalised flux"""
+    eq = equilibrium.Equilibrium(
+        tokamak=TestTokamak(),
+        Rmin=0.1,
+        Rmax=2.0,
+        Zmin=-1.0,
+        Zmax=1.0,
+        nx=33,
+        ny=33,
+        boundary=boundary.freeBoundaryHagenow,
+    )
+    profiles = jtor.ConstrainPaxisIp(eq, 1e3, 2e5, 2.0)
+    constrain = control.constrain(
+        xpoints=[(1.1, -0.6), (1.1, 0.8)], isoflux=[(1.1, -0.6, 1.1, 0.6)]
+    )
+    picard.solve(eq, profiles, constrain, rtol=1e-4)
+
+    psinorm = [0.2, 0.5, 0.9]
+    q_list = eq.q(psinorm)
+
+    assert np.allclose(q_list, eq.q(np.array(psinorm)))
+    # Interior and extrapolated (near the axis and separatrix) values
+    assert np.allclose(eq.q([0.5, 0.995]), eq.q(np.array([0.5, 0.995])))
