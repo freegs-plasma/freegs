@@ -366,21 +366,39 @@ class Equilibrium:
             return float(result)
         return result
 
+    def _tor_flux_profile(self, npsi=101):
+        """
+        Toroidal flux on a uniform grid in poloidal flux from the axis to the
+        boundary. Returns increasing psi and the flux through each surface.
+        """
+        psi = np.linspace(self.psi_axis, self.psi_bndry, npsi, endpoint=True)
+        qvals = self.q(np.linspace(0.0, 1.0, npsi, endpoint=True))
+        # dPhi = 2 pi q dpsi, with psi per radian and q in the native COCOS:
+        # Phi has the sign of B0 for either polarity of Ip.
+        flux = 2.0 * np.pi * cumulative_trapezoid(qvals, psi, initial=0.0)
+        if psi[0] > psi[-1]:
+            return psi[::-1], flux[::-1]
+        return psi, flux
+
     def tor_flux(self, psi=None):
         """
         Calculates toroidal flux at specified values of poloidal flux.
         >>> q = drho/dpsi
-        """
-        psiN = (psi - self.psi_axis) / (self.psi_bndry - self.psi_axis)
-        # Get safety factor of these flux surfaces
-        qvals = self.q(psiN)
 
-        # Integrate q wrt psi to get rho. rho = 0 @ psiN = 0
-        result = cumulative_trapezoid(qvals, psi, initial=0.0) * (-1.0 / (2.0 * np.pi))
+        The flux is that through the surface along +phi, so it has the sign
+        of the toroidal field. psi may be a scalar or array, and defaults to
+        100 uniform intervals between the axis and the boundary.
+        """
+        if psi is None:
+            psi = np.linspace(self.psi_axis, self.psi_bndry, 101, endpoint=True)
+        psi = np.asarray(psi, dtype=float)
+
+        psi_grid, flux_grid = self._tor_flux_profile()
+        result = np.interp(psi, psi_grid, flux_grid)
 
         # Convert to a scalar if only one result
-        if len(result) == 1:
-            return result[0]
+        if result.ndim == 0:
+            return result.item()
         return result
 
     def rhotor(self, psi=None):
@@ -392,18 +410,18 @@ class Equilibrium:
 
         Maximum toroidal flux shoud be at LCFS.
         """
+        if psi is None:
+            psi = np.linspace(self.psi_axis, self.psi_bndry, 101, endpoint=True)
+        psi = np.asarray(psi, dtype=float)
 
-        torflux = self.tor_flux(psi)
+        psi_grid, flux_grid = self._tor_flux_profile()
+        torflux = np.interp(psi, psi_grid, flux_grid)
 
-        psi = np.linspace(self.psi_axis, self.psi_bndry, 101, endpoint=True)
-        torflux_for_LCFS = self.tor_flux(psi)
+        # The flux at the LCFS, with the same sign as the profile
+        result = np.sqrt(np.clip(torflux / flux_grid[np.argmax(np.abs(flux_grid))], 0.0, None))
 
-        max_torflux = np.max(torflux_for_LCFS)
-
-        result = np.sqrt(torflux / max_torflux)
-
-        if len(result) == 1:
-            return result[0]
+        if result.ndim == 0:
+            return result.item()
         return result
 
     def pprime(self, psinorm):
