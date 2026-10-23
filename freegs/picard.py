@@ -23,6 +23,38 @@ import numpy as np
 from numpy import amax, amin, array
 
 
+# Blending applied in turn when an iteration stagnates
+_STALL_BLENDS = (0.6, 0.75, 0.9)
+
+# Number of iterations over which stagnation is assessed
+_STALL_WINDOW = 8
+
+
+def _is_stalled(changes, window=_STALL_WINDOW):
+    """
+    True if the last ``window`` psi changes did not improve (by at least 10%)
+    on the smallest earlier change, i.e. the iteration cycles or stagnates
+    rather than converging, even slowly.
+    """
+    changes = np.asarray(changes)
+    return bool(np.min(changes[-window:]) >= 0.9 * np.min(changes[:-window]))
+
+
+def _save_state(eq, psi, with_coils):
+    """Copy the state of the iteration: psi, plasma psi and coil currents"""
+    currents = list(eq.getMachine().controlCurrents()) if with_coils else None
+    return psi.copy(), eq.plasma_psi.copy(), currents
+
+
+def _restore_state(eq, state):
+    """Return to a state saved by _save_state, and return its psi"""
+    psi, plasma_psi, currents = state
+    if currents is not None:
+        eq.getMachine().setControlCurrents(currents)
+    eq._updatePlasmaPsi(plasma_psi.copy())
+    return psi.copy()
+
+
 def solve(
     eq,
     profiles,
@@ -39,6 +71,7 @@ def solve(
     check_limited=False,
     wait_for_limited=False,
     limit_it=0,
+    stabilise=True,
 ):
     """
     Perform Picard iteration to find solution to the Grad-Shafranov equation
@@ -78,6 +111,14 @@ def solve(
         Sometimes waiting some number of interations before checking
         if a plasma is limited can improve convergence. This sets the
         number of iterations to wait.
+    stabilise:
+        If True (default), restart from the initial state with stronger
+        blending (0.6, 0.75, 0.9; never lower than ``blend``) when the
+        iteration has stagnated, i.e. over the last ``_STALL_WINDOW``
+        iterations the change in psi did not improve on the best earlier
+        value. The plain Picard iteration can end in a cycle, for example
+        alternating coil currents and psi_bndry, which damping from the start
+        avoids. An iteration that is making progress is never altered.
     """
 
     if constrain is not None:
@@ -86,6 +127,9 @@ def solve(
 
     # Get the total psi = plasma + coils
     psi = eq.psi()
+
+    # Initial state, to which a stagnated iteration returns
+    initial_state = _save_state(eq, psi, constrain is not None)
 
     if show:
         import matplotlib.pyplot as plt
@@ -116,6 +160,9 @@ def solve(
     ok_to_break = False
 
     psi_maxchange_iterations, psi_relchange_iterations = [], []
+
+    # Index of the iteration from which stagnation is assessed
+    stall_start = 0
 
     # Start main loop
     while True:
@@ -172,7 +219,11 @@ def solve(
             # Check is psi_bndry converges
             bndry = eq.psi_bndry
             bndry_change = bndry_last - bndry
-            bndry_relchange = abs(bndry_change / bndry)
+            if bndry != 0.0:
+                bndry_relchange = abs(bndry_change / bndry)
+            else:
+                # Avoid division by zero: no change is converged, else not
+                bndry_relchange = 0.0 if bndry_change == 0.0 else np.inf
 
         else:
             # Dummy condition to prevent boundary
@@ -226,6 +277,16 @@ def solve(
 
         # Check if the maximum iterations has been exceeded
         iteration += 1
+
+        if stabilise and iteration - stall_start >= 2 * _STALL_WINDOW:
+            if _is_stalled(psi_relchange_iterations[stall_start:]):
+                stronger = [b for b in _STALL_BLENDS if b > blend]
+                if stronger:
+                    # Restart with more damping
+                    blend = stronger[0]
+                    psi = _restore_state(eq, initial_state)
+                    bndry = 0.0
+                    stall_start = len(psi_relchange_iterations)
         if maxits and iteration > maxits:
             raise RuntimeError(
                 "Picard iteration failed to converge (too many iterations)"
