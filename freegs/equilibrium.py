@@ -3,6 +3,7 @@ Defines class to represent the equilibrium
 state, including plasma and coil currents
 """
 
+import copy
 import matplotlib.pyplot as plt
 import numpy as np
 from numpy import array, exp, linspace, meshgrid, pi
@@ -1282,8 +1283,9 @@ def refine(eq, nx=None, ny=None):
     result._updatePlasmaPsi(plasma_psi)
 
     if hasattr(eq, "_profiles"):
-        result._profiles = eq._profiles
-
+        result._profiles = copy.copy(eq._profiles)
+        if hasattr(result._profiles, "eq"):
+            result._profiles.eq = result
     if hasattr(eq, "control"):
         result.control = eq.control
 
@@ -1302,7 +1304,8 @@ def coarsen(eq):
         Rmin=eq.Rmin,
         Rmax=eq.Rmax,
         Zmin=eq.Zmin,
-        Zmax=eq.Zmax,
+        boundary=eq._applyBoundary,
+        order=eq.order,
         nx=nx,
         ny=ny,
     )
@@ -1310,8 +1313,9 @@ def coarsen(eq):
     result._updatePlasmaPsi(plasma_psi)
 
     if hasattr(eq, "_profiles"):
-        result._profiles = eq._profiles
-
+        result._profiles = copy.copy(eq._profiles)
+        if hasattr(result._profiles, "eq"):
+            result._profiles.eq = result
     if hasattr(eq, "control"):
         result.control = eq.control
 
@@ -1334,39 +1338,58 @@ def newDomain(eq, Rmin=None, Rmax=None, Zmin=None, Zmax=None, nx=None, ny=None):
     if nx is None:
         nx = eq.R.shape[0]
     if ny is None:
-        ny = eq.R.shape[0]
+        ny = eq.R.shape[1]
 
     # Create a new equilibrium with the new domain
     result = Equilibrium(
-        tokamak=eq.tokamak, Rmin=Rmin, Rmax=Rmax, Zmin=Zmin, Zmax=Zmax, nx=nx, ny=ny
+        tokamak=eq.tokamak,
+        Rmin=Rmin,
+        Rmax=Rmax,
+        Zmin=Zmin,
+        Zmax=Zmax,
+        boundary=eq._applyBoundary,
+        order=eq.order,
+        nx=nx,
+        ny=ny,
     )
 
-    # Calculate the current on the old grid
-    profiles = eq._profiles
-    Jtor = profiles.Jtor(eq.R, eq.Z, eq.psi(), eq.psi_bndry)
+    if hasattr(eq, "_profiles"):
+        result._profiles = copy.copy(eq._profiles)
+        if hasattr(result._profiles, "eq"):
+            result._profiles.eq = result
+        profiles = result._profiles
+    else:
+        profiles = None
 
-    # Interpolate Jtor onto new grid
-    Jtor_func = interpolate.RectBivariateSpline(eq.R[:, 0], eq.Z[0, :], Jtor)
-    Jtor_new = Jtor_func(result.R, result.Z, grid=False)
+    if hasattr(eq, "control"):
+        result.control = eq.control
 
-    result._applyBoundary(result, Jtor_new, result.plasma_psi)
+    if profiles is not None:
+        # Calculate the current on the old grid
+        Jtor = profiles.Jtor(eq.R, eq.Z, eq.psi(), eq.psi_bndry)
 
-    # Right hand side of G-S equation
-    rhs = -mu0 * result.R * Jtor_new
+        # Interpolate Jtor onto new grid
+        Jtor_func = interpolate.RectBivariateSpline(eq.R[:, 0], eq.Z[0, :], Jtor)
+        Jtor_new = Jtor_func(result.R, result.Z, grid=False)
 
-    # Copy boundary conditions
-    rhs[0, :] = result.plasma_psi[0, :]
-    rhs[:, 0] = result.plasma_psi[:, 0]
-    rhs[-1, :] = result.plasma_psi[-1, :]
-    rhs[:, -1] = result.plasma_psi[:, -1]
+        result._applyBoundary(result, Jtor_new, result.plasma_psi)
 
-    # Call elliptic solver
-    plasma_psi = result._solver(result.plasma_psi, rhs)
+        # Right hand side of G-S equation
+        rhs = -mu0 * result.R * Jtor_new
 
-    result._updatePlasmaPsi(plasma_psi)
+        # Copy boundary conditions
+        rhs[0, :] = result.plasma_psi[0, :]
+        rhs[:, 0] = result.plasma_psi[:, 0]
+        rhs[-1, :] = result.plasma_psi[-1, :]
+        rhs[:, -1] = result.plasma_psi[:, -1]
 
-    # Solve once more, calculating Jtor using new psi
-    result.solve(profiles)
+        # Call elliptic solver
+        plasma_psi = result._solver(result.plasma_psi, rhs)
+
+        result._updatePlasmaPsi(plasma_psi)
+
+        # Solve once more, calculating Jtor using new psi
+        result.solve(profiles)
 
     return result
 

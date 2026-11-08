@@ -80,6 +80,11 @@ def solve(
         number of iterations to wait.
     """
 
+    if constrain is None and hasattr(eq, "control"):
+        constrain = eq.control
+    elif constrain is not None:
+        eq.control = constrain
+
     if constrain is not None:
         # Set the coil currents to get X-points in desired locations
         constrain(eq)
