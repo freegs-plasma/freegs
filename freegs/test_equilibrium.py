@@ -125,3 +125,27 @@ def test_check_limited_non_square_grid():
     # with nx != ny a transposed array raises in RectBivariateSpline
     eq = _solve_diverted(65, 33)
     assert not eq.is_limited
+
+
+def test_refine_and_coarsen_re_solve():
+    eq = _solve_diverted(33, 65)
+
+    eq_fine = equilibrium.refine(eq)
+    assert eq_fine.R.shape == (65, 129)
+    assert eq_fine._profiles.eq is eq_fine
+    assert eq._profiles.eq is eq
+    picard.solve(eq_fine, eq_fine._profiles, eq_fine.control)
+
+    eq_coarse = equilibrium.coarsen(eq)
+    assert eq_coarse.R.shape == (17, 33)
+    assert eq_coarse._profiles.eq is eq_coarse
+    picard.solve(eq_coarse, eq_coarse._profiles, eq_coarse.control)
+
+
+def test_new_domain_non_square_grid():
+    eq = _solve_diverted(33, 65)
+    eq_new = equilibrium.newDomain(eq, Rmin=0.2, Rmax=2.1)
+    assert eq_new.R.shape == (33, 65)
+    assert eq_new.Rmin == 0.2
+    assert eq_new.Rmax == 2.1
+    assert eq_new._profiles.eq is eq_new
